@@ -42,6 +42,10 @@ function windScore(s,ws,wd){if(ws==null||wd==null)return{q:1,word:"No wind data"
   const word=ws<4?"Light":d<35?"Offshore":d<70?"Cross-offshore":d<110?"Cross-shore":d<145?"Cross-onshore":"Onshore";return{q,word,d}}
 function tideScore(td,ft){const r=TIDE_RANGE[td];if(!r||ft==null)return 1;const o=ft<r[0]?r[0]-ft:ft>r[1]?ft-r[1]:0;return 1-Math.min(0.3,0.1*o)}
 function sizeScore(f,lo,hi){if(f<1)return 0;if(f<lo)return 0.2+0.4*(f-1)/Math.max(0.5,lo-1);if(f<=hi)return 0.6+0.4*(f-lo)/(hi-lo);return Math.max(0.45,1-0.55*(f-hi)/hi)}
+// Energy of one wave per metre of crest, in kJ (deep water), scaled to sit near Surfline's figures.
+const waveKJ=(hft,T)=>{if(!(hft>0)||!(T>0))return 0;const H=hft*0.3048;return 0.9*1025*9.81*9.81*H*H*T*T/(16*Math.PI)/1000};
+const spotKJ=h=>h.cs.reduce((t,c)=>t+(c.p>=5?waveKJ(c.h,c.p)*c.df*c.df:0),0);
+const CCOL=["#e07a4f","#e3b23c","#4fb3d9"];
 const clsOf=(face,rate)=>face<1?0:rate<2?1:rate<3.5?2:rate<5?3:rate<6.5?4:rate<8.8?5:6;
 function rateHour(s,i){const cs=comps(s,i);let e=0,dom=null;for(const c of cs){e+=c.face*c.face;if(!dom||c.face>dom.face)dom=c}
   const face=Math.sqrt(e),w=windScore(s,s.wx.ws[i],s.wx.wd[i]),tide=s.tide?s.tide[i]:null;
@@ -90,7 +94,10 @@ async function loadForecast(){
     gw:gw.map(x=>({s:r1(x.hourly.wind_speed_10m),d:x.hourly.wind_direction_10m}))}}
 async function loadTides(date){const out={};await Promise.all(TIDES.map(async st=>{try{
   const j=await getJSON(`https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?begin_date=${date.replace(/-/g,"")}&range=168&station=${st.id}&product=predictions&datum=MLLW&time_zone=lst_ldt&units=english&interval=h&format=json`);
-  const m={};for(const p of j.predictions||[])m[p.t.replace(" ","T")]=+p.v;out[st.id]=m}catch(e){out[st.id]=null}}));return out}
+  const m={};for(const p of j.predictions||[])m[p.t.replace(" ","T")]=+p.v;out[st.id]=m;
+  try{const k=await getJSON(`https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?begin_date=${date.replace(/-/g,"")}&range=168&station=${st.id}&product=predictions&datum=MLLW&time_zone=lst_ldt&units=english&interval=hilo&format=json`);
+    out[st.id+"x"]=(k.predictions||[]).filter(p=>p.type).map(p=>({t:p.t,v:+p.v,hi:p.type==="H"}))}catch(e){out[st.id+"x"]=[]}
+  }catch(e){out[st.id]=null}}));return out}
 function dods(txt,name){const m=new RegExp("\\n"+name+"\\[\\d+\\]\\n([^\\n]*)").exec(txt);return m?m[1].split(",").map(Number):[]}
 async function loadBuoys(){const base="https://thredds.cdip.ucsd.edu/thredds/dodsC/cdip/realtime/";
   return Promise.all(BUOYS.map(async b=>{try{
@@ -111,7 +118,7 @@ function fillGrid(vals){const n=G.nx*G.ny;let a=new Float32Array(n).fill(NaN);va
 function build(fc,tides,buoys){
   const T=fc.times.length,spots=SPOTS.map((s,k)=>{const o=Object.assign({},s,{idx:k,m:fc.m[s.fp],wx:fc.wx[s.fp]});
     const st=TIDES.slice().sort((a,b)=>dist2(a,s)-dist2(b,s))[0],tm=tides&&tides[st.id];
-    o.tideSt=st.n;o.tide=tm?fc.times.map(t=>tm[t]==null?null:tm[t]):null;
+    o.tideSt=st.n;o.hilo=(tides&&tides[st.id+"x"])||[];o.tide=tm?fc.times.map(t=>tm[t]==null?null:tm[t]):null;
     o.ok=o.m.sh.some(v=>v!=null);o.hr=fc.times.map((_,i)=>rateHour(o,i));return o});
   const F={H:[],P:[],U:[],V:[],WS:[],WU:[],WV:[]},rad=Math.PI/180;
   for(let t=0;t<T;t++){
@@ -333,6 +340,36 @@ function hourly(s){const T=DATA.times,cur=T[TI].slice(0,10),day=dayIdx().find(x=
   return`<div class="hours"><div class="hrow hhead"><span>Time</span><span>Surf</span><span>Swell</span><span>Wind</span><span class="num">Tide</span></div>${ks.map(k=>{const h=s.hr[k],ws=s.wx.ws[k],wd=s.wx.wd[k];
     return`<button class="hrow${k===TI?" on":""}${s.wx.day[k]?"":" night"}" data-time="${k}" title="${RT[h.cls].n}"><span>${h12(hourOf(k))}</span><span class="hs"><i class="dot" style="background:${rtCol(h.cls)}"></i>${faceText(h.face)}</span>
     <span>${h.dom?`${h.dom.h.toFixed(1)} ft ${Math.round(h.dom.p)} s ${comp(h.dom.d)}`:"\u2013"}</span><span>${ws==null?"\u2013":`${Math.round(ws)} kn ${arrow(wd)}<small>${h.w.word}</small>`}</span><span class="num">${h.tide==null?"\u2013":h.tide.toFixed(1)}</span></button>`}).join("")}</div>`}
+function dayChart(s){const T=DATA.times,cur=T[TI].slice(0,10),ks=dayIdx().find(x=>x.d===cur).idx,n=ks.length,W=372,H=268,x0=4,bw=(W-8)/n,x=h=>x0+h*bw,xc=h=>x0+(h+0.5)*bw;
+  const kj=ks.map(k=>spotKJ(s.hr[k])),mx=Math.max(20,...kj),top=10,base=74;let g="";
+  ks.forEach((k,i)=>{if(s.wx.day[k]===0)g+=`<rect x="${x(i).toFixed(1)}" y="2" width="${(bw+.05).toFixed(2)}" height="${H-22}" fill="var(--night)"/>`});
+  ks.forEach((k,i)=>{const bh=Math.max(2,kj[i]/mx*(base-top));g+=`<rect x="${(x(i)+1).toFixed(1)}" y="${(base-bh).toFixed(1)}" width="${(bw-2).toFixed(1)}" height="${bh.toFixed(1)}" rx="2" fill="var(--map-ink)" opacity="${k===TI?1:.45}"/>`;
+    g+=`<rect x="${x(i).toFixed(1)}" y="${base+16}" width="${(bw+.05).toFixed(2)}" height="4" fill="${rtCol(s.hr[k].cls)}"/>`});
+  g+=`<text x="${x0}" y="${base+12}" font-size="9.5" fill="var(--muted)">kJ</text>`;
+  for(let i=3;i<n;i+=3){const k=ks[i];g+=`<text x="${xc(i)}" y="${base+12}" font-size="10" text-anchor="middle" fill="var(--ink)">${Math.round(kj[i])}</text>`;
+    const ws=s.wx.ws[k],wd=s.wx.wd[k];if(ws!=null)g+=`<g transform="translate(${xc(i)},110) rotate(${Math.round(wd+180)})"><path d="M0 -5.5 L3.8 4 L0 2 L-3.8 4 Z" fill="var(--ink)"/></g><text x="${xc(i)}" y="130" font-size="12" font-weight="600" text-anchor="middle" fill="var(--ink)">${Math.round(ws)}</text><text x="${xc(i)}" y="143" font-size="10" text-anchor="middle" fill="var(--muted)">${Math.round(s.wx.wg[k]||ws)}</text>`;
+    g+=`<text x="${xc(i)}" y="${H-6}" font-size="10" text-anchor="middle" fill="var(--muted)">${h12(hourOf(k)).replace(" ","").toLowerCase()}</text>`}
+  const wm=Math.max(15,...ks.map(k=>s.wx.wg[k]||0));let wa=`M${x(0)} 150`;ks.forEach((k,i)=>{wa+=`L${xc(i).toFixed(1)} ${(150-(s.wx.ws[k]||0)/wm*46).toFixed(1)}`});wa+=`L${x(n)} 150Z`;
+  g=`<path d="${wa}" fill="var(--map-ink)" opacity=".13"/>`+g+`<text x="${x0}" y="100" font-size="9.5" fill="var(--muted)">Wind, kn (gust below)</text>`;
+  if(s.tide){const vals=ks.map(k=>s.tide[k]).filter(v=>v!=null),ex=s.hilo.filter(e=>e.t.slice(0,10)===cur),lo=Math.min(...vals,...ex.map(e=>e.v)),hi=Math.max(...vals,...ex.map(e=>e.v)),t0=192,t1=232,ty=v=>t1-(v-lo)/(hi-lo||1)*(t1-t0);
+    let d="",pen=false;ks.forEach((k,i)=>{const v=s.tide[k];if(v==null){pen=false;return}d+=(pen?"L":"M")+x(i).toFixed(1)+" "+ty(v).toFixed(1);pen=true});
+    g+=`<text x="${x0}" y="166" font-size="9.5" fill="var(--muted)">Tide, ft</text><path d="${d}" fill="none" stroke="var(--map-ink)" stroke-width="1.6"/>`;
+    for(const e of ex){const hh=+e.t.slice(11,13)+(+e.t.slice(14,16))/60,px=clamp(x(hh),26,W-26),py=ty(e.v);
+      g+=`<line x1="${x(hh).toFixed(1)}" x2="${x(hh).toFixed(1)}" y1="${py.toFixed(1)}" y2="${t1+6}" stroke="var(--map-ink)" stroke-width=".8" opacity=".6"/><text x="${px.toFixed(1)}" y="${(py-15).toFixed(1)}" font-size="10" font-weight="600" text-anchor="middle" fill="var(--ink)">${e.t.slice(11,16)}</text><text x="${px.toFixed(1)}" y="${(py-4).toFixed(1)}" font-size="10" text-anchor="middle" fill="var(--muted)">${e.v.toFixed(1)} ft</text>`}}
+  const ci=ks.indexOf(TI);if(ci>=0)g+=`<line x1="${xc(ci)}" x2="${xc(ci)}" y1="2" y2="${H-20}" stroke="var(--accent)" stroke-width="1.3"/>`;
+  return`<div class="fc" data-chart="1" data-i0="${ks[0]}" data-n="${n}" data-x0="${x0/W}" data-x1="${(W-4)/W}"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Hourly wave energy, rating, wind and tide for the selected day">${g}</svg></div>
+  <p class="note" style="font-size:12px;margin-top:6px">Bars: wave energy reaching the spot. Colour strip: rating. Tap to jump to an hour.</p>`}
+function spectra(s){const h=s.hr[TI],cs=h.cs.map((c,i)=>Object.assign({i,kj:waveKJ(c.h,c.p)},c));if(!cs.length)return`<p class="note">No swell reaching this point.</p>`;
+  const R=58,C=75,mx=Math.max(...cs.map(c=>c.kj),1),pt=(deg,r)=>[C+r*Math.sin(deg*Math.PI/180),C-r*Math.cos(deg*Math.PI/180)];let g="";
+  for(const [a,b] of s.w){const span=(b-a+360)%360,[x1,y1]=pt(a,R),[x2,y2]=pt(b,R);g+=`<path d="M${C} ${C}L${x1.toFixed(1)} ${y1.toFixed(1)}A${R} ${R} 0 ${span>180?1:0} 1 ${x2.toFixed(1)} ${y2.toFixed(1)}Z" fill="var(--map-ink)" opacity=".13"/>`}
+  g+=`<circle cx="${C}" cy="${C}" r="${R}" fill="none" stroke="var(--muted)" stroke-width="1"/><circle cx="${C}" cy="${C}" r="${R*0.6}" fill="none" stroke="var(--line)" stroke-dasharray="2 3"/><circle cx="${C}" cy="${C}" r="${R*0.3}" fill="none" stroke="var(--line)" stroke-dasharray="2 3"/>`;
+  for(const [d,l] of [[0,"N"],[90,"E"],[180,"S"],[270,"W"]]){const [tx,ty]=pt(d,R+9);g+=`<text x="${tx.toFixed(1)}" y="${(ty+3.5).toFixed(1)}" font-size="10" text-anchor="middle" fill="var(--muted)">${l}</text>`}
+  for(const c of cs.slice().sort((a,b)=>b.kj-a.kj)){const r=Math.max(10,Math.sqrt(c.kj/mx)*R*0.95),[xa,ya]=pt(c.d-9,r),[xb,yb]=pt(c.d+9,r);g+=`<path d="M${C} ${C}L${xa.toFixed(1)} ${ya.toFixed(1)}A${r.toFixed(1)} ${r.toFixed(1)} 0 0 1 ${xb.toFixed(1)} ${yb.toFixed(1)}Z" fill="${CCOL[c.i%3]}" opacity="${c.df<0.5?.45:.95}"/>`}
+  const ws=s.wx.ws[TI],wd=s.wx.wd[TI];if(ws!=null){const [wx1,wy1]=pt(wd,R+4);g+=`<g transform="translate(${wx1.toFixed(1)},${wy1.toFixed(1)}) rotate(${Math.round(wd+180)})"><path d="M0 -7 L4.5 5 L0 2.5 L-4.5 5 Z" fill="var(--ink)" stroke="var(--panel)" stroke-width="1"/></g>`}
+  return`<div class="spec"><div class="slist">${cs.map(c=>`<div class="srow"><svg class="arr" viewBox="-6 -6 12 12" aria-hidden="true"><g transform="rotate(${Math.round(c.d+180)})"><path d="M0 -5 L3.4 3.6 L0 1.8 L-3.4 3.6 Z" fill="${CCOL[c.i%3]}"/></g></svg><b>${c.h.toFixed(1)} ft</b><span>${Math.round(c.p)} s</span><span>${comp(c.d)} ${Math.round(c.d)}°</span><span class="num">${Math.round(c.kj)} kJ</span>
+    <small>${c.k} · ${c.face<0.5?(c.p<5?"too short to surf":c.df<0.5?"blocked here":"under 1 ft here"):c.face.toFixed(1)+" ft faces here"}</small></div>`).join("")}</div>
+  <svg class="rose" viewBox="0 0 150 150" role="img" aria-label="Compass showing where each swell comes from, the spot's swell window, and the wind">${g}</svg></div>
+  <p class="note" style="font-size:12px;margin-top:6px">Wedges point to where each swell comes from, sized by energy. The shaded sector is the swell window this spot accepts. The dark arrow is the wind.</p>`}
 function windows(s){const T=DATA.times,out=[];let i=0;
   while(i<T.length){const day=T[i].slice(0,10);let best=null;let j=i;for(;j<T.length&&T[j].slice(0,10)===day;j++){if(j<NOWI||j+2>=T.length||T[j+2].slice(0,10)!==day)continue;if(!(s.wx.day[j]&&s.wx.day[j+2]))continue;
       const r=(s.hr[j].rate+s.hr[j+1].rate+s.hr[j+2].rate)/3;if(!best||r>best.r)best={r,j}}
@@ -353,9 +390,8 @@ function detail(s){const h=s.hr[TI];
    <div><dt>Nearest buoy</dt><dd>${nb?`${nb.d.hs[nb.d.hs.length-1].toFixed(1)} ft @ ${Math.round(nb.d.tp[nb.d.tp.length-1])} s<small>${esc(nb.b.n)}, ${ageText(nb.d)}</small>`:"n/a"}</dd></div>
   </dl>
   <div><p class="lab" style="margin-bottom:8px">By day</p>${dayCards(s)}</div>
-  <div><p class="lab" style="margin-bottom:4px">${fmt(TI).split(" ")[0]} by hour \u00b7 dot colour is the rating</p>${hourly(s)}</div>
-  <div><p class="lab" style="margin-bottom:8px">Swell in the water</p><table><thead><tr><th>Source</th><th>Offshore</th><th>From</th><th class="num">At this spot</th></tr></thead><tbody>
-  ${h.cs.length?h.cs.map(c=>`<tr><td>${c.k}</td><td>${c.h.toFixed(1)} ft @ ${Math.round(c.p)} s</td><td>${arrow(c.d)} ${comp(c.d)} ${Math.round(c.d)}°</td><td class="num">${c.face<0.5?(c.p<5?"too short":c.df<0.5?"blocked":"under 1 ft"):c.face.toFixed(1)+" ft"}</td></tr>`).join(""):`<tr><td colspan="4">No swell reaching this point</td></tr>`}</tbody></table></div>
+  <div><p class="lab" style="margin-bottom:8px">${fmt(TI).split(" ")[0]} by hour</p>${dayChart(s)}${hourly(s)}</div>
+  <div><p class="lab" style="margin-bottom:8px">Swell breakdown · ${fmt(TI)}</p>${spectra(s)}</div>
   <div><p class="lab" style="margin-bottom:8px">Next seven days</p>${fcChart(s)}</div>
   <p class="note">${esc(s.note)} Faces ${comp(s.f)}. Accepts swell from ${s.w.map(([a,b])=>`${comp(a)} to ${comp(b)}`).join(" and ")}; ideal faces ${s.sz[0]}–${s.sz[1]} ft.</p></div>`}
 const buoyAge=d=>(Date.now()/1000-d.t[d.t.length-1])/60;
@@ -382,12 +418,13 @@ function render(fromPlay){if(!DATA)return;const b=$("body"),keep=b.scrollTop;
   for(const t of ["spots","buoys","how"])$("tab-"+t).setAttribute("aria-selected",S.tab===t);
   b.innerHTML=S.tab==="buoys"?buoyView():S.tab==="how"?howView():S.sel!=null?detail(DATA.spots[S.sel]):listView();
   b.scrollTop=keep;lastRender=Date.now()}
-$("body").addEventListener("click",e=>{const t=e.target.closest("[data-spot],[data-reg],[data-back],[data-time],[data-buoy],#refresh,#fc");if(!t||!DATA)return;
+$("body").addEventListener("click",e=>{const t=e.target.closest("[data-spot],[data-reg],[data-back],[data-time],[data-buoy],#refresh,#fc,[data-chart]");if(!t||!DATA)return;
   if(t.dataset.spot!=null){const k=+t.dataset.spot,s=DATA.spots[k];select(k);goTo(s.lo,s.la,11.5)}
   else if(t.dataset.reg){S.region=t.dataset.reg;render()}
   else if(t.dataset.back){select(null)}
   else if(t.dataset.time){setTime(+t.dataset.time)}
   else if(t.dataset.buoy){const b=BUOYS[+t.dataset.buoy];goTo(b.lo,b.la,9.5)}
   else if(t.id==="refresh"){load(true)}
+  else if(t.dataset.chart){const r=t.querySelector("svg").getBoundingClientRect(),f=((e.clientX-r.left)/r.width-+t.dataset.x0)/(+t.dataset.x1-+t.dataset.x0);setTime(+t.dataset.i0+Math.floor(clamp(f,0,0.9999)*+t.dataset.n))}
   else if(t.id==="fc"){const r=t.querySelector("svg").getBoundingClientRect(),f=((e.clientX-r.left)/r.width-+t.dataset.x0)/(+t.dataset.x1-+t.dataset.x0);setTime(Math.floor(clamp(f,0,0.9999)*DATA.times.length))}});
 syncTheme();legend();if(initMap()){if(!REDUCED)tick();load(false)}
