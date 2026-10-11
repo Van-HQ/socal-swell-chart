@@ -156,28 +156,38 @@ const isDark=()=>{const t=document.documentElement.dataset.theme;return t?t==="d
 const LOOKS={chart:"Chart",sat:"Satellite",night:"Midnight",paper:"Paper"};
 function look(){const k=S.look;
   if(k==="sat")return{sat:true,ramp:"v",alpha:0.5,pcol:"255,255,255",roadMin:10,C:{land:"#1a1f1c",urban:"#000",green:"#000",sand:"#000",water:"#000",road:"rgba(255,255,255,.4)",road2:"rgba(255,255,255,.22)",pier:"rgba(255,255,255,0)",text:"#ffffff",halo:"rgba(0,0,0,.8)"}};
-  if(k==="night")return{ramp:"v",alpha:0.95,pcol:"255,255,255",roadMin:11,C:{land:"#0e1215",urban:"#12171a",green:"#0f1614",sand:"#2b2a21",water:"#0a1420",road:"#262e33",road2:"#1b2226",pier:"#3d474d",text:"#8795a0",halo:"#0a0d0f"}};
-  if(k==="paper")return{ramp:"l",alpha:0.9,pcol:"40,60,80",roadMin:9,C:{land:"#f3ead2",urban:"#eee3c8",green:"#dfe3c0",sand:"#f6e2a8",water:"#d9e8e6",road:"#cdbf9c",road2:"#ddd1b2",pier:"#a89a78",text:"#5a4f3a",halo:"#f6eedb"}};
+  if(k==="night")return{topo:{line:"#3f8f84",hi:"#1d2a2e",sh:"#000000",depth:"255,255,255"},ramp:"v",alpha:0.95,pcol:"255,255,255",roadMin:11,C:{land:"#0e1215",urban:"#12171a",green:"#0f1614",sand:"#2b2a21",water:"#0a1420",road:"#262e33",road2:"#1b2226",pier:"#3d474d",text:"#8795a0",halo:"#0a0d0f"}};
+  if(k==="paper")return{topo:{line:"#a8946a",hi:"#fff8e6",sh:"#7d6f52",depth:"30,50,70"},ramp:"l",alpha:0.9,pcol:"40,60,80",roadMin:9,C:{land:"#f3ead2",urban:"#eee3c8",green:"#dfe3c0",sand:"#f6e2a8",water:"#d9e8e6",road:"#cdbf9c",road2:"#ddd1b2",pier:"#a89a78",text:"#5a4f3a",halo:"#f6eedb"}};
   return isDark()
-  ?{ramp:"d",alpha:0.93,pcol:css("--particle")||"226,244,248",roadMin:7,C:{land:"#232a29",urban:"#283030",green:"#22302a",sand:"#3a3628",water:"#0b1b25",road:"#3b4644",road2:"#2a3331",pier:"#55605b",text:"#a9bcc2",halo:"#141a1a"}}
-  :{ramp:"l",alpha:0.93,pcol:css("--particle")||"20,52,74",roadMin:7,C:{land:"#f1ecdf",urban:"#ebe5d6",green:"#dde6cc",sand:"#f4e4b4",water:"#cfe3ea",road:"#d6ccb4",road2:"#e2dac6",pier:"#b9ae93",text:"#4d5c63",halo:"#f6f2e8"}}}
-function mapStyle(){const LK=look(),C=LK.C,fo=LK.sat?0:1,r0=LK.roadMin,r1=Math.max(11,r0+2);
+  ?{topo:{line:"#6f8a80",hi:"#34403e",sh:"#0b0f0f",depth:"226,244,248"},ramp:"d",alpha:0.93,pcol:css("--particle")||"226,244,248",roadMin:7,C:{land:"#232a29",urban:"#283030",green:"#22302a",sand:"#3a3628",water:"#0b1b25",road:"#3b4644",road2:"#2a3331",pier:"#55605b",text:"#a9bcc2",halo:"#141a1a"}}
+  :{topo:{line:"#a79c80",hi:"#ffffff",sh:"#8a8068",depth:"20,52,74"},ramp:"l",alpha:0.93,pcol:css("--particle")||"20,52,74",roadMin:7,C:{land:"#f1ecdf",urban:"#ebe5d6",green:"#dde6cc",sand:"#f4e4b4",water:"#cfe3ea",road:"#d6ccb4",road2:"#e2dac6",pier:"#b9ae93",text:"#4d5c63",halo:"#f6f2e8"}}}
+// Terrain: free AWS/Mapzen elevation tiles (land heights and sea-floor depths). Contour lines are computed in the browser.
+let DEM=null;
+function setupTerrain(){if(!window.mlcontour||DEM)return;try{DEM=new mlcontour.DemSource({url:"https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png",encoding:"terrarium",maxzoom:12,worker:true,cacheSize:120,timeoutMs:10000});DEM.setupMaplibre(maplibregl)}catch(e){DEM=null}}
+const CONTOUR_FT={7:[1000,5000],9:[500,2500],11:[200,1000],12:[100,500],13:[50,250],14:[20,100]};
+function mapStyle(){const LK=look(),C=LK.C,fo=LK.sat?0:1,r0=LK.roadMin,r1=Math.max(11,r0+2),TP=DEM&&LK.topo;
   const name=["coalesce",["get","name_en"],["get","name"]],road=(id,cls,min,col,w)=>({id,type:"line",source:"omt","source-layer":"transportation",minzoom:min,
     filter:["all",["==",["geometry-type"],"LineString"],["in",["get","class"],["literal",cls]]],layout:{"line-cap":"round","line-join":"round"},paint:{"line-color":col,"line-width":["interpolate",["exponential",1.6],["zoom"],...w]}});
   const label=(id,cls,min,size)=>({id,type:"symbol",source:"omt","source-layer":"place",minzoom:min,filter:["in",["get","class"],["literal",cls]],
     layout:{"text-field":name,"text-font":["Noto Sans Regular"],"text-size":size,"text-max-width":8},paint:{"text-color":C.text,"text-halo-color":C.halo,"text-halo-width":1.2}});
   return{version:8,glyphs:"https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf",
-    sources:{...(LK.sat?{sat:{type:"raster",tiles:["https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"],tileSize:256,maxzoom:18,attribution:"Imagery &copy; Esri, Maxar, Earthstar Geographics"}}:{}),omt:{type:"vector",url:"https://tiles.openfreemap.org/planet",attribution:'<a href="https://openfreemap.org" target="_blank">OpenFreeMap</a> &copy; <a href="https://www.openmaptiles.org/" target="_blank">OpenMapTiles</a> Data from <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a>'}},
+    sources:{...(LK.sat?{sat:{type:"raster",tiles:["https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"],tileSize:256,maxzoom:18,attribution:"Imagery &copy; Esri, Maxar, Earthstar Geographics"}}:{}),
+      ...(TP?{dem:{type:"raster-dem",encoding:"terrarium",tiles:[DEM.sharedDemProtocolUrl],maxzoom:12,tileSize:256,attribution:"Terrain: Mapzen, USGS, NOAA"},
+        contours:{type:"vector",tiles:[DEM.contourProtocolUrl({multiplier:3.28084,thresholds:CONTOUR_FT,contourLayer:"contours",elevationKey:"ele",levelKey:"level",buffer:1})],maxzoom:14}}:{}),omt:{type:"vector",url:"https://tiles.openfreemap.org/planet",attribution:'<a href="https://openfreemap.org" target="_blank">OpenFreeMap</a> &copy; <a href="https://www.openmaptiles.org/" target="_blank">OpenMapTiles</a> Data from <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a>'}},
     layers:[{id:"bg",type:"background",paint:{"background-color":C.land}},...(LK.sat?[{id:"sat",type:"raster",source:"sat"}]:[]),
       {id:"urban",type:"fill",source:"omt","source-layer":"landuse",minzoom:9,filter:["in",["get","class"],["literal",["residential","commercial","industrial","retail"]]],paint:{"fill-color":C.urban,"fill-opacity":fo}},
       {id:"green",type:"fill",source:"omt","source-layer":"landcover",filter:["in",["get","class"],["literal",["wood","grass","wetland"]]],paint:{"fill-color":C.green,"fill-opacity":fo}},
       {id:"park",type:"fill",source:"omt","source-layer":"park",paint:{"fill-color":C.green,"fill-opacity":fo}},
       {id:"sand",type:"fill",source:"omt","source-layer":"landcover",filter:["==",["get","class"],"sand"],paint:{"fill-color":C.sand,"fill-opacity":fo}},
+      ...(TP?[{id:"hill",type:"hillshade",source:"dem",paint:{"hillshade-exaggeration":0.45,"hillshade-shadow-color":LK.topo.sh,"hillshade-highlight-color":LK.topo.hi,"hillshade-accent-color":LK.topo.sh}},
+        {id:"topo",type:"line",source:"contours","source-layer":"contours",filter:[">",["get","ele"],0],paint:{"line-color":LK.topo.line,"line-opacity":["match",["get","level"],1,0.75,0.35],"line-width":["match",["get","level"],1,1,0.6]}}]:[]),
       {id:"water",type:"fill",source:"omt","source-layer":"water",paint:{"fill-color":C.water,"fill-opacity":fo}},
       road("roads2",["secondary","tertiary","minor"],r1,C.road2,[11,0.4,15,3]),
       road("roads",["motorway","trunk","primary"],r0,C.road,[7,0.4,11,1.2,15,5]),
       {id:"pier-fill",type:"fill",source:"omt","source-layer":"transportation",filter:["all",["==",["geometry-type"],"Polygon"],["==",["get","class"],"pier"]],paint:{"fill-color":C.pier,"fill-opacity":fo}},
       {id:"pier-line",type:"line",source:"omt","source-layer":"transportation",filter:["all",["==",["geometry-type"],"LineString"],["==",["get","class"],"pier"]],paint:{"line-color":C.pier,"line-width":["interpolate",["linear"],["zoom"],11,0.8,15,4]}},
+      ...(TP?[{id:"topo-lab",type:"symbol",source:"contours","source-layer":"contours",minzoom:10,filter:["all",[">",["get","ele"],0],["==",["get","level"],1]],
+        layout:{"symbol-placement":"line","text-field":["concat",["number-format",["get","ele"],{}]," ft"],"text-font":["Noto Sans Regular"],"text-size":10,"symbol-spacing":420},paint:{"text-color":LK.topo.line,"text-halo-color":C.land,"text-halo-width":1.4}}]:[]),
       label("towns",["town","village","suburb"],10,12),label("cities",["city"],6,["interpolate",["linear"],["zoom"],6,11,12,15])]}}
 /* screen <-> lon/lat (web mercator, no rotation) */
 const PR={ax:1,bx:0,ay:1,by:0};
@@ -221,7 +231,19 @@ function drawField(){const W=Math.round(V.W*V.dpr),H=Math.round(V.H*V.dpr);if(cF
   const lons=new Float64Array(w);for(let x=0;x<w;x++)lons[x]=LON((x+0.5)*5);let k=0;
   for(let y=0;y<h;y++){const lat=LAT((y+0.5)*5);for(let x=0;x<w;x++){const c=rampCol(st,sample(arr,lons[x],lat));img.data[k++]=c[0];img.data[k++]=c[1];img.data[k++]=c[2];img.data[k++]=255}}
   sc.putImageData(img,0,0);ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality="high";ctx.globalAlpha=look().alpha;ctx.drawImage(fS,0,0,W,H);ctx.globalAlpha=1;
+  drawDepth(ctx);
   ctx.globalCompositeOperation="destination-in";ctx.drawImage(mask,0,0);ctx.globalCompositeOperation="source-over"}
+let DEPTH=[],depthDirty=true;
+function drawDepth(ctx){const LK=look();if(!DEM||!LK.topo||!MAP)return;
+  if(depthDirty){depthDirty=false;try{DEPTH=MAP.querySourceFeatures("contours",{sourceLayer:"contours",filter:["<",["get","ele"],0]})}catch(e){DEPTH=[]}}
+  if(!DEPTH.length)return;ctx.save();ctx.setTransform(V.dpr,0,0,V.dpr,0,0);ctx.lineJoin="round";const rgb=LK.topo.depth,labs=[],seen=new Set();
+  for(const pass of [0,1]){ctx.beginPath();for(const f of DEPTH){if((f.properties.level===1?1:0)!==pass)continue;const g=f.geometry,ls=g.type==="LineString"?[g.coordinates]:g.type==="MultiLineString"?g.coordinates:[];
+      for(const l of ls){let on=false,best=null;for(let i=0;i<l.length;i++){const x=X(l[i][0]),y=Y(l[i][1]);if(i)ctx.lineTo(x,y);else ctx.moveTo(x,y);if(pass&&!best&&i>l.length/2&&x>30&&x<V.W-30&&y>30&&y<V.H-30)best=[x,y]}
+        if(pass&&best&&l.length>12)labs.push([best[0],best[1],-f.properties.ele])}}
+    ctx.strokeStyle=`rgba(${rgb},${pass?0.34:0.16})`;ctx.lineWidth=pass?1:0.7;ctx.stroke()}
+  ctx.font=`500 10px ${css("--f-ui")}`;ctx.textAlign="center";ctx.textBaseline="middle";ctx.fillStyle=`rgba(${rgb},.7)`;
+  for(const [x,y,d] of labs){const k=Math.round(x/90)+"_"+Math.round(y/60);if(seen.has(k))continue;seen.add(k);ctx.fillText(Math.round(d).toLocaleString()+" ft",x,y)}
+  ctx.restore()}
 /* particles: swell drawn as short crests marching along the swell direction, wind as streaks */
 let PART=[],raf=0;const REDUCED=matchMedia("(prefers-reduced-motion: reduce)").matches;
 function spawn(p){for(let k=0;k<8;k++){const x=Math.random()*V.W,y=Math.random()*V.H;p.lo=LON(x);p.la=LAT(y);if(isWater(x,y))break}p.age=0;p.life=70+Math.random()*120;return p}
@@ -272,11 +294,12 @@ function probe(x,y){const el=$("probe");if(!el||!DATA)return;if(!isWater(x,y)){e
   else{const d=(Math.atan2(-sample(F.U[TI],lo,la),-sample(F.V[TI],lo,la))*180/Math.PI+360)%360;el.textContent=`${pos} · ${sample(F.H[TI],lo,la).toFixed(1)} ft @ ${sample(F.P[TI],lo,la).toFixed(0)} s from ${comp(d)} ${Math.round(d)}°`}}
 function initMap(){
   if(!window.maplibregl){$("msg").hidden=false;$("msg").innerHTML="<b>Could not load the map</b>The map library did not download. Check your connection and reload.";return false}
+  setupTerrain();
   const touch=matchMedia("(pointer: coarse)").matches&&matchMedia("(max-width:860px)").matches;
   MAP=new maplibregl.Map({container:"mapgl",style:mapStyle(),bounds:FIT,fitBoundsOptions:{padding:8},minZoom:6.5,maxZoom:15.5,maxBounds:[[-125,30],[-113.5,37]],dragRotate:false,pitchWithRotate:false,attributionControl:false,cooperativeGestures:touch});
   MAP.touchZoomRotate.disableRotation();MAP.keyboard.disableRotation();
   MAP.addControl(new maplibregl.AttributionControl({compact:true}),"bottom-right");
-  MAP.on("move",viewChanged);MAP.on("idle",redraw);MAP.on("sourcedata",e=>{if(e.sourceId==="omt"&&e.tile)redraw()});
+  MAP.on("move",viewChanged);MAP.on("idle",()=>{depthDirty=true;redraw()});MAP.on("sourcedata",e=>{if(e.sourceId==="contours")depthDirty=true;if((e.sourceId==="omt"||e.sourceId==="contours")&&e.tile)redraw()});
   MAP.on("mousemove",e=>probe(e.point.x,e.point.y));MAP.on("mouseout",()=>{const el=$("probe");if(el)el.textContent=""});
   $("zin").onclick=()=>MAP.zoomIn();$("zout").onclick=()=>MAP.zoomOut();$("zfit").onclick=()=>MAP.fitBounds(FIT,{padding:8});
   new ResizeObserver(resize).observe(mapEl);resize();return true}
