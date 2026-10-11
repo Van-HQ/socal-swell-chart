@@ -427,20 +427,31 @@ function windows(s){const T=DATA.times,out=[];let i=0;
       const r=(s.hr[j].rate+s.hr[j+1].rate+s.hr[j+2].rate)/3;if(!best||r>best.r)best={r,j}}
     if(best)out.push(best);i=j}
   return out.map(b=>{const h=s.hr[b.j+1],p=tparts(T[b.j]);return`<button class="win" data-time="${b.j+1}"><span>${DOW[p.dow]} <span class="m">${h12(p.h)}–${h12(p.h+3)}</span></span>${rlab(h.cls)}<span>${faceText(h.face)}</span></button>`}).join("")}
+const svgI=d=>`<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
+const ICON={wind:svgI('<path d="M3 8h9a2.5 2.5 0 1 0-2.5-2.5M3 12h13a2.5 2.5 0 1 1-2.5 2.5M3 16h6"/>'),tide:svgI('<path d="M2 14c2.5 0 2.5-3 5-3s2.5 3 5 3 2.5-3 5-3 2.5 3 5 3M2 19c2.5 0 2.5-3 5-3s2.5 3 5 3 2.5-3 5-3 2.5 3 5 3M12 3v5m0-5-2 2m2-2 2 2"/>'),temp:svgI('<path d="M12 4a2 2 0 0 0-2 2v8.3a4 4 0 1 0 4 0V6a2 2 0 0 0-2-2z"/>'),buoy:svgI('<path d="M12 3v4m-4 0h8l2 9H6zM3 20c2 0 2-1.5 4.5-1.5S10 20 12 20s2-1.5 4.5-1.5S19 20 21 20"/>')};
+const DIRW={N:"north",NNE:"north",NE:"northeast",ENE:"east",E:"east",ESE:"east",SE:"southeast",SSE:"south",S:"south",SSW:"south",SW:"southwest",WSW:"west",W:"west",WNW:"west",NW:"northwest",NNW:"north"};
+function summary(s,h,tide,trend,sst){const out=[],ws=s.wx.ws[TI],wd=s.wx.wd[TI];
+  if(ws!=null)out.push(ws<4?`Light ${DIRW[comp(wd)]} wind`:`${Math.round(ws)} kn ${h.w.word.toLowerCase()} wind`);
+  if(tide!=null)out.push(`${tide<1.5?"low":tide<4?"mid":"high"} tide ${trend}`.trim());
+  if(sst!=null)out.push(`${Math.round(sst*9/5+32)}° water`);
+  const t=out.join(", ");return t?t[0].toUpperCase()+t.slice(1)+".":""}
 function detail(s){const h=s.hr[TI];
   if(!s.ok)return`<div class="det"><button class="back" data-back="1">← All spots</button><h2>${esc(s.n)}</h2><p class="note">The wave model has no ocean cell close enough to this spot, so there is nothing to rate.</p></div>`;
   const tide=h.tide,nx=s.tide&&s.tide[Math.min(TI+1,s.tide.length-1)],trend=tide==null||nx==null?"":nx>tide+0.05?"rising":nx<tide-0.05?"falling":"slack";
   const nb=BUOYS.map((b,k)=>({b,d:DATA.buoys[k]})).filter(o=>o.d.ok).sort((a,c)=>dist2(a.b,s)-dist2(c.b,s))[0];
   const sst=s.m.sst[TI];
   return`<div class="det"><button class="back" data-back="1">← All spots</button>
-  <div class="dhead"><div><h2>${esc(s.n)}</h2><p class="note">${REG[s.r]} · ${esc(s.t)} · ${fmt(TI)}</p></div><button class="btn favb" data-fav="${s.idx}" aria-pressed="${FAVS.has(s.n)}">${FAVS.has(s.n)?"★ Saved":"☆ Save"}</button></div>
-  <div class="hero">${chip(h.cls)}<span class="big">${faceText(h.face)}</span></div>
-  <dl class="kv">
-   <div><dt>Wind</dt><dd>${h.w.d==null?"n/a":`${Math.round(s.wx.ws[TI])} kn ${arrow(s.wx.wd[TI])} ${comp(s.wx.wd[TI])}<small>${h.w.word}, gusts ${Math.round(s.wx.wg[TI]||0)} kn</small>`}</dd></div>
-   <div><dt>Tide · ${esc(s.tideSt)}</dt><dd>${tide==null?"n/a":`${tide.toFixed(1)} ft ${trend}<small>Likes ${s.td} tide</small>`}</dd></div>
-   <div><dt>Water</dt><dd>${sst==null?"n/a":`${Math.round(sst*9/5+32)}°F<small>Model sea surface</small>`}</dd></div>
-   <div><dt>Nearest buoy</dt><dd>${nb?`${nb.d.hs[nb.d.hs.length-1].toFixed(1)} ft @ ${Math.round(nb.d.tp[nb.d.tp.length-1])} s<small>${esc(nb.b.n)}, ${ageText(nb.d)}</small>`:"n/a"}</dd></div>
-  </dl>
+  <div class="hcard" style="--rc:${rtCol(h.cls)}"><button class="hstar" data-fav="${s.idx}" aria-pressed="${FAVS.has(s.n)}" aria-label="${FAVS.has(s.n)?"Remove from favorites":"Save to favorites"}">${FAVS.has(s.n)?"★":"☆"}</button>
+   <h2>${esc(s.n)}</h2><p class="hsub">${REG[s.r]} · ${esc(s.t)} · ${fmt(TI)}</p>
+   <div class="hbig">${h.face<1?"<b>Flat</b>":`<b>${faceText(h.face).replace(" ft","")}</b><span>ft</span>`}</div>
+   <span class="hpill${RT[h.cls].dk?" dk":""}"><i></i>${RT[h.cls].n}</span>
+   <p class="hline">${summary(s,h,tide,trend,sst)}</p></div>
+  <div class="tiles">
+   <div class="tile"><span class="tk">${ICON.wind}Wind</span><b>${h.w.d==null?"n/a":`${Math.round(s.wx.ws[TI])} kn ${arrow(s.wx.wd[TI])} ${comp(s.wx.wd[TI])}`}</b><small>${h.w.d==null?"":`${h.w.word} · gusts ${Math.round(s.wx.wg[TI]||0)}`}</small></div>
+   <div class="tile"><span class="tk">${ICON.tide}Tide</span><b>${tide==null?"n/a":`${tide.toFixed(1)} ft ${trend==="rising"?"↑":trend==="falling"?"↓":""}`}</b><small>${tide==null?"":`${trend[0].toUpperCase()+trend.slice(1)} · likes ${s.td}`}</small></div>
+   <div class="tile"><span class="tk">${ICON.temp}Water</span><b>${sst==null?"n/a":`${Math.round(sst*9/5+32)}°F`}</b><small>Sea surface</small></div>
+   <div class="tile"><span class="tk">${ICON.buoy}Buoy</span><b>${nb?`${nb.d.hs[nb.d.hs.length-1].toFixed(1)} ft · ${Math.round(nb.d.tp[nb.d.tp.length-1])} s`:"n/a"}</b><small>${nb?`${esc(nb.b.n)} · ${ageText(nb.d)}`:""}</small></div>
+  </div>
   <div><p class="lab" style="margin-bottom:8px">By day</p>${dayCards(s)}</div>
   <div><p class="lab" style="margin-bottom:8px">${fmt(TI).split(" ")[0]} through the day</p>${dayChart(s)}<div class="steprow"><div class="seg2" role="group" aria-label="Table interval"><button data-step="1" aria-pressed="${S.step===1}">Hourly</button><button data-step="3" aria-pressed="${S.step===3}">3-hour</button></div></div>${hourly(s)}</div>
   <div><p class="lab" style="margin-bottom:8px">Swell breakdown · ${fmt(TI)}</p>${spectra(s)}</div>
