@@ -245,7 +245,7 @@ function makeMarks(){const box=$("marks");box.innerHTML="";MK=[];
     e.onclick=()=>{S.tab="buoys";S.sel=null;render()};box.appendChild(e);MK.push({el:e,la:b.la,lo:b.lo})})}
 function placeMarks(){if(!MAP)return;const z=MAP.getZoom(),lab=z>=10.6,used=[];
   const order=MK.filter(m=>m.spot!=null).sort((a,b)=>(S.sel===b.spot)-(S.sel===a.spot)||DATA.spots[b.spot].hr[TI].rate-DATA.spots[a.spot].hr[TI].rate);
-  for(const m of MK){m.x=X(m.lo);m.y=Y(m.la);m.el.style.transform=`translate(${m.x.toFixed(1)}px,${m.y.toFixed(1)}px)`;m.el.hidden=m.x<-40||m.y<-40||m.x>V.W+40||m.y>V.H+40}
+  for(const m of MK){m.x=X(m.lo);m.y=Y(m.la);m.el.style.transform=`translate(${m.x.toFixed(1)}px,${m.y.toFixed(1)}px)`;m.el.hidden=m.x<-40||m.y<-40||m.x>V.W+40||m.y>V.H+40||(m.spot!=null&&m.spot!==S.sel&&!inFilter(DATA.spots[m.spot]))}
   for(const m of order){let show=false;if(lab&&!m.el.hidden){const r=[m.x+8,m.y-22,m.x+8+m.w,m.y+4];show=!used.some(u=>r[0]<u[2]&&r[2]>u[0]&&r[1]<u[3]&&r[3]>u[1]);if(show)used.push(r)}m.el.classList.toggle("lab",show)}}
 function colorMarks(){if(!DATA)return;for(const m of MK)if(m.spot!=null){const s=DATA.spots[m.spot];m.el.firstChild.style.background=s.ok?rtCol(s.hr[TI].cls):"var(--muted)";m.el.classList.toggle("sel",S.sel===m.spot)}}
 function legend(){const R=RAMP[LAYER],st=R[isDark()?"d":"l"],lo=R.min||0,g=st.map(([v,c])=>`rgb(${c.map(Math.round).join(",")}) ${((v-lo)/(R.max-lo)*100).toFixed(0)}%`).join(",");
@@ -289,8 +289,16 @@ $("play").onclick=()=>{if(!DATA)return;const on=!playT;$("play").setAttribute("a
   if(on)playT=setInterval(()=>setTime(TI>=DATA.times.length-1?NOWI:TI+1,true),380);else{clearInterval(playT);playT=0}};
 
 /* ---------- panel ---------- */
-const S={tab:"spots",sel:null,region:"all",step:1};try{if(localStorage.getItem("swellchart.step")==="3")S.step=3}catch(e){}
+const S={tab:"spots",sel:null,region:"all",step:1,sort:"best"};try{if(localStorage.getItem("swellchart.step")==="3")S.step=3}catch(e){}
 const REG={all:"All",sb:"Santa Barbara",vc:"Ventura",la:"Los Angeles",oc:"Orange County",sd:"San Diego"};
+const CHIPS={all:"All",fav:"\u2605 Favorites",sb:"Santa Barbara",vc:"Ventura",la:"Los Angeles",oc:"Orange County",sd:"San Diego"};
+// Favorites and list preferences are kept in this browser only.
+const FAVS=new Set();try{for(const n of JSON.parse(localStorage.getItem("swellchart.favs")||"[]"))FAVS.add(n);if(localStorage.getItem("swellchart.sort")==="ns")S.sort="ns"}catch(e){}
+const saveFavs=()=>{try{localStorage.setItem("swellchart.favs",JSON.stringify([...FAVS]))}catch(e){}};
+const inFilter=s=>S.region==="all"||(S.region==="fav"?FAVS.has(s.n):s.r===S.region);
+function fitFilter(){if(!MAP||!DATA)return;const ss=DATA.spots.filter(inFilter);if(S.region==="all"||!ss.length){MAP.fitBounds(FIT,{padding:8,duration:REDUCED?0:700});return}
+  let w=180,e=-180,so=90,n=-90;for(const s of ss){w=Math.min(w,s.lo);e=Math.max(e,s.lo);so=Math.min(so,s.la);n=Math.max(n,s.la)}
+  MAP.fitBounds([[w,so],[e,n]],{padding:{top:70,bottom:50,left:40,right:60},maxZoom:12.5,duration:REDUCED?0:700})}
 function select(k){S.sel=k;S.tab="spots";render();$("body").scrollTop=0;colorMarks();placeMarks();
   if(k!=null&&window.matchMedia("(max-width:860px)").matches)document.querySelector(".panel").scrollIntoView({behavior:REDUCED?"auto":"smooth"})}
 for(const t of ["spots","buoys","how"])$("tab-"+t).onclick=()=>{S.tab=t;S.sel=null;render();colorMarks()};
@@ -308,11 +316,12 @@ function outlook(){const r=DATA.ref,T=DATA.times;if(!r||!r.sh.some(v=>v!=null))r
   <text x="2" y="${y(mx)+4}" font-size="10" fill="var(--muted)">${Math.round(mx)} ft</text>
   <path d="${path(r.s2h)}" fill="none" stroke="var(--muted)" stroke-width="1.2" stroke-dasharray="3 3"/><path d="${path(r.sh)}" fill="none" stroke="var(--ink)" stroke-width="1.8"/>
   <line x1="${x(TI)}" y1="8" x2="${x(TI)}" y2="${H-22}" stroke="var(--ink)" stroke-width="1" opacity=".55"/><circle cx="${x(TI)}" cy="6" r="2.5" fill="var(--ink)"/></svg></div>`}
-function listView(){const rows=DATA.spots.filter(s=>S.region==="all"||s.r===S.region).slice().sort((a,b)=>b.hr[TI].rate-a.hr[TI].rate);
-  return outlook()+`<div style="display:flex;flex-direction:column;gap:8px"><div class="chips" role="group" aria-label="Region">${Object.entries(REG).map(([k,n])=>`<button data-reg="${k}" aria-pressed="${S.region===k}">${n}</button>`).join("")}</div>
-  <div class="rows">${rows.map(s=>{const h=s.hr[TI];
+function listView(){const rows=DATA.spots.filter(inFilter);if(S.sort==="best")rows.sort((a,b)=>b.hr[TI].rate-a.hr[TI].rate);else rows.sort((a,b)=>a.idx-b.idx);
+  return outlook()+`<div style="display:flex;flex-direction:column;gap:8px"><div class="chips" role="group" aria-label="Region">${Object.entries(CHIPS).map(([k,n])=>`<button data-reg="${k}" aria-pressed="${S.region===k}">${n}</button>`).join("")}</div>
+  <div class="steprow" style="margin-top:2px;justify-content:space-between;align-items:center"><span class="lab">${rows.length} spot${rows.length===1?"":"s"}</span><div class="seg2" role="group" aria-label="Sort order"><button data-sort="best" aria-pressed="${S.sort==="best"}">Best first</button><button data-sort="ns" aria-pressed="${S.sort==="ns"}">North to south</button></div></div>
+  ${rows.length?"":`<p class="note">${S.region==="fav"?"No favorites yet. Open a spot and tap Save to add it here.":"No spots here."}</p>`}<div class="rows">${rows.map(s=>{const h=s.hr[TI];
     if(!s.ok)return`<button class="row" data-spot="${s.idx}"><i class="dot" style="background:var(--line)"></i><span class="nm">${esc(s.n)}</span><span class="ft"></span><span class="sub">No wave data near this spot</span></button>`;
-    return`<button class="row" data-spot="${s.idx}"><i class="dot" style="background:${rtCol(h.cls)}"></i><span class="nm">${esc(s.n)}</span><span class="ft">${faceText(h.face)}</span>
+    return`<button class="row" data-spot="${s.idx}"><i class="dot" style="background:${rtCol(h.cls)}"></i><span class="nm">${esc(s.n)}${FAVS.has(s.n)?' <span class="fv" aria-label="Favorite">★</span>':""}</span><span class="ft">${faceText(h.face)}</span>
     <span class="sub"><b>${RT[h.cls].n}</b> · ${h.dom?`${comp(h.dom.d)} ${Math.round(h.dom.p)} s`:"no swell"} · ${h.w.d==null?"wind n/a":`${h.w.word.toLowerCase()} ${Math.round(s.wx.ws[TI])} kn`}</span></button>`}).join("")}</div></div>${foot()}`}
 function foot(){const mins=Math.round((Date.now()-DATA.at)/6e4),nb=DATA.buoys.filter(b=>b.ok).length;
   return`<div class="foot">Updated ${mins<1?"just now":mins+" min ago"} · ${nb} of ${BUOYS.length} buoys reporting${DATA.tidesOk?"":" · tides did not load, so ratings ignore tide"}.<button id="refresh">Refresh</button></div>`}
@@ -385,7 +394,7 @@ function detail(s){const h=s.hr[TI];
   const nb=BUOYS.map((b,k)=>({b,d:DATA.buoys[k]})).filter(o=>o.d.ok).sort((a,c)=>dist2(a.b,s)-dist2(c.b,s))[0];
   const sst=s.m.sst[TI];
   return`<div class="det"><button class="back" data-back="1">← All spots</button>
-  <div><h2>${esc(s.n)}</h2><p class="note">${REG[s.r]} · ${esc(s.t)} · ${fmt(TI)}</p></div>
+  <div class="dhead"><div><h2>${esc(s.n)}</h2><p class="note">${REG[s.r]} · ${esc(s.t)} · ${fmt(TI)}</p></div><button class="btn favb" data-fav="${s.idx}" aria-pressed="${FAVS.has(s.n)}">${FAVS.has(s.n)?"★ Saved":"☆ Save"}</button></div>
   <div class="hero">${chip(h.cls)}<span class="big">${faceText(h.face)}</span></div>
   <dl class="kv">
    <div><dt>Wind</dt><dd>${h.w.d==null?"n/a":`${Math.round(s.wx.ws[TI])} kn ${arrow(s.wx.wd[TI])} ${comp(s.wx.wd[TI])}<small>${h.w.word}, gusts ${Math.round(s.wx.wg[TI]||0)} kn</small>`}</dd></div>
@@ -421,11 +430,14 @@ let lastRender=0;
 function render(fromPlay){if(!DATA)return;const b=$("body"),keep=b.scrollTop;
   for(const t of ["spots","buoys","how"])$("tab-"+t).setAttribute("aria-selected",S.tab===t);
   b.innerHTML=S.tab==="buoys"?buoyView():S.tab==="how"?howView():S.sel!=null?detail(DATA.spots[S.sel]):listView();
-  b.scrollTop=keep;lastRender=Date.now()}
-$("body").addEventListener("click",e=>{const t=e.target.closest("[data-spot],[data-reg],[data-back],[data-time],[data-buoy],[data-step],#refresh,#fc,[data-chart]");if(!t||!DATA)return;
+  b.scrollTop=keep;lastRender=Date.now();
+  const ch=b.querySelector(".chips"),on=ch&&ch.querySelector('[aria-pressed="true"]');if(on)ch.scrollLeft=Math.max(0,on.offsetLeft-ch.offsetLeft-(ch.clientWidth-on.offsetWidth)/2)}
+$("body").addEventListener("click",e=>{const t=e.target.closest("[data-spot],[data-fav],[data-sort],[data-reg],[data-back],[data-time],[data-buoy],[data-step],#refresh,#fc,[data-chart]");if(!t||!DATA)return;
   if(t.dataset.spot!=null){const k=+t.dataset.spot,s=DATA.spots[k];select(k);goTo(s.lo,s.la,11.5)}
   else if(t.dataset.step){S.step=+t.dataset.step;try{localStorage.setItem("swellchart.step",String(S.step))}catch(e){}render()}
-  else if(t.dataset.reg){S.region=t.dataset.reg;render()}
+  else if(t.dataset.reg){S.region=t.dataset.reg;render();placeMarks();fitFilter()}
+  else if(t.dataset.sort){S.sort=t.dataset.sort;try{localStorage.setItem("swellchart.sort",S.sort)}catch(e){}render()}
+  else if(t.dataset.fav!=null){const n=DATA.spots[+t.dataset.fav].n;if(FAVS.has(n))FAVS.delete(n);else FAVS.add(n);saveFavs();render();placeMarks()}
   else if(t.dataset.back){select(null)}
   else if(t.dataset.time){setTime(+t.dataset.time)}
   else if(t.dataset.buoy){const b=BUOYS[+t.dataset.buoy];goTo(b.lo,b.la,9.5)}
