@@ -144,7 +144,7 @@ td.num,th.num{text-align:right;padding-right:0}
 .srow small{grid-column:2/-1;color:var(--muted);font-size:11.5px;overflow:hidden;text-overflow:ellipsis}
 .srow .num{text-align:right}
 .rose{display:block;width:100%;height:auto}
-.hours{display:flex;flex-direction:column;margin-top:10px}
+.hours{display:flex;flex-direction:column;margin-top:6px}
 .hrow{display:grid;grid-template-columns:44px 70px minmax(0,1fr) 78px 30px;gap:8px;align-items:center;text-align:left;border:0;border-top:1px solid var(--line);background:none;padding:6px 0;font-size:12.5px}
 .hrow>span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .hrow .hs{display:flex;align-items:center;gap:6px;font-weight:600}
@@ -152,7 +152,13 @@ td.num,th.num{text-align:right;padding-right:0}
 .hrow small{display:block;color:var(--muted);font-size:11px}
 .hrow .num{text-align:right}
 .hrow.night{color:var(--muted)}
-.hrow.on{background:var(--raise);box-shadow:inset 2px 0 0 var(--accent);padding-left:6px;margin-left:-6px}
+.hrow.on{background:var(--raise);border-radius:7px;padding-inline:8px;margin-inline:-8px;border-top-color:transparent}
+.hrow.on+.hrow{border-top-color:transparent}
+.hrow.w3{grid-template-columns:56px 60px minmax(0,1fr) 66px 60px;gap:6px}
+.steprow{display:flex;justify-content:flex-end;margin-top:12px}
+.seg2{display:flex;padding:2px;gap:2px;border:1px solid var(--line);border-radius:8px}
+.seg2 button{border:0;background:none;padding:5px 10px;font:500 12.5px/1 var(--f-ui);color:var(--muted);border-radius:6px}
+.seg2 button[aria-pressed="true"]{background:var(--ink);color:var(--panel)}
 .hhead{border-top:0;color:var(--muted);font-size:11.5px;padding-bottom:4px}
 .fc{cursor:crosshair}
 .foot{margin-top:auto;padding-top:14px;font-size:12px;color:var(--muted)}

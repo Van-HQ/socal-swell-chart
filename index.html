@@ -144,7 +144,7 @@ td.num,th.num{text-align:right;padding-right:0}
 .srow small{grid-column:2/-1;color:var(--muted);font-size:11.5px;overflow:hidden;text-overflow:ellipsis}
 .srow .num{text-align:right}
 .rose{display:block;width:100%;height:auto}
-.hours{display:flex;flex-direction:column;margin-top:10px}
+.hours{display:flex;flex-direction:column;margin-top:6px}
 .hrow{display:grid;grid-template-columns:44px 70px minmax(0,1fr) 78px 30px;gap:8px;align-items:center;text-align:left;border:0;border-top:1px solid var(--line);background:none;padding:6px 0;font-size:12.5px}
 .hrow>span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .hrow .hs{display:flex;align-items:center;gap:6px;font-weight:600}
@@ -152,7 +152,13 @@ td.num,th.num{text-align:right;padding-right:0}
 .hrow small{display:block;color:var(--muted);font-size:11px}
 .hrow .num{text-align:right}
 .hrow.night{color:var(--muted)}
-.hrow.on{background:var(--raise);box-shadow:inset 2px 0 0 var(--accent);padding-left:6px;margin-left:-6px}
+.hrow.on{background:var(--raise);border-radius:7px;padding-inline:8px;margin-inline:-8px;border-top-color:transparent}
+.hrow.on+.hrow{border-top-color:transparent}
+.hrow.w3{grid-template-columns:56px 60px minmax(0,1fr) 66px 60px;gap:6px}
+.steprow{display:flex;justify-content:flex-end;margin-top:12px}
+.seg2{display:flex;padding:2px;gap:2px;border:1px solid var(--line);border-radius:8px}
+.seg2 button{border:0;background:none;padding:5px 10px;font:500 12.5px/1 var(--f-ui);color:var(--muted);border-radius:6px}
+.seg2 button[aria-pressed="true"]{background:var(--ink);color:var(--panel)}
 .hhead{border-top:0;color:var(--muted);font-size:11.5px;padding-bottom:4px}
 .fc{cursor:crosshair}
 .foot{margin-top:auto;padding-top:14px;font-size:12px;color:var(--muted)}
@@ -638,7 +644,7 @@ $("play").onclick=()=>{if(!DATA)return;const on=!playT;$("play").setAttribute("a
   if(on)playT=setInterval(()=>setTime(TI>=DATA.times.length-1?NOWI:TI+1,true),380);else{clearInterval(playT);playT=0}};
 
 /* ---------- panel ---------- */
-const S={tab:"spots",sel:null,region:"all"};
+const S={tab:"spots",sel:null,region:"all",step:1};try{if(localStorage.getItem("swellchart.step")==="3")S.step=3}catch(e){}
 const REG={all:"All",sb:"Santa Barbara",vc:"Ventura",la:"Los Angeles",oc:"Orange County",sd:"San Diego"};
 function select(k){S.sel=k;S.tab="spots";render();$("body").scrollTop=0;colorMarks();placeMarks();
   if(k!=null&&window.matchMedia("(max-width:860px)").matches)document.querySelector(".panel").scrollIntoView({behavior:REDUCED?"auto":"smooth"})}
@@ -656,7 +662,7 @@ function outlook(){const r=DATA.ref,T=DATA.times;if(!r||!r.sh.some(v=>v!=null))r
   <svg viewBox="0 0 ${W} ${H+2}" role="img" aria-label="Seven-day swell height in outer waters. Solid line is the primary swell, dashed the secondary; letters give the primary swell direction each midday."><title>Solid: primary swell. Dashed: secondary swell. Letters: primary swell direction at midday.</title>${days}
   <text x="2" y="${y(mx)+4}" font-size="10" fill="var(--muted)">${Math.round(mx)} ft</text>
   <path d="${path(r.s2h)}" fill="none" stroke="var(--muted)" stroke-width="1.2" stroke-dasharray="3 3"/><path d="${path(r.sh)}" fill="none" stroke="var(--ink)" stroke-width="1.8"/>
-  <line x1="${x(TI)}" y1="4" x2="${x(TI)}" y2="${H-22}" stroke="var(--accent)" stroke-width="1.5"/></svg></div>`}
+  <line x1="${x(TI)}" y1="8" x2="${x(TI)}" y2="${H-22}" stroke="var(--ink)" stroke-width="1" opacity=".55"/><circle cx="${x(TI)}" cy="6" r="2.5" fill="var(--ink)"/></svg></div>`}
 function listView(){const rows=DATA.spots.filter(s=>S.region==="all"||s.r===S.region).slice().sort((a,b)=>b.hr[TI].rate-a.hr[TI].rate);
   return outlook()+`<div style="display:flex;flex-direction:column;gap:8px"><div class="chips" role="group" aria-label="Region">${Object.entries(REG).map(([k,n])=>`<button data-reg="${k}" aria-pressed="${S.region===k}">${n}</button>`).join("")}</div>
   <div class="rows">${rows.map(s=>{const h=s.hr[TI];
@@ -674,7 +680,7 @@ function fcChart(s){const T=DATA.times,W=372,H=176,x0=24,bw=(W-x0-4)/T.length,x=
   if(s.tide){const t0=124,t1=158,vals=s.tide.filter(v=>v!=null),lo=Math.min(...vals),hi=Math.max(...vals),ty=v=>t1-(v-lo)/(hi-lo||1)*(t1-t0);let d="",pen=false;
     s.tide.forEach((v,i)=>{if(v==null){pen=false;return}d+=(pen?"L":"M")+(x(i)+bw/2).toFixed(1)+" "+ty(v).toFixed(1);pen=true});
     g+=`<path d="${d}" fill="none" stroke="var(--map-ink)" stroke-width="1.3"/><text x="${x0-4}" y="${t0+5}" font-size="9" text-anchor="end" fill="var(--muted)">${hi.toFixed(0)}</text><text x="${x0-4}" y="${t1+2}" font-size="9" text-anchor="end" fill="var(--muted)">${lo.toFixed(0)}</text>`}
-  g+=`<line x1="${x(TI)+bw/2}" x2="${x(TI)+bw/2}" y1="6" y2="${H-14}" stroke="var(--accent)" stroke-width="1.5"/>`;
+  g+=`<line x1="${x(TI)+bw/2}" x2="${x(TI)+bw/2}" y1="18" y2="${H-14}" stroke="var(--ink)" stroke-width="1" opacity=".55"/><circle cx="${x(TI)+bw/2}" cy="${H-14}" r="2.5" fill="var(--ink)"/>`;
   return`<div class="fc" id="fc" data-x0="${x0/W}" data-x1="${(W-4)/W}"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Seven-day surf height, rating and tide for ${esc(s.n)}">${g}</svg></div><p class="note" style="font-size:12px;margin-top:6px">Bars: surf height in feet, coloured by rating. Line: tide. Tap to jump to a time.</p>`}
 function dayIdx(){const T=DATA.times,out=[];let i=0;while(i<T.length){const d=T[i].slice(0,10),idx=[];for(;i<T.length&&T[i].slice(0,10)===d;i++)idx.push(i);out.push({d,idx})}return out}
 const hourOf=k=>+DATA.times[k].slice(11,13);
@@ -685,10 +691,14 @@ function dayCards(s){const T=DATA.times,cur=T[TI].slice(0,10),today=laNow().date
       const f=ks.reduce((t,k)=>t+s.hr[k].face,0)/ks.length,r=ks.reduce((t,k)=>t+s.hr[k].rate,0)/ks.length,c=clsOf(f,r);return`<i style="background:${rtCol(c)}" title="${nm}: ${RT[c].n}"></i>`}).join("");
     const go=idx.find(k=>hourOf(k)===hNow)??idx[Math.min(idx.length-1,12)];
     return`<button class="dcard" data-time="${go}" aria-pressed="${d===cur}"><span class="dn">${d===today?"Today":DOW[p.dow]+" "+p.d}</span><span class="dh">${rangeText(use.map(k=>s.hr[k].face))}</span><span class="dseg">${seg}</span></button>`}).join("")}</div>`}
-function hourly(s){const T=DATA.times,cur=T[TI].slice(0,10),day=dayIdx().find(x=>x.d===cur),ks=day.idx.filter(k=>hourOf(k)>=5&&hourOf(k)<=20);
-  return`<div class="hours"><div class="hrow hhead"><span>Time</span><span>Surf</span><span>Swell</span><span>Wind</span><span class="num">Tide</span></div>${ks.map(k=>{const h=s.hr[k],ws=s.wx.ws[k],wd=s.wx.wd[k];
-    return`<button class="hrow${k===TI?" on":""}${s.wx.day[k]?"":" night"}" data-time="${k}" title="${RT[h.cls].n}"><span>${h12(hourOf(k))}</span><span class="hs"><i class="dot" style="background:${rtCol(h.cls)}"></i>${faceText(h.face)}</span>
-    <span>${h.dom?`${h.dom.h.toFixed(1)} ft ${Math.round(h.dom.p)} s ${comp(h.dom.d)}`:"\u2013"}</span><span>${ws==null?"\u2013":`${Math.round(ws)} kn ${arrow(wd)}<small>${h.w.word}</small>`}</span><span class="num">${h.tide==null?"\u2013":h.tide.toFixed(1)}</span></button>`}).join("")}</div>`}
+function hourly(s){const T=DATA.times,cur=T[TI].slice(0,10),day=dayIdx().find(x=>x.d===cur),step=S.step,ks=day.idx.filter(k=>hourOf(k)>=5&&hourOf(k)<=20&&(step===1||((hourOf(k)-5)%3===0&&hourOf(k)<20)));
+  const head=`<div class="hrow hhead${step===3?" w3":""}"><span>Time</span><span>Surf</span><span>Swell</span><span>Wind</span><span class="num">Tide</span></div>`;
+  return`<div class="hours">${head}${ks.map(k=>{const grp=step===1?[k]:day.idx.filter(j=>j>=k&&j<k+3&&hourOf(j)<=20),n=grp.length,mid=grp[Math.min(1,n-1)],hm=s.hr[mid];
+    const face=grp.reduce((t,j)=>t+s.hr[j].face,0)/n,rate=grp.reduce((t,j)=>t+s.hr[j].rate,0)/n,cls=clsOf(face,rate),wsv=grp.map(j=>s.wx.ws[j]).filter(v=>v!=null),ws=wsv.length?wsv.reduce((t,v)=>t+v,0)/wsv.length:null,wd=s.wx.wd[mid];
+    const h0=hourOf(k),h1=h0+n,label=step===1?h12(h0):`${h0%12||12}–${h1%12||12} ${h1<12?"AM":"PM"}`;
+    const tide=step===1?(hm.tide==null?"\u2013":hm.tide.toFixed(1)):(s.hr[k].tide==null?"\u2013":`${s.hr[k].tide.toFixed(1)}\u2192${s.hr[grp[n-1]].tide.toFixed(1)}`);
+    return`<button class="hrow${step===3?" w3":""}${grp.includes(TI)?" on":""}${grp.some(j=>s.wx.day[j])?"":" night"}" data-time="${grp.includes(TI)?TI:mid}" title="${RT[cls].n}"><span>${label}</span><span class="hs"><i class="dot" style="background:${rtCol(cls)}"></i>${faceText(face)}</span>
+    <span>${hm.dom?`${hm.dom.h.toFixed(1)} ft ${Math.round(hm.dom.p)} s ${comp(hm.dom.d)}`:"\u2013"}</span><span>${ws==null?"\u2013":`${Math.round(ws)} kn ${arrow(wd)}<small>${hm.w.word}</small>`}</span><span class="num">${tide}</span></button>`}).join("")}</div>`}
 function dayChart(s){const T=DATA.times,cur=T[TI].slice(0,10),ks=dayIdx().find(x=>x.d===cur).idx,n=ks.length,W=372,H=268,x0=4,bw=(W-8)/n,x=h=>x0+h*bw,xc=h=>x0+(h+0.5)*bw;
   const kj=ks.map(k=>spotKJ(s.hr[k])),mx=Math.max(20,...kj),top=10,base=74;let g="";
   ks.forEach((k,i)=>{if(s.wx.day[k]===0)g+=`<rect x="${x(i).toFixed(1)}" y="2" width="${(bw+.05).toFixed(2)}" height="${H-22}" fill="var(--night)"/>`});
@@ -705,7 +715,7 @@ function dayChart(s){const T=DATA.times,cur=T[TI].slice(0,10),ks=dayIdx().find(x
     g+=`<text x="${x0}" y="166" font-size="9.5" fill="var(--muted)">Tide, ft</text><path d="${d}" fill="none" stroke="var(--map-ink)" stroke-width="1.6"/>`;
     for(const e of ex){const hh=+e.t.slice(11,13)+(+e.t.slice(14,16))/60,px=clamp(x(hh),26,W-26),py=ty(e.v);
       g+=`<line x1="${x(hh).toFixed(1)}" x2="${x(hh).toFixed(1)}" y1="${py.toFixed(1)}" y2="${t1+6}" stroke="var(--map-ink)" stroke-width=".8" opacity=".6"/><text x="${px.toFixed(1)}" y="${(py-15).toFixed(1)}" font-size="10" font-weight="600" text-anchor="middle" fill="var(--ink)">${e.t.slice(11,16)}</text><text x="${px.toFixed(1)}" y="${(py-4).toFixed(1)}" font-size="10" text-anchor="middle" fill="var(--muted)">${e.v.toFixed(1)} ft</text>`}}
-  const ci=ks.indexOf(TI);if(ci>=0)g+=`<line x1="${xc(ci)}" x2="${xc(ci)}" y1="2" y2="${H-20}" stroke="var(--accent)" stroke-width="1.3"/>`;
+  const ci=ks.indexOf(TI);if(ci>=0)g=`<rect x="${x(ci).toFixed(1)}" y="2" width="${bw.toFixed(1)}" height="${H-22}" rx="3" fill="var(--ink)" opacity=".09"/>`+g;
   return`<div class="fc" data-chart="1" data-i0="${ks[0]}" data-n="${n}" data-x0="${x0/W}" data-x1="${(W-4)/W}"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Hourly wave energy, rating, wind and tide for the selected day">${g}</svg></div>
   <p class="note" style="font-size:12px;margin-top:6px">Bars: wave energy reaching the spot. Colour strip: rating. Tap to jump to an hour.</p>`}
 function spectra(s){const h=s.hr[TI],cs=h.cs.map((c,i)=>Object.assign({i,kj:waveKJ(c.h,c.p)},c));if(!cs.length)return`<p class="note">No swell reaching this point.</p>`;
@@ -739,7 +749,7 @@ function detail(s){const h=s.hr[TI];
    <div><dt>Nearest buoy</dt><dd>${nb?`${nb.d.hs[nb.d.hs.length-1].toFixed(1)} ft @ ${Math.round(nb.d.tp[nb.d.tp.length-1])} s<small>${esc(nb.b.n)}, ${ageText(nb.d)}</small>`:"n/a"}</dd></div>
   </dl>
   <div><p class="lab" style="margin-bottom:8px">By day</p>${dayCards(s)}</div>
-  <div><p class="lab" style="margin-bottom:8px">${fmt(TI).split(" ")[0]} by hour</p>${dayChart(s)}${hourly(s)}</div>
+  <div><p class="lab" style="margin-bottom:8px">${fmt(TI).split(" ")[0]} through the day</p>${dayChart(s)}<div class="steprow"><div class="seg2" role="group" aria-label="Table interval"><button data-step="1" aria-pressed="${S.step===1}">Hourly</button><button data-step="3" aria-pressed="${S.step===3}">3-hour</button></div></div>${hourly(s)}</div>
   <div><p class="lab" style="margin-bottom:8px">Swell breakdown · ${fmt(TI)}</p>${spectra(s)}</div>
   <div><p class="lab" style="margin-bottom:8px">Next seven days</p>${fcChart(s)}</div>
   <p class="note">${esc(s.note)} Faces ${comp(s.f)}. Accepts swell from ${s.w.map(([a,b])=>`${comp(a)} to ${comp(b)}`).join(" and ")}; ideal faces ${s.sz[0]}–${s.sz[1]} ft.</p></div>`}
@@ -767,8 +777,9 @@ function render(fromPlay){if(!DATA)return;const b=$("body"),keep=b.scrollTop;
   for(const t of ["spots","buoys","how"])$("tab-"+t).setAttribute("aria-selected",S.tab===t);
   b.innerHTML=S.tab==="buoys"?buoyView():S.tab==="how"?howView():S.sel!=null?detail(DATA.spots[S.sel]):listView();
   b.scrollTop=keep;lastRender=Date.now()}
-$("body").addEventListener("click",e=>{const t=e.target.closest("[data-spot],[data-reg],[data-back],[data-time],[data-buoy],#refresh,#fc,[data-chart]");if(!t||!DATA)return;
+$("body").addEventListener("click",e=>{const t=e.target.closest("[data-spot],[data-reg],[data-back],[data-time],[data-buoy],[data-step],#refresh,#fc,[data-chart]");if(!t||!DATA)return;
   if(t.dataset.spot!=null){const k=+t.dataset.spot,s=DATA.spots[k];select(k);goTo(s.lo,s.la,11.5)}
+  else if(t.dataset.step){S.step=+t.dataset.step;try{localStorage.setItem("swellchart.step",String(S.step))}catch(e){}render()}
   else if(t.dataset.reg){S.region=t.dataset.reg;render()}
   else if(t.dataset.back){select(null)}
   else if(t.dataset.time){setTime(+t.dataset.time)}
