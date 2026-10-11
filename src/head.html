@@ -6,6 +6,8 @@
 <title>SoCal Swell Chart</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Source+Serif+4:ital,wght@1,400&display=swap">
+<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
+<script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
 <style>
 
 /* Layout: the chart fills the left with a few floating controls; a quiet list panel sits on the right (stacks under on phones). */
@@ -39,14 +41,17 @@ button{font:inherit;color:inherit;cursor:pointer}
 :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .app{display:grid;grid-template-columns:minmax(0,1fr) 380px;height:100%}
 .chart{position:relative;display:grid;grid-template-rows:minmax(0,1fr) auto;min-width:0}
-.map{position:relative;overflow:hidden;background:var(--water);touch-action:none;cursor:grab;min-height:260px}
-.map.drag{cursor:grabbing}
-.map canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
-#marks{position:absolute;inset:0;pointer-events:none}
+.map{position:relative;overflow:hidden;background:var(--water);min-height:260px}
+#mapgl{position:absolute;inset:0;font:inherit}
+.map>canvas{position:absolute;inset:0;width:100%;height:100%;display:block;pointer-events:none}
+#marks{position:absolute;inset:0;pointer-events:none;z-index:3;overflow:hidden}
+.maphead,.legend,.zoom,.msg{z-index:4}
+.maplibregl-ctrl-attrib{font-size:10.5px}
 .mk{position:absolute;left:0;top:0;padding:0;border:0;background:none;pointer-events:auto;display:flex;align-items:center;gap:6px;white-space:nowrap}
 .mk i{display:block;width:10px;height:10px;border-radius:50%;border:1.5px solid var(--panel);margin:-5px 0 0 -5px;flex:none}
 .mk span{display:none;margin-top:-10px;font:500 12.5px/1 var(--f-ui);background:var(--glass);color:var(--ink);padding:4px 7px;border-radius:6px;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
-.mk:hover span,.mk.sel span,.zoomed .mk.spot span{display:block}
+.mk:hover span,.mk.sel span,.mk.lab span{display:block}
+.mk.lab{z-index:2}
 .mk:hover,.mk.sel{z-index:5}
 .mk.sel i{width:16px;height:16px;margin:-8px 0 0 -8px;border-width:2px;box-shadow:0 0 0 1.5px var(--ink)}
 .mk.buoy i{border-radius:1px;transform:rotate(45deg);background:var(--panel);border:1.5px solid var(--accent);width:7px;height:7px;margin:-3.5px 0 0 -3.5px}
@@ -58,10 +63,10 @@ button{font:inherit;color:inherit;cursor:pointer}
 .seg{display:flex;padding:3px;gap:2px;pointer-events:auto}
 .seg button{border:0;background:none;padding:6px 11px;font:500 13px/1 var(--f-ui);color:var(--muted);border-radius:7px}
 .seg button[aria-pressed="true"]{background:var(--ink);color:var(--panel)}
-.zoom{position:absolute;right:12px;bottom:12px;display:flex;flex-direction:column;overflow:hidden}
+.zoom{position:absolute;right:12px;top:58px;display:flex;flex-direction:column;overflow:hidden}
 .zoom button{border:0;background:none;width:32px;height:30px;font:500 17px/1 var(--f-ui);color:var(--muted)}
 .zoom button:hover{color:var(--ink)}
-.legend{position:absolute;left:12px;bottom:12px;padding:8px 10px;font:500 11.5px/1 var(--f-ui);color:var(--muted);max-width:calc(100% - 68px)}
+.legend{position:absolute;left:12px;bottom:12px;padding:8px 10px;font:500 11.5px/1 var(--f-ui);color:var(--muted);max-width:calc(100% - 24px)}
 .legend b{display:block;margin-bottom:6px;color:var(--ink);font-weight:500}
 .legend .bar{height:6px;width:190px;max-width:100%;border-radius:3px}
 .legend .tk{display:flex;justify-content:space-between;margin-top:4px}
@@ -156,7 +161,7 @@ td.num,th.num{text-align:right;padding-right:0}
 <div class="app">
   <section class="chart" aria-label="Swell map">
     <div class="map" id="map">
-      <canvas id="cField"></canvas><canvas id="cPart"></canvas><canvas id="cLand"></canvas>
+      <div id="mapgl"></div><canvas id="cField"></canvas><canvas id="cPart"></canvas>
       <div id="marks"></div>
       <div class="maphead">
         <div class="brand glass"><h1>SoCal Swell Chart</h1></div>
