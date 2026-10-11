@@ -162,8 +162,9 @@ function look(){const k=S.look;
   ?{topo:{line:"#6f8a80",hi:"#34403e",sh:"#0b0f0f",depth:"226,244,248"},ramp:"d",alpha:0.93,pcol:css("--particle")||"226,244,248",roadMin:7,C:{land:"#232a29",urban:"#283030",green:"#22302a",sand:"#3a3628",water:"#0b1b25",road:"#3b4644",road2:"#2a3331",pier:"#55605b",text:"#a9bcc2",halo:"#141a1a"}}
   :{topo:{line:"#a79c80",hi:"#ffffff",sh:"#8a8068",depth:"20,52,74"},ramp:"l",alpha:0.93,pcol:css("--particle")||"20,52,74",roadMin:7,C:{land:"#f1ecdf",urban:"#ebe5d6",green:"#dde6cc",sand:"#f4e4b4",water:"#cfe3ea",road:"#d6ccb4",road2:"#e2dac6",pier:"#b9ae93",text:"#4d5c63",halo:"#f6f2e8"}}}
 // Terrain: free AWS/Mapzen elevation tiles (land heights and sea-floor depths). Contour lines are computed in the browser.
-let DEM=null;
-function setupTerrain(){if(!window.mlcontour||DEM)return;try{DEM=new mlcontour.DemSource({url:"https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png",encoding:"terrarium",maxzoom:12,worker:true,cacheSize:120,timeoutMs:10000});DEM.setupMaplibre(maplibregl)}catch(e){DEM=null}}
+let DEM=null,DEM2=null;   // DEM2 reads coarser tiles, the only ones that carry sea-floor depths
+function setupTerrain(){if(!window.mlcontour||DEM)return;try{DEM=new mlcontour.DemSource({url:"https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png",encoding:"terrarium",maxzoom:12,worker:true,cacheSize:120,timeoutMs:10000});DEM.setupMaplibre(maplibregl);
+  DEM2=new mlcontour.DemSource({id:"sea",url:"https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png",encoding:"terrarium",maxzoom:9,worker:true,cacheSize:60,timeoutMs:10000});DEM2.setupMaplibre(maplibregl)}catch(e){DEM=null;DEM2=null}}
 const CONTOUR_FT={7:[1000,5000],8:[500,2500],10:[200,1000],11:[100,500],12:[50,250],13:[40,200],14:[20,100]};
 function mapStyle(){const LK=look(),C=LK.C,fo=LK.sat?0:1,r0=LK.roadMin,r1=Math.max(11,r0+2),TP=DEM&&LK.topo;
   const name=["coalesce",["get","name_en"],["get","name"]],road=(id,cls,min,col,w)=>({id,type:"line",source:"omt","source-layer":"transportation",minzoom:min,
@@ -173,7 +174,8 @@ function mapStyle(){const LK=look(),C=LK.C,fo=LK.sat?0:1,r0=LK.roadMin,r1=Math.m
   return{version:8,glyphs:"https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf",
     sources:{...(LK.sat?{sat:{type:"raster",tiles:["https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"],tileSize:256,maxzoom:18,attribution:"Imagery &copy; Esri, Maxar, Earthstar Geographics"}}:{}),
       ...(TP?{dem:{type:"raster-dem",encoding:"terrarium",tiles:[DEM.sharedDemProtocolUrl],maxzoom:12,tileSize:256,attribution:"Terrain: Mapzen, USGS, NOAA"},
-        contours:{type:"vector",tiles:[DEM.contourProtocolUrl({multiplier:3.28084,thresholds:CONTOUR_FT,contourLayer:"contours",elevationKey:"ele",levelKey:"level",buffer:1})],maxzoom:14}}:{}),omt:{type:"vector",url:"https://tiles.openfreemap.org/planet",attribution:'<a href="https://openfreemap.org" target="_blank">OpenFreeMap</a> &copy; <a href="https://www.openmaptiles.org/" target="_blank">OpenMapTiles</a> Data from <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a>'}},
+        contours:{type:"vector",tiles:[DEM.contourProtocolUrl({multiplier:3.28084,thresholds:CONTOUR_FT,contourLayer:"contours",elevationKey:"ele",levelKey:"level",buffer:1})],maxzoom:14},
+        depths:{type:"vector",tiles:[DEM2.contourProtocolUrl({multiplier:3.28084,thresholds:{6:[1000,5000],8:[500,2500],9:[100,500]},contourLayer:"contours",elevationKey:"ele",levelKey:"level",buffer:1})],maxzoom:9}}:{}),omt:{type:"vector",url:"https://tiles.openfreemap.org/planet",attribution:'<a href="https://openfreemap.org" target="_blank">OpenFreeMap</a> &copy; <a href="https://www.openmaptiles.org/" target="_blank">OpenMapTiles</a> Data from <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a>'}},
     layers:[{id:"bg",type:"background",paint:{"background-color":C.land}},...(LK.sat?[{id:"sat",type:"raster",source:"sat"}]:[]),
       {id:"urban",type:"fill",source:"omt","source-layer":"landuse",minzoom:9,filter:["in",["get","class"],["literal",["residential","commercial","industrial","retail"]]],paint:{"fill-color":C.urban,"fill-opacity":fo}},
       {id:"green",type:"fill",source:"omt","source-layer":"landcover",filter:["in",["get","class"],["literal",["wood","grass","wetland"]]],paint:{"fill-color":C.green,"fill-opacity":fo}},
@@ -181,6 +183,7 @@ function mapStyle(){const LK=look(),C=LK.C,fo=LK.sat?0:1,r0=LK.roadMin,r1=Math.m
       {id:"sand",type:"fill",source:"omt","source-layer":"landcover",filter:["==",["get","class"],"sand"],paint:{"fill-color":C.sand,"fill-opacity":fo}},
       ...(TP?[{id:"hill",type:"hillshade",source:"dem",paint:{"hillshade-exaggeration":0.6,"hillshade-shadow-color":LK.topo.sh,"hillshade-highlight-color":LK.topo.hi,"hillshade-accent-color":LK.topo.sh}},
         {id:"topo",type:"line",source:"contours","source-layer":"contours",filter:[">",["get","ele"],0],paint:{"line-color":LK.topo.line,"line-opacity":["match",["get","level"],1,0.85,0.42],"line-width":["match",["get","level"],1,1.1,0.6]}}]:[]),
+      ...(TP?[{id:"depth-load",type:"line",source:"depths","source-layer":"contours",filter:["<",["get","ele"],0],paint:{"line-opacity":0}}]:[]),
       {id:"water",type:"fill",source:"omt","source-layer":"water",paint:{"fill-color":C.water,"fill-opacity":fo}},
       road("roads2",["secondary","tertiary","minor"],r1,C.road2,[11,0.4,15,3]),
       road("roads",["motorway","trunk","primary"],r0,C.road,[7,0.4,11,1.2,15,5]),
@@ -235,10 +238,10 @@ function drawField(){const W=Math.round(V.W*V.dpr),H=Math.round(V.H*V.dpr);if(cF
   ctx.globalCompositeOperation="destination-in";ctx.drawImage(mask,0,0);ctx.globalCompositeOperation="source-over"}
 let DEPTH=[],depthDirty=true;
 function drawDepth(ctx){const LK=look();if(!DEM||!LK.topo||!MAP)return;
-  if(depthDirty){depthDirty=false;try{DEPTH=MAP.querySourceFeatures("contours",{sourceLayer:"contours",filter:["<",["get","ele"],0]})}catch(e){DEPTH=[]}}
+  if(depthDirty){depthDirty=false;try{DEPTH=MAP.querySourceFeatures("depths",{sourceLayer:"contours",filter:["all",["<",["get","ele"],0],[">",["get","ele"],-20000]]})}catch(e){DEPTH=[]}}
   if(!DEPTH.length)return;ctx.save();ctx.setTransform(V.dpr,0,0,V.dpr,0,0);ctx.lineJoin="round";const rgb=LK.topo.depth,labs=[],seen=new Set();
   for(const pass of [0,1]){ctx.beginPath();for(const f of DEPTH){if((f.properties.level===1?1:0)!==pass)continue;const g=f.geometry,ls=g.type==="LineString"?[g.coordinates]:g.type==="MultiLineString"?g.coordinates:[];
-      for(const l of ls){let on=false,best=null;for(let i=0;i<l.length;i++){const x=X(l[i][0]),y=Y(l[i][1]);if(i)ctx.lineTo(x,y);else ctx.moveTo(x,y);if(pass&&!best&&i>l.length/2&&x>30&&x<V.W-30&&y>30&&y<V.H-30)best=[x,y]}
+      for(const l of ls){if(l.length<8)continue;let best=null;for(let i=0;i<l.length;i++){const x=X(l[i][0]),y=Y(l[i][1]);if(i)ctx.lineTo(x,y);else ctx.moveTo(x,y);if(pass&&!best&&i>l.length/2&&x>30&&x<V.W-30&&y>30&&y<V.H-30)best=[x,y]}
         if(pass&&best&&l.length>12)labs.push([best[0],best[1],-f.properties.ele])}}
     ctx.strokeStyle=`rgba(${rgb},${pass?0.5:0.24})`;ctx.lineWidth=pass?1.1:0.7;ctx.stroke()}
   ctx.font=`500 10px ${css("--f-ui")}`;ctx.textAlign="center";ctx.textBaseline="middle";ctx.fillStyle=`rgba(${rgb},.85)`;
@@ -299,7 +302,7 @@ function initMap(){
   MAP=new maplibregl.Map({container:"mapgl",style:mapStyle(),bounds:FIT,fitBoundsOptions:{padding:8},minZoom:6.5,maxZoom:15.5,maxBounds:[[-125,30],[-113.5,37]],dragRotate:false,pitchWithRotate:false,attributionControl:false,cooperativeGestures:touch});
   MAP.touchZoomRotate.disableRotation();MAP.keyboard.disableRotation();
   MAP.addControl(new maplibregl.AttributionControl({compact:true}),"bottom-right");
-  MAP.on("move",viewChanged);MAP.on("idle",()=>{depthDirty=true;redraw()});MAP.on("sourcedata",e=>{if(e.sourceId==="contours")depthDirty=true;if((e.sourceId==="omt"||e.sourceId==="contours")&&e.tile)redraw()});
+  MAP.on("move",viewChanged);MAP.on("idle",()=>{depthDirty=true;redraw()});MAP.on("sourcedata",e=>{if(e.sourceId==="depths")depthDirty=true;if((e.sourceId==="omt"||e.sourceId==="depths")&&e.tile)redraw()});
   MAP.on("mousemove",e=>probe(e.point.x,e.point.y));MAP.on("mouseout",()=>{const el=$("probe");if(el)el.textContent=""});
   $("zin").onclick=()=>MAP.zoomIn();$("zout").onclick=()=>MAP.zoomOut();$("zfit").onclick=()=>MAP.fitBounds(FIT,{padding:8});
   new ResizeObserver(resize).observe(mapEl);resize();return true}
