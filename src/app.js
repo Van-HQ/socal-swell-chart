@@ -156,7 +156,7 @@ const isDark=()=>{const t=document.documentElement.dataset.theme;return t?t==="d
 const LOOKS={chart:"Chart",sat:"Satellite",night:"Midnight",paper:"Paper"};
 function look(){const k=S.look;
   if(k==="sat")return{sat:true,ramp:"v",alpha:0.5,pcol:"255,255,255",roadMin:10,C:{land:"#1a1f1c",urban:"#000",green:"#000",sand:"#000",water:"#000",road:"rgba(255,255,255,.4)",road2:"rgba(255,255,255,.22)",pier:"rgba(255,255,255,0)",text:"#ffffff",halo:"rgba(0,0,0,.8)"}};
-  if(k==="night")return{topo:{line:"#3f8f84",hi:"#1d2a2e",sh:"#000000",depth:"255,255,255"},ramp:"v",alpha:0.95,pcol:"255,255,255",roadMin:11,C:{land:"#0e1215",urban:"#12171a",green:"#0f1614",sand:"#2b2a21",water:"#0a1420",road:"#262e33",road2:"#1b2226",pier:"#3d474d",text:"#8795a0",halo:"#0a0d0f"}};
+  if(k==="night")return{topo:{line:"#52c2b0",hi:"#2c4046",sh:"#000000",depth:"255,255,255"},ramp:"v",alpha:0.95,pcol:"255,255,255",roadMin:11,C:{land:"#0e1215",urban:"#12171a",green:"#0f1614",sand:"#2b2a21",water:"#0a1420",road:"#262e33",road2:"#1b2226",pier:"#3d474d",text:"#8795a0",halo:"#0a0d0f"}};
   if(k==="paper")return{topo:{line:"#a8946a",hi:"#fff8e6",sh:"#7d6f52",depth:"30,50,70"},ramp:"l",alpha:0.9,pcol:"40,60,80",roadMin:9,C:{land:"#f3ead2",urban:"#eee3c8",green:"#dfe3c0",sand:"#f6e2a8",water:"#d9e8e6",road:"#cdbf9c",road2:"#ddd1b2",pier:"#a89a78",text:"#5a4f3a",halo:"#f6eedb"}};
   return isDark()
   ?{topo:{line:"#6f8a80",hi:"#34403e",sh:"#0b0f0f",depth:"226,244,248"},ramp:"d",alpha:0.93,pcol:css("--particle")||"226,244,248",roadMin:7,C:{land:"#232a29",urban:"#283030",green:"#22302a",sand:"#3a3628",water:"#0b1b25",road:"#3b4644",road2:"#2a3331",pier:"#55605b",text:"#a9bcc2",halo:"#141a1a"}}
@@ -164,7 +164,7 @@ function look(){const k=S.look;
 // Terrain: free AWS/Mapzen elevation tiles (land heights and sea-floor depths). Contour lines are computed in the browser.
 let DEM=null;
 function setupTerrain(){if(!window.mlcontour||DEM)return;try{DEM=new mlcontour.DemSource({url:"https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png",encoding:"terrarium",maxzoom:12,worker:true,cacheSize:120,timeoutMs:10000});DEM.setupMaplibre(maplibregl)}catch(e){DEM=null}}
-const CONTOUR_FT={7:[1000,5000],9:[500,2500],11:[200,1000],12:[100,500],13:[50,250],14:[20,100]};
+const CONTOUR_FT={7:[1000,5000],8:[500,2500],10:[200,1000],11:[100,500],12:[50,250],13:[40,200],14:[20,100]};
 function mapStyle(){const LK=look(),C=LK.C,fo=LK.sat?0:1,r0=LK.roadMin,r1=Math.max(11,r0+2),TP=DEM&&LK.topo;
   const name=["coalesce",["get","name_en"],["get","name"]],road=(id,cls,min,col,w)=>({id,type:"line",source:"omt","source-layer":"transportation",minzoom:min,
     filter:["all",["==",["geometry-type"],"LineString"],["in",["get","class"],["literal",cls]]],layout:{"line-cap":"round","line-join":"round"},paint:{"line-color":col,"line-width":["interpolate",["exponential",1.6],["zoom"],...w]}});
@@ -179,8 +179,8 @@ function mapStyle(){const LK=look(),C=LK.C,fo=LK.sat?0:1,r0=LK.roadMin,r1=Math.m
       {id:"green",type:"fill",source:"omt","source-layer":"landcover",filter:["in",["get","class"],["literal",["wood","grass","wetland"]]],paint:{"fill-color":C.green,"fill-opacity":fo}},
       {id:"park",type:"fill",source:"omt","source-layer":"park",paint:{"fill-color":C.green,"fill-opacity":fo}},
       {id:"sand",type:"fill",source:"omt","source-layer":"landcover",filter:["==",["get","class"],"sand"],paint:{"fill-color":C.sand,"fill-opacity":fo}},
-      ...(TP?[{id:"hill",type:"hillshade",source:"dem",paint:{"hillshade-exaggeration":0.45,"hillshade-shadow-color":LK.topo.sh,"hillshade-highlight-color":LK.topo.hi,"hillshade-accent-color":LK.topo.sh}},
-        {id:"topo",type:"line",source:"contours","source-layer":"contours",filter:[">",["get","ele"],0],paint:{"line-color":LK.topo.line,"line-opacity":["match",["get","level"],1,0.75,0.35],"line-width":["match",["get","level"],1,1,0.6]}}]:[]),
+      ...(TP?[{id:"hill",type:"hillshade",source:"dem",paint:{"hillshade-exaggeration":0.6,"hillshade-shadow-color":LK.topo.sh,"hillshade-highlight-color":LK.topo.hi,"hillshade-accent-color":LK.topo.sh}},
+        {id:"topo",type:"line",source:"contours","source-layer":"contours",filter:[">",["get","ele"],0],paint:{"line-color":LK.topo.line,"line-opacity":["match",["get","level"],1,0.85,0.42],"line-width":["match",["get","level"],1,1.1,0.6]}}]:[]),
       {id:"water",type:"fill",source:"omt","source-layer":"water",paint:{"fill-color":C.water,"fill-opacity":fo}},
       road("roads2",["secondary","tertiary","minor"],r1,C.road2,[11,0.4,15,3]),
       road("roads",["motorway","trunk","primary"],r0,C.road,[7,0.4,11,1.2,15,5]),
@@ -240,8 +240,8 @@ function drawDepth(ctx){const LK=look();if(!DEM||!LK.topo||!MAP)return;
   for(const pass of [0,1]){ctx.beginPath();for(const f of DEPTH){if((f.properties.level===1?1:0)!==pass)continue;const g=f.geometry,ls=g.type==="LineString"?[g.coordinates]:g.type==="MultiLineString"?g.coordinates:[];
       for(const l of ls){let on=false,best=null;for(let i=0;i<l.length;i++){const x=X(l[i][0]),y=Y(l[i][1]);if(i)ctx.lineTo(x,y);else ctx.moveTo(x,y);if(pass&&!best&&i>l.length/2&&x>30&&x<V.W-30&&y>30&&y<V.H-30)best=[x,y]}
         if(pass&&best&&l.length>12)labs.push([best[0],best[1],-f.properties.ele])}}
-    ctx.strokeStyle=`rgba(${rgb},${pass?0.34:0.16})`;ctx.lineWidth=pass?1:0.7;ctx.stroke()}
-  ctx.font=`500 10px ${css("--f-ui")}`;ctx.textAlign="center";ctx.textBaseline="middle";ctx.fillStyle=`rgba(${rgb},.7)`;
+    ctx.strokeStyle=`rgba(${rgb},${pass?0.5:0.24})`;ctx.lineWidth=pass?1.1:0.7;ctx.stroke()}
+  ctx.font=`500 10px ${css("--f-ui")}`;ctx.textAlign="center";ctx.textBaseline="middle";ctx.fillStyle=`rgba(${rgb},.85)`;
   for(const [x,y,d] of labs){const k=Math.round(x/90)+"_"+Math.round(y/60);if(seen.has(k))continue;seen.add(k);ctx.fillText(Math.round(d).toLocaleString()+" ft",x,y)}
   ctx.restore()}
 /* particles: swell drawn as short crests marching along the swell direction, wind as streaks */
