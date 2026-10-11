@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>SoCal Swell Chart</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@500;600;700&family=Source+Serif+4:ital,wght@1,400;1,500&display=swap">
+<style>
+/* Layout: a nautical chart fills the left; a tabbed logbook panel sits on the right (stacks under the chart on phones). */
+:root{
+  --bg:#f1ecdf; --panel:#fbf9f3; --raise:#ffffff; --ink:#1b2a33; --muted:#5b6a72; --line:#d9d2c0;
+  --land:#ecdcae; --land-edge:#8a7748; --water:#e9f2f3; --grat:#a9bcc2; --map-ink:#30505c;
+  --accent:#a81f74; --accent-ink:#ffffff; --particle:20,52,74;
+  --r-flat:#98a2a8; --r-poor:#c9553f; --r-pf:#df8b3a; --r-fair:#d9bb3a; --r-fg:#8dbf4c; --r-good:#2c9c6c; --r-epic:#7650d4;
+  --night:rgba(40,56,70,.10);
+  --f-ui:"Barlow",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-cond:"Barlow Condensed","Arial Narrow",system-ui,sans-serif;
+  --f-water:"Source Serif 4",Georgia,serif;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0a151b; --panel:#101e27; --raise:#162a35; --ink:#e4edef; --muted:#8ea2aa; --line:#24363f;
+  --land:#2e2b1e; --land-edge:#9a8a55; --water:#0b1b25; --grat:#294450; --map-ink:#9db6bf;
+  --accent:#ff74c0; --accent-ink:#2a0a1c; --particle:226,244,248;
+  --night:rgba(0,0,0,.28); color-scheme:dark;
+}}
+:root[data-theme="dark"]{
+  --bg:#0a151b; --panel:#101e27; --raise:#162a35; --ink:#e4edef; --muted:#8ea2aa; --line:#24363f;
+  --land:#2e2b1e; --land-edge:#9a8a55; --water:#0b1b25; --grat:#294450; --map-ink:#9db6bf;
+  --accent:#ff74c0; --accent-ink:#2a0a1c; --particle:226,244,248;
+  --night:rgba(0,0,0,.28); color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--ink);font:15px/1.45 var(--f-ui);font-variant-numeric:tabular-nums}
+button{font:inherit;color:inherit;cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.app{display:grid;grid-template-columns:minmax(0,1fr) 400px;height:100%}
+.chart{position:relative;display:grid;grid-template-rows:minmax(0,1fr) auto;min-width:0;border-right:1px solid var(--line)}
+.map{position:relative;overflow:hidden;background:var(--water);touch-action:none;cursor:grab;min-height:260px}
+.map.drag{cursor:grabbing}
+.map canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+#marks{position:absolute;inset:0;pointer-events:none}
+.mk{position:absolute;left:0;top:0;padding:0;border:0;background:none;pointer-events:auto;display:flex;align-items:center;gap:5px;white-space:nowrap}
+.mk i{display:block;width:13px;height:13px;border-radius:50%;border:2px solid var(--panel);box-shadow:0 0 0 1px rgba(0,0,0,.45);margin:-6.5px 0 0 -6.5px;flex:none}
+.mk span{display:none;margin-top:-13px;font:600 13px/1 var(--f-cond);letter-spacing:.02em;background:var(--panel);color:var(--ink);padding:3px 6px;border-radius:3px;border:1px solid var(--line)}
+.mk:hover span,.mk.sel span,.zoomed .mk.spot span{display:block}
+.mk:hover,.mk.sel{z-index:5}
+.mk.sel i{width:19px;height:19px;margin:-9.5px 0 0 -9.5px;box-shadow:0 0 0 2px var(--ink)}
+.mk.buoy i{border-radius:0;transform:rotate(45deg);background:var(--accent);width:10px;height:10px;margin:-5px 0 0 -5px}
+.mk.buoy.stale i{background:var(--muted)}
+.mk.buoy span{color:var(--accent)}
+.maphead{position:absolute;left:12px;top:12px;right:12px;display:flex;flex-wrap:wrap;gap:8px 12px;align-items:flex-start;justify-content:space-between;pointer-events:none}
+.brand{background:var(--panel);border:1px solid var(--line);padding:7px 11px 8px;pointer-events:auto}
+.brand h1{margin:0;font:700 21px/1 var(--f-cond);letter-spacing:.06em;text-transform:uppercase}
+.brand p{margin:3px 0 0;font:italic 400 13px/1.2 var(--f-water);color:var(--muted)}
+.seg{display:flex;background:var(--panel);border:1px solid var(--line);pointer-events:auto}
+.seg button{border:0;background:none;padding:7px 12px;font:600 14px/1 var(--f-cond);letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--panel)}
+.zoom{position:absolute;right:12px;bottom:12px;display:flex;flex-direction:column;border:1px solid var(--line);background:var(--panel)}
+.zoom button{border:0;background:none;width:34px;height:32px;font:600 19px/1 var(--f-cond)}
+.zoom button+button{border-top:1px solid var(--line)}
+.legend{position:absolute;left:12px;bottom:12px;background:var(--panel);border:1px solid var(--line);padding:6px 9px 7px;font:500 12px/1 var(--f-cond);letter-spacing:.05em;color:var(--muted);max-width:calc(100% - 70px)}
+.legend b{display:block;text-transform:uppercase;margin-bottom:5px;color:var(--ink);font-weight:600}
+.legend .bar{height:9px;width:210px;max-width:100%;border:1px solid var(--line)}
+.legend .tk{display:flex;justify-content:space-between;margin-top:3px}
+.legend .probe{margin-top:6px;color:var(--ink);min-height:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.time{display:grid;grid-template-columns:auto auto minmax(0,1fr);gap:4px 12px;align-items:center;padding:9px 14px 10px;background:var(--panel);border-top:1px solid var(--line)}
+.time .btn{border:1px solid var(--line);background:var(--raise);padding:6px 11px;font:600 14px/1 var(--f-cond);letter-spacing:.06em;text-transform:uppercase}
+.time .when{grid-column:1/-1;display:flex;justify-content:space-between;gap:10px;align-items:baseline}
+.time .when strong{font:700 20px/1 var(--f-cond);letter-spacing:.03em}
+.time .when small{color:var(--muted);font-size:12.5px;text-align:right}
+.track{position:relative;min-width:0}
+.track input{width:100%;margin:0;display:block;accent-color:var(--accent)}
+.days{display:flex;font:600 11.5px/1 var(--f-cond);letter-spacing:.07em;text-transform:uppercase;color:var(--muted);margin-top:3px}
+.days i{font-style:normal}
+.days span{flex:1;border-left:1px solid var(--line);padding-left:4px;overflow:hidden;white-space:nowrap}
+.panel{display:flex;flex-direction:column;min-height:0;background:var(--panel)}
+.tabs{display:flex;border-bottom:1px solid var(--line)}
+.tabs button{flex:1;border:0;background:none;padding:12px 6px 10px;font:600 15px/1 var(--f-cond);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);border-bottom:3px solid transparent}
+.tabs button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--accent)}
+.body{overflow:auto;min-height:0;flex:1;padding:12px 14px 20px;display:flex;flex-direction:column;gap:14px}
+.lab{font:600 12px/1 var(--f-cond);letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin:0}
+.outlook{border:1px solid var(--line);background:var(--raise);padding:10px 11px;display:flex;flex-direction:column;gap:6px}
+.outlook p{margin:0;font-size:14px}
+.outlook svg,.fc svg{display:block;width:100%;height:auto}
+.chips{display:flex;flex-wrap:wrap;gap:5px}
+.chips button{border:1px solid var(--line);background:none;padding:5px 9px;font:600 13px/1 var(--f-cond);letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.chips button[aria-pressed="true"]{background:var(--ink);color:var(--panel);border-color:var(--ink)}
+.rows{display:flex;flex-direction:column}
+.row{display:grid;grid-template-columns:86px minmax(0,1fr) auto;gap:2px 10px;align-items:center;text-align:left;border:0;border-top:1px solid var(--line);background:none;padding:9px 2px}
+.row:hover{background:var(--raise)}
+.row .nm{font:600 17px/1.1 var(--f-cond);letter-spacing:.01em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.row .sub{grid-column:2/4;font-size:12.5px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.row .ft{font:700 17px/1 var(--f-cond);white-space:nowrap}
+.row .rt{grid-row:1/3}
+.row .strip{grid-column:1/-1;height:4px;margin-top:5px}
+.rt{display:inline-block;padding:5px 4px;font:700 12.5px/1 var(--f-cond);letter-spacing:.05em;text-transform:uppercase;text-align:center;color:#111;width:86px}
+.rt.dk{color:#fff}
+.det h2{margin:0;font:700 26px/1 var(--f-cond);letter-spacing:.02em}
+.det .back{border:0;background:none;padding:0;color:var(--accent);font:600 13px/1 var(--f-cond);letter-spacing:.08em;text-transform:uppercase;align-self:flex-start}
+.det{display:flex;flex-direction:column;gap:13px}
+.hero{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.hero .big{font:700 34px/1 var(--f-cond)}
+.hero .big small{font-size:16px;font-weight:600;color:var(--muted);letter-spacing:.05em}
+.kv{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1px;background:var(--line);border:1px solid var(--line)}
+.kv div{background:var(--raise);padding:8px 10px;min-width:0}
+.kv dt{font:600 11.5px/1 var(--f-cond);letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.kv dd{margin:4px 0 0;font-size:14.5px;font-weight:500}
+.kv dd small{display:block;font-weight:400;color:var(--muted);font-size:12.5px}
+table{width:100%;border-collapse:collapse;font-size:13.5px}
+th{font:600 11.5px/1 var(--f-cond);letter-spacing:.1em;text-transform:uppercase;color:var(--muted);text-align:left;padding:0 6px 5px 0}
+td{padding:5px 6px 5px 0;border-top:1px solid var(--line);white-space:nowrap}
+td.num,th.num{text-align:right;padding-right:0}
+.arr{display:inline-block;width:12px;height:12px;vertical-align:-1px}
+.wins{display:flex;flex-direction:column}
+.win{display:grid;grid-template-columns:86px minmax(0,1fr) auto;gap:10px;align-items:center;padding:6px 0;border-top:1px solid var(--line);font-size:13.5px;border-left:0;border-right:0;border-bottom:0;background:none;text-align:left}
+.note{margin:0;color:var(--muted);font-size:13.5px}
+.fc{border:1px solid var(--line);background:var(--raise);padding:6px 4px 4px;cursor:crosshair}
+.foot{margin-top:auto;padding-top:10px;border-top:1px solid var(--line);font-size:12px;color:var(--muted)}
+.foot a{color:inherit}
+.foot button{border:1px solid var(--line);background:none;padding:3px 8px;font:600 12px/1 var(--f-cond);letter-spacing:.06em;text-transform:uppercase;margin-left:6px}
+.msg{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);background:var(--panel);border:1px solid var(--line);padding:14px 18px;max-width:min(420px,calc(100% - 32px));text-align:center;font-size:14px}
+.msg b{display:block;font:700 18px/1.1 var(--f-cond);letter-spacing:.04em;text-transform:uppercase;margin-bottom:5px}
+.msg button{margin-top:9px;border:1px solid var(--line);background:var(--raise);padding:6px 12px;font:600 14px/1 var(--f-cond);letter-spacing:.06em;text-transform:uppercase}
+.brow{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 10px;border:0;border-top:1px solid var(--line);background:none;text-align:left;padding:9px 2px;align-items:baseline}
+.brow:hover{background:var(--raise)}
+.brow .nm{font:600 17px/1.1 var(--f-cond)}
+.brow .nm small{color:var(--accent);font-weight:600;margin-left:5px;font-size:12.5px;letter-spacing:.05em}
+.brow .v{font:700 17px/1 var(--f-cond);white-space:nowrap}
+.brow .sub{grid-column:1/-1;font-size:12.5px;color:var(--muted)}
+.brow svg{grid-column:1/-1;display:block;width:100%;height:26px;margin-top:4px}
+@media (max-width:860px){
+  html,body{height:auto}
+  .app{display:block;height:auto}
+  .chart{border-right:0;border-bottom:1px solid var(--line)}
+  .map{height:56vh;min-height:320px}
+  .panel{min-height:50vh}
+  .body{overflow:visible;padding-inline:16px}
+  .time{padding-inline:16px}
+  .brand p,.days i{display:none}
+  .legend .bar{width:150px}
+}
+@media (prefers-reduced-motion:reduce){*{scroll-behavior:auto}}
+</style>
+</head>
+<body>
+<div class="app">
+  <section class="chart" aria-label="Swell map">
+    <div class="map" id="map">
+      <canvas id="cField"></canvas><canvas id="cPart"></canvas><canvas id="cLand"></canvas>
+      <div id="marks"></div>
+      <div class="maphead">
+        <div class="brand"><h1>SoCal Swell Chart</h1><p>Point Conception to the border</p></div>
+        <div class="seg" role="group" aria-label="Map layer">
+          <button id="lyr-swell" aria-pressed="true">Swell</button><button id="lyr-period" aria-pressed="false">Period</button><button id="lyr-wind" aria-pressed="false">Wind</button>
+        </div>
+      </div>
+      <div class="legend" id="legend"></div>
+      <div class="zoom"><button id="zin" aria-label="Zoom in">+</button><button id="zout" aria-label="Zoom out">&minus;</button><button id="zfit" aria-label="Show whole coast" title="Show whole coast">&#9633;</button></div>
+      <div class="msg" id="msg"><b>Loading the forecast</b>Pulling swell, wind, tide and buoy data.</div>
+    </div>
+    <div class="time">
+      <button class="btn" id="play" aria-pressed="false">Play</button>
+      <button class="btn" id="now">Now</button>
+      <div class="track"><input type="range" id="t" min="0" max="167" value="0" step="1" aria-label="Forecast hour"><div class="days" id="days"></div></div>
+      <div class="when"><strong id="when">&nbsp;</strong><small id="whensub"></small></div>
+    </div>
+  </section>
+  <aside class="panel">
+    <div class="tabs" role="tablist">
+      <button role="tab" id="tab-spots" aria-selected="true">Spots</button>
+      <button role="tab" id="tab-buoys" aria-selected="false">Buoys</button>
+      <button role="tab" id="tab-how" aria-selected="false">Method</button>
+    </div>
+    <div class="body" id="body"></div>
+  </aside>
+</div>
