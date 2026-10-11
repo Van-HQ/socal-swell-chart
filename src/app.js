@@ -20,6 +20,7 @@ const arrow=(fromDeg,col)=>`<svg class="arr" viewBox="-6 -6 12 12" aria-hidden="
 const RT=[{k:"flat",n:"Flat",dk:0},{k:"poor",n:"Poor",dk:1},{k:"pf",n:"Poor to fair",dk:0},{k:"fair",n:"Fair",dk:0},{k:"fg",n:"Fair to good",dk:0},{k:"good",n:"Good",dk:1},{k:"epic",n:"Epic",dk:1}];
 const rtCol=c=>`var(--r-${RT[c].k})`;
 const chip=c=>`<span class="rt${RT[c].dk?" dk":""}" style="background:${rtCol(c)}">${RT[c].n}</span>`;
+const rlab=c=>`<span class="rl"><i class="dot" style="background:${rtCol(c)}"></i>${RT[c].n}</span>`;
 const K_BREAK=0.8;                       // calibration on the breaker-height estimate
 const TIDE_RANGE={low:[-2,2.5],"low-mid":[0,3.5],mid:[1.5,4.5],"mid-high":[2.5,6],high:[4,8]};
 function dirFactor(s,dir){let o=180;for(const [a,b] of s.w){const span=(b-a+360)%360,off=(dir-a+360)%360;if(off<=span)return 1;o=Math.min(o,angDiff(dir,a),angDiff(dir,b))}
@@ -122,7 +123,7 @@ async function load(force){
     $("msg").hidden=true;buildDays();makeMarks();setTime(TI);redraw();
   }catch(e){
     $("msg").innerHTML=`<b>Could not load the forecast</b>${esc(e.message||e)}. This page needs a network connection to Open-Meteo. <br><button id="retry">Try again</button>`;
-    $("retry").onclick=()=>load(true)}}
+    $("retry").className="btn";$("retry").onclick=()=>load(true)}}
 
 /* ---------- map ---------- */
 const KX=Math.cos(33.6*Math.PI/180);
@@ -153,31 +154,29 @@ function drawField(){const w=Math.max(2,Math.round(V.W/5)),h=Math.max(2,Math.rou
   const img=ctx.createImageData(w,h),st=RAMP[LAYER][isDark()?"d":"l"],arr=layerArr();let k=0;
   for(let y=0;y<h;y++){const lat=LAT((y+0.5)*5);for(let x=0;x<w;x++){const c=rampCol(st,sample(arr,LON((x+0.5)*5),lat));img.data[k++]=c[0];img.data[k++]=c[1];img.data[k++]=c[2];img.data[k++]=255}}
   ctx.putImageData(img,0,0)}
-const WATER=[["Santa Barbara Channel",34.2,-119.95],["Santa Monica Bay",33.9,-118.72],["San Pedro Channel",33.5,-118.33],["Gulf of Santa Catalina",33.08,-117.9],["Outer Santa Barbara Passage",33.02,-118.95],["PACIFIC  OCEAN",32.62,-120.2]];
-const PLACES=[["Pt Conception",34.52,-120.4,1],["Santa Barbara",34.5,-119.7],["Ventura",34.35,-119.2],["Los Angeles",34.08,-118.22],["Long Beach",33.84,-118.12],["Oceanside",33.24,-117.28],["San Diego",32.78,-117.08],["Tijuana",32.47,-116.98],
+const WATER=[["Santa Barbara Channel",34.2,-119.95],["San Pedro Channel",33.5,-118.33],["Gulf of Santa Catalina",33.08,-117.9]];
+const PLACES=[["Santa Barbara",34.5,-119.7],["Ventura",34.35,-119.2],["Los Angeles",34.08,-118.22],["Long Beach",33.84,-118.12,1],["Oceanside",33.24,-117.28,1],["San Diego",32.78,-117.08],
   ["Santa Cruz I.",34.02,-119.77,2],["Santa Rosa I.",33.96,-120.1,2],["Catalina",33.39,-118.42,2],["San Clemente I.",32.9,-118.5,2],["San Nicolas I.",33.25,-119.5,2]];
 function drawLand(){cL.width=V.W*V.dpr;cL.height=V.H*V.dpr;const c=cL.getContext("2d");c.scale(V.dpr,V.dpr);
   const grat=css("--grat"),ink=css("--map-ink");
-  c.strokeStyle=grat;c.lineWidth=0.6;c.fillStyle=ink;c.font=`500 11px ${css("--f-cond")}`;c.globalAlpha=0.55;
+  c.strokeStyle=grat;c.lineWidth=0.5;c.globalAlpha=0.3;
   const step=V.z>420?0.25:0.5;
   for(let lo=Math.ceil(LON(0)/step)*step;lo<LON(V.W);lo+=step){const x=X(lo);c.beginPath();c.moveTo(x,0);c.lineTo(x,V.H);c.stroke()}
   for(let la=Math.ceil(LAT(V.H)/step)*step;la<LAT(0);la+=step){const y=Y(la);c.beginPath();c.moveTo(0,y);c.lineTo(V.W,y);c.stroke()}
   c.globalAlpha=1;
   const p=new Path2D();for(const r of LANDR){r.forEach(([x,y],i)=>i?p.lineTo(X(x),Y(y)):p.moveTo(X(x),Y(y)));p.closePath()}
-  c.fillStyle=css("--land");c.fill(p);c.strokeStyle=css("--land-edge");c.lineWidth=1.1;c.lineJoin="round";c.stroke(p);
-  c.textAlign="center";c.fillStyle=ink;c.globalAlpha=0.8;
-  const fs=clamp(V.z/11,11,17);c.font=`italic 400 ${fs}px ${css("--f-water")}`;
+  c.fillStyle=css("--land");c.fill(p);c.strokeStyle=css("--land-edge");c.lineWidth=0.8;c.lineJoin="round";c.stroke(p);
+  c.textAlign="center";c.fillStyle=ink;c.globalAlpha=0.5;
+  const fs=clamp(V.z/12,11,15);c.font=`italic 400 ${fs}px ${css("--f-water")}`;
   for(const [n,la,lo] of WATER)if(V.W>520||n.length<17)c.fillText(n,X(lo),Y(la));
-  c.globalAlpha=0.9;
-  for(const [n,la,lo,kind] of PLACES){if(kind===2&&V.z<150)continue;c.font=`600 ${kind?10.5:12}px ${css("--f-cond")}`;c.fillStyle=kind===2?css("--land-edge"):ink;
-    c.fillText(n.toUpperCase(),X(lo),Y(la))}
-  c.globalAlpha=0.7;c.fillStyle=ink;c.font=`500 10.5px ${css("--f-cond")}`;c.textAlign="left";
-  for(let la=Math.ceil(LAT(V.H)/0.5)*0.5;la<LAT(0);la+=0.5){const y=Y(la);if(y>70&&y<V.H-70)c.fillText(`${Math.floor(la)}°${la%1?"30":"00"}′N`,4,y-3)}
+  c.globalAlpha=0.7;
+  for(const [n,la,lo,kind] of PLACES){if(kind&&V.z<260)continue;c.font=`500 ${kind?11:12}px ${css("--f-ui")}`;c.fillStyle=kind===2?css("--land-edge"):ink;
+    c.fillText(n,X(lo),Y(la))}
   c.globalAlpha=1}
 /* particles: swell drawn as short crests marching along the swell direction, wind as streaks */
 let PART=[],raf=0;const REDUCED=matchMedia("(prefers-reduced-motion: reduce)").matches;
 function spawn(p){for(let k=0;k<6;k++){p.lo=LON(Math.random()*V.W);p.la=LAT(Math.random()*V.H);if(!isLand(p.lo,p.la))break}p.age=0;p.life=70+Math.random()*120;return p}
-function resetParticles(){cP.width=V.W*V.dpr;cP.height=V.H*V.dpr;const n=clamp(Math.round(V.W*V.H/900),250,1400);PART=Array.from({length:n},()=>{const p=spawn({});p.age=Math.random()*p.life;return p})}
+function resetParticles(){cP.width=V.W*V.dpr;cP.height=V.H*V.dpr;const n=clamp(Math.round(V.W*V.H/1500),160,900);PART=Array.from({length:n},()=>{const p=spawn({});p.age=Math.random()*p.life;return p})}
 function tick(){raf=requestAnimationFrame(tick);if(!DATA||document.hidden)return;const c=cP.getContext("2d");c.setTransform(V.dpr,0,0,V.dpr,0,0);
   c.globalCompositeOperation="destination-out";c.fillStyle=LAYER==="wind"?"rgba(0,0,0,.09)":"rgba(0,0,0,.3)";c.fillRect(0,0,V.W,V.H);c.globalCompositeOperation="source-over";
   const wind=LAYER==="wind",F=DATA.F,U=wind?F.WU[TI]:F.U[TI],Vv=wind?F.WV[TI]:F.V[TI],M=wind?F.WS[TI]:F.H[TI],P=F.P[TI],rgb=css("--particle");
@@ -187,10 +186,10 @@ function tick(){raf=requestAnimationFrame(tick);if(!DATA||document.hidden)return
     const x0=X(p.lo),y0=Y(p.la),sp=wind?0.25+m*0.07:0.3+sample(P,p.lo,p.la)*0.04;
     const x1=x0+u*sp,y1=y0-v*sp;p.lo=LON(x1);p.la=LAT(y1);
     if(x1<-5||y1<-5||x1>V.W+5||y1>V.H+5){spawn(p);continue}
-    const env=Math.sin(Math.PI*p.age/p.life),a=env*(wind?clamp(m/14,0.2,0.85):clamp(m/4.5,0.18,0.85));
+    const env=Math.sin(Math.PI*p.age/p.life),a=env*(wind?clamp(m/16,0.15,0.7):clamp(m/6,0.14,0.65));
     c.strokeStyle=`rgba(${rgb},${a.toFixed(3)})`;c.beginPath();
     if(wind){c.lineWidth=1.1;c.moveTo(x0,y0);c.lineTo(x1,y1)}
-    else{const L=clamp(3.5+m*1.5,4,13);c.lineWidth=1.5;c.moveTo(x1+v*L,y1+u*L);c.lineTo(x1-v*L,y1-u*L)}
+    else{const L=clamp(3.5+m*1.5,4,13);c.lineWidth=1.2;c.moveTo(x1+v*L,y1+u*L);c.lineTo(x1-v*L,y1-u*L)}
     c.stroke()}}
 function drawStatic(){const c=cP.getContext("2d");c.setTransform(V.dpr,0,0,V.dpr,0,0);c.clearRect(0,0,V.W,V.H);if(!DATA)return;const wind=LAYER==="wind",F=DATA.F,rgb=css("--particle");
   c.strokeStyle=c.fillStyle=`rgba(${rgb},.6)`;c.lineWidth=1.2;
@@ -205,7 +204,7 @@ function makeMarks(){const box=$("marks");box.innerHTML="";MK=[];
 function placeMarks(){for(const m of MK)m.el.style.transform=`translate(${X(m.lo).toFixed(1)}px,${Y(m.la).toFixed(1)}px)`;$("marks").classList.toggle("zoomed",V.z>330)}
 function colorMarks(){if(!DATA)return;for(const m of MK)if(m.spot!=null){const s=DATA.spots[m.spot];m.el.firstChild.style.background=s.ok?rtCol(s.hr[TI].cls):"var(--muted)";m.el.classList.toggle("sel",S.sel===m.spot)}}
 function legend(){const R=RAMP[LAYER],st=R[isDark()?"d":"l"],lo=R.min||0,g=st.map(([v,c])=>`rgb(${c.map(Math.round).join(",")}) ${((v-lo)/(R.max-lo)*100).toFixed(0)}%`).join(",");
-  $("legend").innerHTML=`<b>${R.t} (${R.u})</b><div class="bar" style="background:linear-gradient(90deg,${g})"></div><div class="tk">${R.ticks.map(t=>`<span>${t}${t===R.max?"+":""}</span>`).join("")}</div><div class="probe" id="probe">Hover the water for a reading</div>`}
+  $("legend").innerHTML=`<b>${R.t}, ${R.u}</b><div class="bar" style="background:linear-gradient(90deg,${g})"></div><div class="tk">${R.ticks.map(t=>`<span>${t}${t===R.max?"+":""}</span>`).join("")}</div><div class="probe" id="probe"></div>`}
 let pend=false;
 function redraw(){if(pend)return;pend=true;requestAnimationFrame(()=>{pend=false;drawField();drawLand();placeMarks();colorMarks();if(REDUCED)drawStatic()})}
 function viewChanged(){clampView();cP.getContext("2d").clearRect(0,0,cP.width,cP.height);redraw()}
@@ -221,10 +220,10 @@ mapEl.addEventListener("pointermove",e=>{const r=mapEl.getBoundingClientRect(),x
     else if(PT.size===2){const a=[...PT.values()],d=Math.hypot(a[0][0]-a[1][0],a[0][1]-a[1][1]);if(pinch)zoomAt(d/pinch,(a[0][0]+a[1][0])/2-r.left,(a[0][1]+a[1][1])/2-r.top);pinch=d}}
   else probe(x,y)});
 const up=e=>{PT.delete(e.pointerId);if(PT.size<2)pinch=0;if(!PT.size)mapEl.classList.remove("drag")};
-mapEl.addEventListener("pointerup",up);mapEl.addEventListener("pointercancel",up);
+mapEl.addEventListener("pointerup",up);mapEl.addEventListener("pointerleave",()=>{const el=$("probe");if(el)el.textContent=""});mapEl.addEventListener("pointercancel",up);
 mapEl.addEventListener("wheel",e=>{e.preventDefault();const r=mapEl.getBoundingClientRect();zoomAt(Math.exp(-e.deltaY*0.0016),e.clientX-r.left,e.clientY-r.top)},{passive:false});
 $("zin").onclick=()=>zoomAt(1.5,V.W/2,V.H/2);$("zout").onclick=()=>zoomAt(1/1.5,V.W/2,V.H/2);$("zfit").onclick=()=>{fit();viewChanged()};
-function probe(x,y){const el=$("probe");if(!el||!DATA)return;const lo=LON(x),la=LAT(y);if(isLand(lo,la)){el.textContent="Hover the water for a reading";return}
+function probe(x,y){const el=$("probe");if(!el||!DATA)return;const lo=LON(x),la=LAT(y);if(isLand(lo,la)){el.textContent="";return}
   const F=DATA.F,pos=`${la.toFixed(2)}°N ${(-lo).toFixed(2)}°W`;
   if(LAYER==="wind"){const d=(Math.atan2(-sample(F.WU[TI],lo,la),-sample(F.WV[TI],lo,la))*180/Math.PI+360)%360;el.textContent=`${pos} · ${sample(F.WS[TI],lo,la).toFixed(0)} kn from ${comp(d)}`}
   else{const d=(Math.atan2(-sample(F.U[TI],lo,la),-sample(F.V[TI],lo,la))*180/Math.PI+360)%360;el.textContent=`${pos} · ${sample(F.H[TI],lo,la).toFixed(1)} ft @ ${sample(F.P[TI],lo,la).toFixed(0)} s from ${comp(d)} ${Math.round(d)}°`}}
@@ -234,9 +233,9 @@ new MutationObserver(()=>{legend();redraw()}).observe(document.documentElement,{
 
 /* ---------- time ---------- */
 function buildDays(){const T=DATA.times;let h="",i=0;while(i<T.length){const p=tparts(T[i]);let n=0;while(i+n<T.length&&T[i+n].slice(0,10)===T[i].slice(0,10))n++;h+=`<span style="flex:${n}">${DOW[p.dow]}<i> ${p.d}</i></span>`;i+=n}$("days").innerHTML=h}
-function fmt(i,long){const p=tparts(DATA.times[i]);return long?`${DOWL[p.dow]}, ${MON[p.m-1]} ${p.d} · ${h12(p.h)}`:`${DOW[p.dow]} ${h12(p.h)}`}
+function fmt(i,long){const p=tparts(DATA.times[i]);return long?`${DOW[p.dow]} ${MON[p.m-1]} ${p.d}, ${h12(p.h)}`:`${DOW[p.dow]} ${h12(p.h)}`}
 function setTime(i,fromPlay){TI=clamp(i,0,DATA.times.length-1);$("t").value=TI;$("when").textContent=fmt(TI,true);
-  const d=TI-NOWI;$("whensub").textContent=d===0?"Current hour":d>0?`${d} h ahead`:`${-d} h ago`;
+  const d=TI-NOWI;$("whensub").textContent=d===0?"Now":d>0?`${d} h from now`:`${-d} h ago`;
   redraw();render(fromPlay)}
 $("t").addEventListener("input",e=>{if(DATA)setTime(+e.target.value)});
 $("now").onclick=()=>{if(DATA)setTime(NOWI)};
@@ -255,41 +254,39 @@ function outlook(){const r=DATA.ref,T=DATA.times;if(!r||!r.sh.some(v=>v!=null))r
   const W=372,H=92,x=i=>26+i*(W-32)/(T.length-1),mx=Math.max(4,...r.sh.map(v=>v||0),...r.s2h.map(v=>v||0)),y=v=>H-22-(v/mx)*(H-34);
   const path=a=>{let d="",pen=false;a.forEach((v,i)=>{if(v==null){pen=false;return}d+=(pen?"L":"M")+x(i).toFixed(1)+" "+y(v).toFixed(1);pen=true});return d};
   let pk=TI;for(let i=TI;i<T.length;i++)if((r.sh[i]||0)>(r.sh[pk]||0))pk=i;
-  let days="";for(let i=0;i<T.length;i+=24){const p=tparts(T[i]);days+=`<line x1="${x(i)}" y1="6" x2="${x(i)}" y2="${H-22}" stroke="var(--line)"/><text x="${x(i)+3}" y="${H-10}" font-size="10" fill="var(--muted)">${DOW[p.dow]}</text>`;
-    const n=Math.min(i+12,T.length-1);if(r.sd[n]!=null)days+=`<text x="${x(n)}" y="${H}" font-size="9.5" text-anchor="middle" fill="var(--ink)">${comp(r.sd[n])}</text>`}
+  let days="";for(let i=0;i<T.length;i+=24){const p=tparts(T[i]);days+=`<text x="${x(i)+3}" y="${H-10}" font-size="10" fill="var(--muted)">${DOW[p.dow]}</text>`;
+    const n=Math.min(i+12,T.length-1);if(r.sd[n]!=null)days+=`<text x="${x(n)}" y="${H}" font-size="9.5" text-anchor="middle" fill="var(--muted)">${comp(r.sd[n])}</text>`}
   const now=`Outer waters, ${fmt(TI)}: ${r.sh[TI]!=null?`${r.sh[TI].toFixed(1)} ft at ${Math.round(r.sp[TI])} s from ${comp(r.sd[TI])} ${Math.round(r.sd[TI])}°`:"no data"}.`;
   const peak=pk>TI+2?` Builds to ${r.sh[pk].toFixed(1)} ft at ${Math.round(r.sp[pk])} s from ${comp(r.sd[pk])} by ${fmt(pk)}.`:` Nothing bigger follows in this forecast.`;
   return`<div class="outlook"><p class="lab">Incoming swell</p><p>${now}${peak}</p>
-  <svg viewBox="0 0 ${W} ${H+2}" role="img" aria-label="Seven-day primary and secondary swell height in outer waters">${days}
+  <svg viewBox="0 0 ${W} ${H+2}" role="img" aria-label="Seven-day swell height in outer waters. Solid line is the primary swell, dashed the secondary; letters give the primary swell direction each midday."><title>Solid: primary swell. Dashed: secondary swell. Letters: primary swell direction at midday.</title>${days}
   <text x="2" y="${y(mx)+4}" font-size="10" fill="var(--muted)">${Math.round(mx)} ft</text>
   <path d="${path(r.s2h)}" fill="none" stroke="var(--muted)" stroke-width="1.2" stroke-dasharray="3 3"/><path d="${path(r.sh)}" fill="none" stroke="var(--ink)" stroke-width="1.8"/>
-  <line x1="${x(TI)}" y1="4" x2="${x(TI)}" y2="${H-22}" stroke="var(--accent)" stroke-width="1.5"/></svg>
-  <p class="note" style="font-size:12px">Solid line is the primary swell, dashed the secondary. Letters show where the primary swell comes from each midday.</p></div>`}
-function strip(s){const a=[];for(let k=0;k<24;k++){const i=Math.min(TI+k,DATA.times.length-1),c=rtCol(s.hr[i].cls);a.push(`${c} ${(k/24*100).toFixed(1)}% ${((k+1)/24*100).toFixed(1)}%`)}return`linear-gradient(90deg,${a.join(",")})`}
+  <line x1="${x(TI)}" y1="4" x2="${x(TI)}" y2="${H-22}" stroke="var(--accent)" stroke-width="1.5"/></svg></div>`}
 function listView(){const rows=DATA.spots.filter(s=>S.region==="all"||s.r===S.region).slice().sort((a,b)=>b.hr[TI].rate-a.hr[TI].rate);
-  return outlook()+`<div class="chips" role="group" aria-label="Region">${Object.entries(REG).map(([k,n])=>`<button data-reg="${k}" aria-pressed="${S.region===k}">${n}</button>`).join("")}</div>
-  <div><p class="lab">Ranked for ${fmt(TI)} · colour bar shows the next 24 h</p><div class="rows" style="margin-top:8px">${rows.map(s=>{const h=s.hr[TI];
-    if(!s.ok)return`<button class="row" data-spot="${s.idx}"><span class="rt" style="background:var(--line)">No data</span><span class="nm">${esc(s.n)}</span><span class="ft"></span><span class="sub">No wave model cell near this spot</span></button>`;
-    return`<button class="row" data-spot="${s.idx}"><span class="rt${RT[h.cls].dk?" dk":""}" style="background:${rtCol(h.cls)}">${RT[h.cls].n}</span><span class="nm">${esc(s.n)}</span><span class="ft">${faceText(h.face)}</span>
-    <span class="sub">${h.dom?`${comp(h.dom.d)} ${Math.round(h.dom.p)} s`:"No swell"} · ${h.w.d==null?"wind n/a":`${h.w.word.toLowerCase()} ${Math.round(s.wx.ws[TI])} kn`}</span><span class="strip" style="background:${strip(s)}"></span></button>`}).join("")}</div></div>${foot()}`}
+  return outlook()+`<div style="display:flex;flex-direction:column;gap:8px"><div class="chips" role="group" aria-label="Region">${Object.entries(REG).map(([k,n])=>`<button data-reg="${k}" aria-pressed="${S.region===k}">${n}</button>`).join("")}</div>
+  <div class="rows">${rows.map(s=>{const h=s.hr[TI];
+    if(!s.ok)return`<button class="row" data-spot="${s.idx}"><i class="dot" style="background:var(--line)"></i><span class="nm">${esc(s.n)}</span><span class="ft"></span><span class="sub">No wave data near this spot</span></button>`;
+    return`<button class="row" data-spot="${s.idx}"><i class="dot" style="background:${rtCol(h.cls)}"></i><span class="nm">${esc(s.n)}</span><span class="ft">${faceText(h.face)}</span>
+    <span class="sub"><b>${RT[h.cls].n}</b> · ${h.dom?`${comp(h.dom.d)} ${Math.round(h.dom.p)} s`:"no swell"} · ${h.w.d==null?"wind n/a":`${h.w.word.toLowerCase()} ${Math.round(s.wx.ws[TI])} kn`}</span></button>`}).join("")}</div></div>${foot()}`}
 function foot(){const mins=Math.round((Date.now()-DATA.at)/6e4),nb=DATA.buoys.filter(b=>b.ok).length;
-  return`<div class="foot">Forecast from Open-Meteo marine and weather models, loaded ${mins<1?"just now":mins+" min ago"}. ${nb} of ${BUOYS.length} Scripps CDIP buoys reporting. ${DATA.tidesOk?"Tides from NOAA CO-OPS.":"NOAA tides did not load, so ratings ignore tide."}<button id="refresh">Refresh</button></div>`}
+  return`<div class="foot">Updated ${mins<1?"just now":mins+" min ago"} · ${nb} of ${BUOYS.length} buoys reporting${DATA.tidesOk?"":" · tides did not load, so ratings ignore tide"}.<button id="refresh">Refresh</button></div>`}
 function fcChart(s){const T=DATA.times,W=372,H=176,x0=24,bw=(W-x0-4)/T.length,x=i=>x0+i*bw,top=18,base=112,mx=Math.max(6,Math.ceil(Math.max(...s.hr.map(h=>h.face)))),y=v=>base-(v/mx)*(base-top);
   let g="";
   for(let i=0;i<T.length;i++){if(s.wx.day[i]===0)g+=`<rect x="${x(i).toFixed(1)}" y="${top}" width="${(bw+.05).toFixed(2)}" height="${H-top-14}" fill="var(--night)"/>`}
   for(let v=0;v<=mx;v+=mx>10?4:2)g+=`<line x1="${x0}" x2="${W-4}" y1="${y(v)}" y2="${y(v)}" stroke="var(--line)" stroke-width=".6"/><text x="${x0-4}" y="${y(v)+3.5}" font-size="10" text-anchor="end" fill="var(--muted)">${v}</text>`;
-  for(let i=0;i<T.length;i+=24){const p=tparts(T[i]);g+=`<line x1="${x(i)}" x2="${x(i)}" y1="6" y2="${H-14}" stroke="var(--line)"/><text x="${x(i)+3}" y="13" font-size="10.5" font-weight="600" fill="var(--muted)">${DOW[p.dow].toUpperCase()} ${p.d}</text>`}
+  for(let i=0;i<T.length;i+=24){const p=tparts(T[i]);g+=`<text x="${x(i)+3}" y="13" font-size="10" fill="var(--muted)">${DOW[p.dow]} ${p.d}</text>`}
   s.hr.forEach((h,i)=>{if(h.face>0.05)g+=`<rect x="${x(i).toFixed(1)}" y="${y(h.face).toFixed(1)}" width="${(bw+.05).toFixed(2)}" height="${(base-y(h.face)).toFixed(1)}" fill="${rtCol(h.cls)}"/>`});
   if(s.tide){const t0=124,t1=158,vals=s.tide.filter(v=>v!=null),lo=Math.min(...vals),hi=Math.max(...vals),ty=v=>t1-(v-lo)/(hi-lo||1)*(t1-t0);let d="",pen=false;
     s.tide.forEach((v,i)=>{if(v==null){pen=false;return}d+=(pen?"L":"M")+(x(i)+bw/2).toFixed(1)+" "+ty(v).toFixed(1);pen=true});
     g+=`<path d="${d}" fill="none" stroke="var(--map-ink)" stroke-width="1.3"/><text x="${x0-4}" y="${t0+5}" font-size="9" text-anchor="end" fill="var(--muted)">${hi.toFixed(0)}</text><text x="${x0-4}" y="${t1+2}" font-size="9" text-anchor="end" fill="var(--muted)">${lo.toFixed(0)}</text>`}
   g+=`<line x1="${x(TI)+bw/2}" x2="${x(TI)+bw/2}" y1="6" y2="${H-14}" stroke="var(--accent)" stroke-width="1.5"/>`;
-  return`<div class="fc" id="fc" data-x0="${x0/W}" data-x1="${(W-4)/W}"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Seven-day surf height, rating and tide for ${esc(s.n)}">${g}</svg></div><p class="note" style="font-size:12px;margin-top:5px">Bars are surf face height in feet, coloured by rating. The line is the tide in feet. Shaded hours are night.</p>`}
+  return`<div class="fc" id="fc" data-x0="${x0/W}" data-x1="${(W-4)/W}"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Seven-day surf height, rating and tide for ${esc(s.n)}">${g}</svg></div><p class="note" style="font-size:12px;margin-top:6px">Bars: surf height in feet, coloured by rating. Line: tide. Tap to jump to a time.</p>`}
 function windows(s){const T=DATA.times,out=[];let i=0;
   while(i<T.length){const day=T[i].slice(0,10);let best=null;let j=i;for(;j<T.length&&T[j].slice(0,10)===day;j++){if(j<NOWI||j+2>=T.length||T[j+2].slice(0,10)!==day)continue;if(!(s.wx.day[j]&&s.wx.day[j+2]))continue;
       const r=(s.hr[j].rate+s.hr[j+1].rate+s.hr[j+2].rate)/3;if(!best||r>best.r)best={r,j}}
     if(best)out.push(best);i=j}
-  return out.map(b=>{const h=s.hr[b.j+1],p=tparts(T[b.j]);return`<button class="win" data-time="${b.j+1}">${chip(h.cls)}<span><b>${DOW[p.dow]}</b> ${h12(p.h)}–${h12(p.h+3)}</span><span>${faceText(h.face)}</span></button>`}).join("")}
+  return out.map(b=>{const h=s.hr[b.j+1],p=tparts(T[b.j]);return`<button class="win" data-time="${b.j+1}"><span>${DOW[p.dow]} <span class="m">${h12(p.h)}–${h12(p.h+3)}</span></span>${rlab(h.cls)}<span>${faceText(h.face)}</span></button>`}).join("")}
 function detail(s){const h=s.hr[TI];
   if(!s.ok)return`<div class="det"><button class="back" data-back="1">← All spots</button><h2>${esc(s.n)}</h2><p class="note">The wave model has no ocean cell close enough to this spot, so there is nothing to rate.</p></div>`;
   const tide=h.tide,nx=s.tide&&s.tide[Math.min(TI+1,s.tide.length-1)],trend=tide==null||nx==null?"":nx>tide+0.05?"rising":nx<tide-0.05?"falling":"slack";
@@ -297,35 +294,35 @@ function detail(s){const h=s.hr[TI];
   const sst=s.m.sst[TI];
   return`<div class="det"><button class="back" data-back="1">← All spots</button>
   <div><h2>${esc(s.n)}</h2><p class="note">${REG[s.r]} · ${esc(s.t)} · ${fmt(TI)}</p></div>
-  <div class="hero">${chip(h.cls)}<span class="big">${faceText(h.face)} <small>${h.face>=1?"FACES":""}</small></span></div>
-  <dl class="kv" style="margin:0">
+  <div class="hero">${chip(h.cls)}<span class="big">${faceText(h.face)}</span></div>
+  <dl class="kv">
    <div><dt>Wind</dt><dd>${h.w.d==null?"n/a":`${Math.round(s.wx.ws[TI])} kn ${arrow(s.wx.wd[TI])} ${comp(s.wx.wd[TI])}<small>${h.w.word}, gusts ${Math.round(s.wx.wg[TI]||0)} kn</small>`}</dd></div>
    <div><dt>Tide · ${esc(s.tideSt)}</dt><dd>${tide==null?"n/a":`${tide.toFixed(1)} ft ${trend}<small>Likes ${s.td} tide</small>`}</dd></div>
    <div><dt>Water</dt><dd>${sst==null?"n/a":`${Math.round(sst*9/5+32)}°F<small>Model sea surface</small>`}</dd></div>
    <div><dt>Nearest buoy</dt><dd>${nb?`${nb.d.hs[nb.d.hs.length-1].toFixed(1)} ft @ ${Math.round(nb.d.tp[nb.d.tp.length-1])} s<small>${esc(nb.b.n)}, ${ageText(nb.d)}</small>`:"n/a"}</dd></div>
   </dl>
-  <div><p class="lab" style="margin-bottom:6px">Swell in the water</p><table><thead><tr><th>Source</th><th>Offshore</th><th>From</th><th class="num">At this spot</th></tr></thead><tbody>
+  <div><p class="lab" style="margin-bottom:8px">Swell in the water</p><table><thead><tr><th>Source</th><th>Offshore</th><th>From</th><th class="num">At this spot</th></tr></thead><tbody>
   ${h.cs.length?h.cs.map(c=>`<tr><td>${c.k}</td><td>${c.h.toFixed(1)} ft @ ${Math.round(c.p)} s</td><td>${arrow(c.d)} ${comp(c.d)} ${Math.round(c.d)}°</td><td class="num">${c.face<0.5?(c.p<5?"too short":c.df<0.5?"blocked":"under 1 ft"):c.face.toFixed(1)+" ft"}</td></tr>`).join(""):`<tr><td colspan="4">No swell reaching this point</td></tr>`}</tbody></table></div>
-  <div><p class="lab" style="margin-bottom:6px">Seven days · tap to move the clock</p>${fcChart(s)}</div>
+  <div><p class="lab" style="margin-bottom:8px">Next seven days</p>${fcChart(s)}</div>
   <div><p class="lab">Best daylight window each day</p><div class="wins" style="margin-top:6px">${windows(s)||'<p class="note">No daylight hours left in the forecast.</p>'}</div></div>
   <p class="note">${esc(s.note)} Accepts swell from ${s.w.map(([a,b])=>`${comp(a)} to ${comp(b)}`).join(" and ")}; ideal faces ${s.sz[0]}–${s.sz[1]} ft.</p></div>`}
 const buoyAge=d=>(Date.now()/1000-d.t[d.t.length-1])/60;
 function ageText(d){const m=Math.round(buoyAge(d));return m<90?`${m} min ago`:`${Math.round(m/60)} h ago`}
-function buoyView(){return`<p class="note">Live readings from Scripps CDIP wave buoys. Harvest and San Nicolas sit outside the islands and see new swell first.</p><div class="rows">${BUOYS.map((b,k)=>{const d=DATA.buoys[k];
-  if(!d.ok)return`<button class="brow" data-buoy="${k}"><span class="nm">${esc(b.n)}<small>${b.id}</small></span><span class="v">Offline</span><span class="sub">No recent data from this buoy</span></button>`;
+function buoyView(){return`<p class="note">Live wave buoys, north to south. Harvest and San Nicolas sit outside the islands and see new swell first.</p><div class="rows">${BUOYS.map((b,k)=>{const d=DATA.buoys[k];
+  if(!d.ok)return`<button class="brow" data-buoy="${k}"><span class="nm">${esc(b.n)}</span><span class="v">Offline</span><span class="sub">No recent data from this buoy</span></button>`;
   const n=d.hs.length-1,mx=Math.max(...d.hs,1),pts=d.hs.map((v,i)=>`${(i/n*368+2).toFixed(1)},${(24-v/mx*20).toFixed(1)}`).join(" ");
-  return`<button class="brow" data-buoy="${k}"><span class="nm">${esc(b.n)}<small>${b.id}</small></span><span class="v">${d.hs[n].toFixed(1)} ft @ ${Math.round(d.tp[n])} s</span>
+  return`<button class="brow" data-buoy="${k}"><span class="nm">${esc(b.n)}</span><span class="v">${d.hs[n].toFixed(1)} ft @ ${Math.round(d.tp[n])} s</span>
   <span class="sub">Peak direction ${arrow(d.dp[n])} ${comp(d.dp[n])} ${Math.round(d.dp[n])}° · ${d.sst==null?"":`water ${Math.round(d.sst)}°F · `}${ageText(d)}</span>
-  <svg viewBox="0 0 372 26" preserveAspectRatio="none" aria-hidden="true"><polyline points="${pts}" fill="none" stroke="var(--accent)" stroke-width="1.5" vector-effect="non-scaling-stroke"/></svg></button>`}).join("")}</div>
+  <svg viewBox="0 0 372 26" preserveAspectRatio="none" aria-hidden="true"><polyline points="${pts}" fill="none" stroke="var(--muted)" stroke-width="1.2" vector-effect="non-scaling-stroke"/></svg></button>`}).join("")}</div>
   <p class="note" style="font-size:12px">Height is significant wave height; the line is the last 24 hours.</p>`}
 function howView(){return`<div class="det"><h2>How a spot gets its rating</h2>
   <p class="note" style="color:var(--ink)">Each spot is scored every hour from four things, then multiplied together so a flat ocean can never rate well.</p>
-  <dl class="kv" style="margin:0;grid-template-columns:1fr">
+  <dl class="kv" style="grid-template-columns:1fr">
   <div><dt>Surf size</dt><dd><small>Each swell train from the wave model is converted to a breaking-wave height from its height and period, cut down if its direction falls outside the spot's swell window, and scaled by a local factor for spots that focus or shelter swell. Size scores best inside the spot's ideal range.</small></dd></div>
   <div><dt>Wind</dt><dd><small>Under 4 knots counts as glassy. Above that, offshore wind costs little and onshore wind costs a lot, judged against the direction the beach faces.</small></dd></div>
   <div><dt>Period</dt><dd><small>Longer-period swell scores higher, from 6 seconds (weak) to 14 seconds and up (full marks).</small></dd></div>
   <div><dt>Tide</dt><dd><small>A small penalty when the NOAA tide prediction is outside the tide the spot likes.</small></dd></div></dl>
-  <div class="wins">${RT.map((r,c)=>`<div class="win" style="grid-template-columns:86px 1fr">${chip(c)}<span>${["Faces under 1 ft","Score below 2","2 to 3.5","3.5 to 5","5 to 6.5","6.5 to 8.8","Above 8.8"][c]}</span></div>`).join("")}</div>
+  <div class="wins">${RT.map((r,c)=>`<div class="win" style="grid-template-columns:130px 1fr">${rlab(c)}<span class="m">${["Faces under 1 ft","Score below 2","2 to 3.5","3.5 to 5","5 to 6.5","6.5 to 8.8","Above 8.8"][c]}</span></div>`).join("")}</div>
   <p class="note">These are model estimates, not surf-cam reports. The wave model's cells are several miles wide, so sandbars, kelp, local shadowing and crowds are invisible to it. Spot windows and gain factors are hand-set starting values and are meant to be tuned against what you see in the water.</p>
   <p class="note">Sources: Open-Meteo marine and weather forecast APIs, Scripps CDIP buoy network, NOAA CO-OPS tide predictions.</p></div>`}
 let lastRender=0;
