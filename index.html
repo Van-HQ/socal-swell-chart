@@ -462,7 +462,7 @@ const mapEl=$("map"),cF=$("cField"),cP=$("cPart");
 const FIT=[[-121.05,32.3],[-116.9,34.8]];
 const isDark=()=>{const t=document.documentElement.dataset.theme;return t?t==="dark":matchMedia("(prefers-color-scheme: dark)").matches};
 function mapStyle(){const C=isDark()
-  ?{land:"#1c2221",urban:"#212827",green:"#1d2a23",sand:"#3a3628",water:"#0b1b25",road:"#3b4644",road2:"#2a3331",pier:"#55605b",text:"#a9bcc2",halo:"#141a1a"}
+  ?{land:"#232a29",urban:"#283030",green:"#22302a",sand:"#3a3628",water:"#0b1b25",road:"#3b4644",road2:"#2a3331",pier:"#55605b",text:"#a9bcc2",halo:"#141a1a"}
   :{land:"#f1ecdf",urban:"#ebe5d6",green:"#dde6cc",sand:"#f4e4b4",water:"#cfe3ea",road:"#d6ccb4",road2:"#e2dac6",pier:"#b9ae93",text:"#4d5c63",halo:"#f6f2e8"};
   const name=["coalesce",["get","name_en"],["get","name"]],road=(id,cls,min,col,w)=>({id,type:"line",source:"omt","source-layer":"transportation",minzoom:min,
     filter:["all",["==",["geometry-type"],"LineString"],["in",["get","class"],["literal",cls]]],layout:{"line-cap":"round","line-join":"round"},paint:{"line-color":col,"line-width":["interpolate",["exponential",1.6],["zoom"],...w]}});
