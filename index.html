@@ -351,7 +351,14 @@ const TIDE_RANGE={low:[-2,2.5],"low-mid":[0,3.5],mid:[1.5,4.5],"mid-high":[2.5,6
 function dirFactor(s,dir){let o=180;for(const [a,b] of s.w){const span=(b-a+360)%360,off=(dir-a+360)%360;if(off<=span)return 1;o=Math.min(o,angDiff(dir,a),angDiff(dir,b))}
   return o>=40?0.12:0.12+0.88*(0.5+0.5*Math.cos(Math.PI*o/40))}
 // Komar-Gaughan breaker height from deep-water height (ft) and period (s)
-function breaker(hft,T){if(!(hft>0)||!(T>=5))return 0;const H=hft*0.3048;return 0.39*Math.pow(9.81,0.2)*Math.pow(T*H*H,0.4)/0.3048*K_BREAK}
+// Swell under 9 s is local wind chop: it stands up less and breaks weaker, so it is marked down.
+const chopFactor=T=>clamp((T-4)/5,0.3,1);
+function breaker(hft,T){if(!(hft>0)||!(T>=5))return 0;const H=hft*0.3048;return 0.39*Math.pow(9.81,0.2)*Math.pow(T*H*H,0.4)/0.3048*K_BREAK*chopFactor(T)}
+// Onshore wind sets a ceiling on the rating no matter how much swell there is.
+// e = wind speed (kn) scaled by how onshore it is: 0 at cross-offshore, full at 120 deg or more off offshore.
+const WIND_CAP=[[4,10],[6,4],[8,2.8],[10,1.9],[30,1]];
+function windCap(ws,d){if(ws==null||d==null)return 10;const e=ws*clamp((d-70)/50,0,1);if(e<=WIND_CAP[0][0])return 10;
+  for(let i=1;i<WIND_CAP.length;i++)if(e<=WIND_CAP[i][0]){const a=WIND_CAP[i-1],b=WIND_CAP[i];return lerp(a[1],b[1],(e-a[0])/(b[0]-a[0]))}return 1}
 function comps(s,i){const m=s.m,out=[];
   const add=(k,h,p,d)=>{if(h==null||p==null||d==null||h<0.15)return;const df=dirFactor(s,d);out.push({k,h,p,d,df,face:breaker(h,p)*df*s.g})};
   add("Primary swell",m.sh[i],m.sp[i],m.sd[i]);add("Secondary swell",m.s2h[i],m.s2p[i],m.s2d[i]);add("Wind waves",m.wwh[i],m.wwp[i],m.wwd[i]);return out}
@@ -363,7 +370,7 @@ function sizeScore(f,lo,hi){if(f<1)return 0;if(f<lo)return 0.2+0.4*(f-1)/Math.ma
 function rateHour(s,i){const cs=comps(s,i);let e=0,dom=null;for(const c of cs){e+=c.face*c.face;if(!dom||c.face>dom.face)dom=c}
   const face=Math.sqrt(e),w=windScore(s,s.wx.ws[i],s.wx.wd[i]),tide=s.tide?s.tide[i]:null;
   const per=dom?clamp((dom.p-6)/8,0,1)*0.8+0.2:0.2;
-  const rate=10*sizeScore(face,s.sz[0],s.sz[1])*(0.25+0.75*w.q)*(0.55+0.45*per)*tideScore(s.td,tide);
+  const rate=Math.min(windCap(s.wx.ws[i],w.d),10*sizeScore(face,s.sz[0],s.sz[1])*(0.25+0.75*w.q)*(0.55+0.45*per)*tideScore(s.td,tide));
   const cls=face<1?0:rate<2?1:rate<3.5?2:rate<5?3:rate<6.5?4:rate<8.8?5:6;
   return{face,rate,cls,dom,w,tide,cs}}
 function faceText(f){if(f<1)return"Flat";const lo=Math.max(1,Math.round(f*0.85)),hi=Math.max(lo+1,Math.round(f*1.15));return`${lo}–${hi} ft`}
@@ -673,8 +680,8 @@ function buoyView(){return`<p class="note">Live wave buoys, north to south. Harv
 function howView(){return`<div class="det"><h2>How a spot gets its rating</h2>
   <p class="note" style="color:var(--ink)">Each spot is scored every hour from four things, then multiplied together so a flat ocean can never rate well.</p>
   <dl class="kv" style="grid-template-columns:1fr">
-  <div><dt>Surf size</dt><dd><small>Each swell train from the wave model is converted to a breaking-wave height from its height and period, cut down if its direction falls outside the spot's swell window, and scaled by a local factor for spots that focus or shelter swell. Size scores best inside the spot's ideal range.</small></dd></div>
-  <div><dt>Wind</dt><dd><small>Under 4 knots counts as glassy. Above that, offshore wind costs little and onshore wind costs a lot, judged against the direction the beach faces.</small></dd></div>
+  <div><dt>Surf size</dt><dd><small>Each swell train from the wave model is converted to a breaking-wave height from its height and period, marked down if it is short-period wind chop (under 9 seconds), cut down if its direction falls outside the spot's swell window, and scaled by a local factor for spots that focus or shelter swell. Size scores best inside the spot's ideal range.</small></dd></div>
+  <div><dt>Wind</dt><dd><small>Under 4 knots counts as glassy. Above that, offshore wind costs little and onshore wind costs a lot, judged against the direction the beach faces. Onshore wind also sets a ceiling: about 6 knots onshore caps a spot at Fair, 8 knots at Poor to fair, and 10 knots or more at Poor, however big the swell.</small></dd></div>
   <div><dt>Period</dt><dd><small>Longer-period swell scores higher, from 6 seconds (weak) to 14 seconds and up (full marks).</small></dd></div>
   <div><dt>Tide</dt><dd><small>A small penalty when the NOAA tide prediction is outside the tide the spot likes.</small></dd></div></dl>
   <div class="wins">${RT.map((r,c)=>`<div class="win" style="grid-template-columns:130px 1fr">${rlab(c)}<span class="m">${["Faces under 1 ft","Score below 2","2 to 3.5","3.5 to 5","5 to 6.5","6.5 to 8.8","Above 8.8"][c]}</span></div>`).join("")}</div>
