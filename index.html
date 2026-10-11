@@ -45,7 +45,8 @@ button{font:inherit;color:inherit;cursor:pointer}
 #mapgl{position:absolute;inset:0;font:inherit}
 .map>canvas{position:absolute;inset:0;width:100%;height:100%;display:block;pointer-events:none}
 #marks{position:absolute;inset:0;pointer-events:none;z-index:3;overflow:hidden}
-.maphead,.legend,.zoom,.msg{z-index:4}
+.maphead,.legend,.zoom,.msg,.looks{z-index:4}
+.looks{position:absolute;left:12px;top:54px}
 .maplibregl-ctrl-attrib{font-size:10.5px}
 .mk{position:absolute;left:0;top:0;padding:0;border:0;background:none;pointer-events:auto;display:flex;align-items:center;gap:6px;white-space:nowrap}
 .mk i{display:block;width:10px;height:10px;border-radius:50%;border:1.5px solid var(--panel);margin:-5px 0 0 -5px;flex:none}
@@ -203,6 +204,7 @@ td.num,th.num{text-align:right;padding-right:0}
           <button id="lyr-swell" aria-pressed="true">Swell</button><button id="lyr-period" aria-pressed="false">Period</button><button id="lyr-wind" aria-pressed="false">Wind</button>
         </div>
       </div>
+      <div class="seg glass looks" id="looks" role="group" aria-label="Map look"></div>
       <div class="legend glass" id="legend"></div>
       <div class="zoom glass"><button id="zin" aria-label="Zoom in">+</button><button id="zout" aria-label="Zoom out">&minus;</button><button id="zfit" aria-label="Show whole coast" title="Show whole coast">&#8962;</button></div>
       <div class="msg glass" id="msg"><b>Loading the forecast</b>Pulling swell, wind, tide and buoy data.</div>
@@ -510,24 +512,32 @@ let LAYER="swell",MAP=null,TILES_OK=false;
 const mapEl=$("map"),cF=$("cField"),cP=$("cPart");
 const FIT=[[-121.05,32.3],[-116.9,34.8]];
 const isDark=()=>{const t=document.documentElement.dataset.theme;return t?t==="dark":matchMedia("(prefers-color-scheme: dark)").matches};
-function mapStyle(){const C=isDark()
-  ?{land:"#232a29",urban:"#283030",green:"#22302a",sand:"#3a3628",water:"#0b1b25",road:"#3b4644",road2:"#2a3331",pier:"#55605b",text:"#a9bcc2",halo:"#141a1a"}
-  :{land:"#f1ecdf",urban:"#ebe5d6",green:"#dde6cc",sand:"#f4e4b4",water:"#cfe3ea",road:"#d6ccb4",road2:"#e2dac6",pier:"#b9ae93",text:"#4d5c63",halo:"#f6f2e8"};
+// Map looks. "chart" follows the page's light/dark theme; the others set their own palette.
+// ramp: which colour scale the swell layer uses (l = soft light, d = soft dark, v = vivid). alpha: how solid the swell layer is.
+const LOOKS={chart:"Chart",sat:"Satellite",night:"Midnight",paper:"Paper"};
+function look(){const k=S.look;
+  if(k==="sat")return{sat:true,ramp:"v",alpha:0.5,pcol:"255,255,255",roadMin:10,C:{land:"#1a1f1c",urban:"#000",green:"#000",sand:"#000",water:"#000",road:"rgba(255,255,255,.4)",road2:"rgba(255,255,255,.22)",pier:"rgba(255,255,255,0)",text:"#ffffff",halo:"rgba(0,0,0,.8)"}};
+  if(k==="night")return{ramp:"v",alpha:0.95,pcol:"255,255,255",roadMin:11,C:{land:"#0e1215",urban:"#12171a",green:"#0f1614",sand:"#2b2a21",water:"#0a1420",road:"#262e33",road2:"#1b2226",pier:"#3d474d",text:"#8795a0",halo:"#0a0d0f"}};
+  if(k==="paper")return{ramp:"l",alpha:0.9,pcol:"40,60,80",roadMin:9,C:{land:"#f3ead2",urban:"#eee3c8",green:"#dfe3c0",sand:"#f6e2a8",water:"#d9e8e6",road:"#cdbf9c",road2:"#ddd1b2",pier:"#a89a78",text:"#5a4f3a",halo:"#f6eedb"}};
+  return isDark()
+  ?{ramp:"d",alpha:0.93,pcol:css("--particle")||"226,244,248",roadMin:7,C:{land:"#232a29",urban:"#283030",green:"#22302a",sand:"#3a3628",water:"#0b1b25",road:"#3b4644",road2:"#2a3331",pier:"#55605b",text:"#a9bcc2",halo:"#141a1a"}}
+  :{ramp:"l",alpha:0.93,pcol:css("--particle")||"20,52,74",roadMin:7,C:{land:"#f1ecdf",urban:"#ebe5d6",green:"#dde6cc",sand:"#f4e4b4",water:"#cfe3ea",road:"#d6ccb4",road2:"#e2dac6",pier:"#b9ae93",text:"#4d5c63",halo:"#f6f2e8"}}}
+function mapStyle(){const LK=look(),C=LK.C,fo=LK.sat?0:1,r0=LK.roadMin,r1=Math.max(11,r0+2);
   const name=["coalesce",["get","name_en"],["get","name"]],road=(id,cls,min,col,w)=>({id,type:"line",source:"omt","source-layer":"transportation",minzoom:min,
     filter:["all",["==",["geometry-type"],"LineString"],["in",["get","class"],["literal",cls]]],layout:{"line-cap":"round","line-join":"round"},paint:{"line-color":col,"line-width":["interpolate",["exponential",1.6],["zoom"],...w]}});
   const label=(id,cls,min,size)=>({id,type:"symbol",source:"omt","source-layer":"place",minzoom:min,filter:["in",["get","class"],["literal",cls]],
     layout:{"text-field":name,"text-font":["Noto Sans Regular"],"text-size":size,"text-max-width":8},paint:{"text-color":C.text,"text-halo-color":C.halo,"text-halo-width":1.2}});
   return{version:8,glyphs:"https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf",
-    sources:{omt:{type:"vector",url:"https://tiles.openfreemap.org/planet",attribution:'<a href="https://openfreemap.org" target="_blank">OpenFreeMap</a> &copy; <a href="https://www.openmaptiles.org/" target="_blank">OpenMapTiles</a> Data from <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a>'}},
-    layers:[{id:"bg",type:"background",paint:{"background-color":C.land}},
-      {id:"urban",type:"fill",source:"omt","source-layer":"landuse",minzoom:9,filter:["in",["get","class"],["literal",["residential","commercial","industrial","retail"]]],paint:{"fill-color":C.urban}},
-      {id:"green",type:"fill",source:"omt","source-layer":"landcover",filter:["in",["get","class"],["literal",["wood","grass","wetland"]]],paint:{"fill-color":C.green}},
-      {id:"park",type:"fill",source:"omt","source-layer":"park",paint:{"fill-color":C.green}},
-      {id:"sand",type:"fill",source:"omt","source-layer":"landcover",filter:["==",["get","class"],"sand"],paint:{"fill-color":C.sand}},
-      {id:"water",type:"fill",source:"omt","source-layer":"water",paint:{"fill-color":C.water}},
-      road("roads2",["secondary","tertiary","minor"],11,C.road2,[11,0.4,15,3]),
-      road("roads",["motorway","trunk","primary"],7,C.road,[7,0.4,11,1.2,15,5]),
-      {id:"pier-fill",type:"fill",source:"omt","source-layer":"transportation",filter:["all",["==",["geometry-type"],"Polygon"],["==",["get","class"],"pier"]],paint:{"fill-color":C.pier}},
+    sources:{...(LK.sat?{sat:{type:"raster",tiles:["https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"],tileSize:256,maxzoom:18,attribution:"Imagery &copy; Esri, Maxar, Earthstar Geographics"}}:{}),omt:{type:"vector",url:"https://tiles.openfreemap.org/planet",attribution:'<a href="https://openfreemap.org" target="_blank">OpenFreeMap</a> &copy; <a href="https://www.openmaptiles.org/" target="_blank">OpenMapTiles</a> Data from <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a>'}},
+    layers:[{id:"bg",type:"background",paint:{"background-color":C.land}},...(LK.sat?[{id:"sat",type:"raster",source:"sat"}]:[]),
+      {id:"urban",type:"fill",source:"omt","source-layer":"landuse",minzoom:9,filter:["in",["get","class"],["literal",["residential","commercial","industrial","retail"]]],paint:{"fill-color":C.urban,"fill-opacity":fo}},
+      {id:"green",type:"fill",source:"omt","source-layer":"landcover",filter:["in",["get","class"],["literal",["wood","grass","wetland"]]],paint:{"fill-color":C.green,"fill-opacity":fo}},
+      {id:"park",type:"fill",source:"omt","source-layer":"park",paint:{"fill-color":C.green,"fill-opacity":fo}},
+      {id:"sand",type:"fill",source:"omt","source-layer":"landcover",filter:["==",["get","class"],"sand"],paint:{"fill-color":C.sand,"fill-opacity":fo}},
+      {id:"water",type:"fill",source:"omt","source-layer":"water",paint:{"fill-color":C.water,"fill-opacity":fo}},
+      road("roads2",["secondary","tertiary","minor"],r1,C.road2,[11,0.4,15,3]),
+      road("roads",["motorway","trunk","primary"],r0,C.road,[7,0.4,11,1.2,15,5]),
+      {id:"pier-fill",type:"fill",source:"omt","source-layer":"transportation",filter:["all",["==",["geometry-type"],"Polygon"],["==",["get","class"],"pier"]],paint:{"fill-color":C.pier,"fill-opacity":fo}},
       {id:"pier-line",type:"line",source:"omt","source-layer":"transportation",filter:["all",["==",["geometry-type"],"LineString"],["==",["get","class"],"pier"]],paint:{"line-color":C.pier,"line-width":["interpolate",["linear"],["zoom"],11,0.8,15,4]}},
       label("towns",["town","village","suburb"],10,12),label("cities",["city"],6,["interpolate",["linear"],["zoom"],6,11,12,15])]}}
 /* screen <-> lon/lat (web mercator, no rotation) */
@@ -553,22 +563,25 @@ function isWater(x,y){if(!MASKD)return true;const ix=(x/MS)|0,iy=(y/MS)|0;if(ix<
 const RAMP={
   swell:{u:"ft",t:"Primary swell height",ticks:[0,2,4,6,8,12],max:12,
     l:[[0,[238,246,246]],[1,[213,236,238]],[2,[166,216,222]],[3,[108,189,208]],[4,[61,156,196]],[6,[61,111,181]],[8,[90,74,166]],[10,[140,63,156]],[12,[194,64,127]]],
-    d:[[0,[11,27,37]],[1,[14,48,62]],[2,[17,74,90]],[3,[20,110,126]],[4,[30,146,160]],[6,[58,160,214]],[8,[107,132,224]],[10,[164,104,214]],[12,[224,95,168]]]},
+    d:[[0,[11,27,37]],[1,[14,48,62]],[2,[17,74,90]],[3,[20,110,126]],[4,[30,146,160]],[6,[58,160,214]],[8,[107,132,224]],[10,[164,104,214]],[12,[224,95,168]]],
+    v:[[0,[22,30,62]],[1,[38,66,150]],[2,[40,118,202]],[3,[40,168,192]],[4,[62,190,122]],[6,[222,210,62]],[8,[240,142,52]],[10,[226,72,62]],[12,[200,52,140]]]},
   period:{u:"s",t:"Primary swell period",ticks:[6,9,12,15,18,21],min:6,max:21,
     l:[[6,[240,244,232]],[9,[207,227,176]],[12,[143,207,154]],[15,[63,174,158]],[18,[42,127,176]],[21,[74,74,166]]],
-    d:[[6,[11,27,37]],[9,[30,64,44]],[12,[36,112,82]],[15,[32,150,150]],[18,[58,140,214]],[21,[150,110,224]]]},
+    d:[[6,[11,27,37]],[9,[30,64,44]],[12,[36,112,82]],[15,[32,150,150]],[18,[58,140,214]],[21,[150,110,224]]],
+    v:[[6,[28,38,80]],[9,[40,110,190]],[12,[50,180,170]],[15,[150,205,80]],[18,[240,190,60]],[21,[235,90,70]]]},
   wind:{u:"kn",t:"Wind speed",ticks:[0,5,10,15,20,30],max:30,
     l:[[0,[244,246,240]],[5,[220,235,208]],[10,[241,221,140]],[15,[240,176,96]],[20,[227,122,74]],[30,[184,64,90]]],
-    d:[[0,[11,27,37]],[5,[22,62,58]],[10,[88,104,36]],[15,[154,106,30]],[20,[184,80,42]],[30,[196,58,96]]]}};
+    d:[[0,[11,27,37]],[5,[22,62,58]],[10,[88,104,36]],[15,[154,106,30]],[20,[184,80,42]],[30,[196,58,96]]],
+    v:[[0,[28,38,80]],[5,[50,120,190]],[10,[60,185,150]],[15,[220,210,70]],[20,[240,140,60]],[30,[220,60,90]]]}};
 function rampCol(stops,v){if(v<=stops[0][0])return stops[0][1];for(let i=1;i<stops.length;i++)if(v<=stops[i][0]){const a=stops[i-1],b=stops[i],t=(v-a[0])/(b[0]-a[0]);return[lerp(a[1][0],b[1][0],t),lerp(a[1][1],b[1][1],t),lerp(a[1][2],b[1][2],t)]}return stops[stops.length-1][1]}
 const layerArr=()=>LAYER==="swell"?DATA.F.H[TI]:LAYER==="period"?DATA.F.P[TI]:DATA.F.WS[TI];
 const fS=document.createElement("canvas");
 function drawField(){const W=Math.round(V.W*V.dpr),H=Math.round(V.H*V.dpr);if(cF.width!==W||cF.height!==H){cF.width=W;cF.height=H}
   const ctx=cF.getContext("2d");ctx.setTransform(1,0,0,1,0,0);ctx.clearRect(0,0,W,H);if(!DATA||!MAP)return;
-  const w=Math.max(2,Math.round(V.W/5)),h=Math.max(2,Math.round(V.H/5));fS.width=w;fS.height=h;const sc=fS.getContext("2d"),img=sc.createImageData(w,h),st=RAMP[LAYER][isDark()?"d":"l"],arr=layerArr();
+  const w=Math.max(2,Math.round(V.W/5)),h=Math.max(2,Math.round(V.H/5));fS.width=w;fS.height=h;const sc=fS.getContext("2d"),img=sc.createImageData(w,h),st=RAMP[LAYER][look().ramp],arr=layerArr();
   const lons=new Float64Array(w);for(let x=0;x<w;x++)lons[x]=LON((x+0.5)*5);let k=0;
   for(let y=0;y<h;y++){const lat=LAT((y+0.5)*5);for(let x=0;x<w;x++){const c=rampCol(st,sample(arr,lons[x],lat));img.data[k++]=c[0];img.data[k++]=c[1];img.data[k++]=c[2];img.data[k++]=255}}
-  sc.putImageData(img,0,0);ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality="high";ctx.globalAlpha=0.93;ctx.drawImage(fS,0,0,W,H);ctx.globalAlpha=1;
+  sc.putImageData(img,0,0);ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality="high";ctx.globalAlpha=look().alpha;ctx.drawImage(fS,0,0,W,H);ctx.globalAlpha=1;
   ctx.globalCompositeOperation="destination-in";ctx.drawImage(mask,0,0);ctx.globalCompositeOperation="source-over"}
 /* particles: swell drawn as short crests marching along the swell direction, wind as streaks */
 let PART=[],raf=0;const REDUCED=matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -594,7 +607,7 @@ function drawStatic(){const c=cP.getContext("2d");c.setTransform(V.dpr,0,0,V.dpr
   c.strokeStyle=c.fillStyle=`rgba(${PCOL},.6)`;c.lineWidth=1.2;
   for(let y=30;y<V.H;y+=46)for(let x=30;x<V.W;x+=46){if(!isWater(x,y))continue;const lo=LON(x),la=LAT(y),u=sample(wind?F.WU[TI]:F.U[TI],lo,la),v=sample(wind?F.WV[TI]:F.V[TI],lo,la),n=Math.hypot(u,v)||1,ux=u/n,uy=-v/n;
     c.beginPath();c.moveTo(x-ux*9,y-uy*9);c.lineTo(x+ux*9,y+uy*9);c.stroke();c.beginPath();c.moveTo(x+ux*11,y+uy*11);c.lineTo(x+ux*5-uy*4,y+uy*5+ux*4);c.lineTo(x+ux*5+uy*4,y+uy*5-ux*4);c.fill()}}
-let PCOL="20,52,74";const syncTheme=()=>{PCOL=css("--particle")||PCOL};
+let PCOL="20,52,74";const syncTheme=()=>{PCOL=look().pcol};
 /* markers */
 let MK=[];
 function makeMarks(){const box=$("marks");box.innerHTML="";MK=[];
@@ -607,7 +620,7 @@ function placeMarks(){if(!MAP)return;const z=MAP.getZoom(),lab=z>=10.6,used=[];
   for(const m of MK){m.x=X(m.lo);m.y=Y(m.la);m.el.style.transform=`translate(${m.x.toFixed(1)}px,${m.y.toFixed(1)}px)`;m.el.hidden=m.x<-40||m.y<-40||m.x>V.W+40||m.y>V.H+40||(m.spot!=null&&m.spot!==S.sel&&!inFilter(DATA.spots[m.spot]))}
   for(const m of order){let show=false;if(lab&&!m.el.hidden){const r=[m.x+8,m.y-22,m.x+8+m.w,m.y+4];show=!used.some(u=>r[0]<u[2]&&r[2]>u[0]&&r[1]<u[3]&&r[3]>u[1]);if(show)used.push(r)}m.el.classList.toggle("lab",show)}}
 function colorMarks(){if(!DATA)return;for(const m of MK)if(m.spot!=null){const s=DATA.spots[m.spot];m.el.firstChild.style.background=s.ok?rtCol(s.hr[TI].cls):"var(--muted)";m.el.classList.toggle("sel",S.sel===m.spot)}}
-function legend(){const R=RAMP[LAYER],st=R[isDark()?"d":"l"],lo=R.min||0,g=st.map(([v,c])=>`rgb(${c.map(Math.round).join(",")}) ${((v-lo)/(R.max-lo)*100).toFixed(0)}%`).join(",");
+function legend(){const R=RAMP[LAYER],st=R[look().ramp],lo=R.min||0,g=st.map(([v,c])=>`rgb(${c.map(Math.round).join(",")}) ${((v-lo)/(R.max-lo)*100).toFixed(0)}%`).join(",");
   $("legend").innerHTML=`<b>${R.t}, ${R.u}</b><div class="bar" style="background:linear-gradient(90deg,${g})"></div><div class="tk">${R.ticks.map(t=>`<span>${t}${t===R.max?"+":""}</span>`).join("")}</div><div class="probe" id="probe"></div>`}
 let pend=false,maskT=0;
 function redraw(){if(pend||!MAP)return;pend=true;requestAnimationFrame(()=>{pend=false;syncProj();buildMask();drawField();if(DATA){placeMarks();colorMarks()}
@@ -631,6 +644,8 @@ function initMap(){
 const inView=(lo,la)=>{const x=X(lo),y=Y(la);return x>24&&x<V.W-24&&y>64&&y<V.H-24};
 function goTo(lo,la,minZoom){if(!MAP)return;const z=MAP.getZoom();if(z>=minZoom&&inView(lo,la))return;MAP.easeTo({center:[lo,la],zoom:Math.max(z,minZoom),duration:REDUCED?0:700})}
 for(const l of ["swell","period","wind"])$("lyr-"+l).onclick=()=>{LAYER=l;for(const m of ["swell","period","wind"])$("lyr-"+m).setAttribute("aria-pressed",m===l);legend();clearParticles();redraw()};
+function lookButtons(){$("looks").innerHTML=Object.entries(LOOKS).map(([k,n])=>`<button data-look="${k}" aria-pressed="${S.look===k}">${n}</button>`).join("")}
+$("looks").addEventListener("click",e=>{const b=e.target.closest("[data-look]");if(!b)return;S.look=b.dataset.look;try{localStorage.setItem("swellchart.look",S.look)}catch(e){}lookButtons();themeChanged()});
 const themeChanged=()=>{syncTheme();legend();if(MAP)MAP.setStyle(mapStyle());redraw()};
 matchMedia("(prefers-color-scheme: dark)").addEventListener("change",themeChanged);
 new MutationObserver(themeChanged).observe(document.documentElement,{attributes:true,attributeFilter:["data-theme"]});
@@ -648,7 +663,7 @@ $("play").onclick=()=>{if(!DATA)return;const on=!playT;$("play").setAttribute("a
   if(on)playT=setInterval(()=>setTime(TI>=DATA.times.length-1?NOWI:TI+1,true),380);else{clearInterval(playT);playT=0}};
 
 /* ---------- panel ---------- */
-const S={tab:"spots",sel:null,region:"all",step:1,sort:"best"};try{if(localStorage.getItem("swellchart.step")==="3")S.step=3}catch(e){}
+const S={tab:"spots",sel:null,region:"all",step:1,sort:"best",look:"chart"};try{const l=localStorage.getItem("swellchart.look");if(l&&["chart","sat","night","paper"].includes(l))S.look=l}catch(e){}try{if(localStorage.getItem("swellchart.step")==="3")S.step=3}catch(e){}
 const REG={all:"All",sb:"Santa Barbara",vc:"Ventura",la:"Los Angeles",oc:"Orange County",sd:"San Diego"};
 const CHIPS={all:"All",fav:"\u2605 Favorites",sb:"Santa Barbara",vc:"Ventura",la:"Los Angeles",oc:"Orange County",sd:"San Diego"};
 // Favorites and list preferences are kept in this browser only.
@@ -803,6 +818,6 @@ $("body").addEventListener("click",e=>{const t=e.target.closest("[data-spot],[da
   else if(t.id==="refresh"){load(true)}
   else if(t.dataset.chart){const r=t.querySelector("svg").getBoundingClientRect(),f=((e.clientX-r.left)/r.width-+t.dataset.x0)/(+t.dataset.x1-+t.dataset.x0);setTime(+t.dataset.i0+Math.floor(clamp(f,0,0.9999)*+t.dataset.n))}
   else if(t.id==="fc"){const r=t.querySelector("svg").getBoundingClientRect(),f=((e.clientX-r.left)/r.width-+t.dataset.x0)/(+t.dataset.x1-+t.dataset.x0);setTime(Math.floor(clamp(f,0,0.9999)*DATA.times.length))}});
-syncTheme();legend();if(initMap()){if(!REDUCED)tick();load(false)}
+lookButtons();syncTheme();legend();if(initMap()){if(!REDUCED)tick();load(false)}
 </script>
 </body></html>

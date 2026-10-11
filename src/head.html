@@ -45,7 +45,8 @@ button{font:inherit;color:inherit;cursor:pointer}
 #mapgl{position:absolute;inset:0;font:inherit}
 .map>canvas{position:absolute;inset:0;width:100%;height:100%;display:block;pointer-events:none}
 #marks{position:absolute;inset:0;pointer-events:none;z-index:3;overflow:hidden}
-.maphead,.legend,.zoom,.msg{z-index:4}
+.maphead,.legend,.zoom,.msg,.looks{z-index:4}
+.looks{position:absolute;left:12px;top:54px}
 .maplibregl-ctrl-attrib{font-size:10.5px}
 .mk{position:absolute;left:0;top:0;padding:0;border:0;background:none;pointer-events:auto;display:flex;align-items:center;gap:6px;white-space:nowrap}
 .mk i{display:block;width:10px;height:10px;border-radius:50%;border:1.5px solid var(--panel);margin:-5px 0 0 -5px;flex:none}
@@ -203,6 +204,7 @@ td.num,th.num{text-align:right;padding-right:0}
           <button id="lyr-swell" aria-pressed="true">Swell</button><button id="lyr-period" aria-pressed="false">Period</button><button id="lyr-wind" aria-pressed="false">Wind</button>
         </div>
       </div>
+      <div class="seg glass looks" id="looks" role="group" aria-label="Map look"></div>
       <div class="legend glass" id="legend"></div>
       <div class="zoom glass"><button id="zin" aria-label="Zoom in">+</button><button id="zout" aria-label="Zoom out">&minus;</button><button id="zfit" aria-label="Show whole coast" title="Show whole coast">&#8962;</button></div>
       <div class="msg glass" id="msg"><b>Loading the forecast</b>Pulling swell, wind, tide and buoy data.</div>
