@@ -130,6 +130,24 @@ td.num,th.num{text-align:right;padding-right:0}
 .wins>:first-child{border-top:0}
 .win .m{color:var(--muted)}
 .note{margin:0;color:var(--muted);font-size:13px}
+.dcards{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;margin:0 -18px;padding:0 18px 2px}
+.dcards::-webkit-scrollbar{display:none}
+.dcard{flex:none;min-width:82px;display:flex;flex-direction:column;gap:5px;align-items:flex-start;text-align:left;border:1px solid var(--line);background:none;border-radius:9px;padding:8px 9px 9px}
+.dcard[aria-pressed="true"]{border-color:var(--ink);background:var(--raise)}
+.dcard .dn{font-size:12px;color:var(--muted)}
+.dcard .dh{font-weight:600;font-size:15px;white-space:nowrap}
+.dcard .dseg{display:flex;gap:2px;width:100%}
+.dcard .dseg i{flex:1;height:4px;border-radius:2px}
+.hours{display:flex;flex-direction:column}
+.hrow{display:grid;grid-template-columns:44px 70px minmax(0,1fr) 78px 30px;gap:8px;align-items:center;text-align:left;border:0;border-top:1px solid var(--line);background:none;padding:6px 0;font-size:12.5px}
+.hrow>span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hrow .hs{display:flex;align-items:center;gap:6px;font-weight:600}
+.hrow .dot{width:8px;height:8px}
+.hrow small{display:block;color:var(--muted);font-size:11px}
+.hrow .num{text-align:right}
+.hrow.night{color:var(--muted)}
+.hrow.on{background:var(--raise);box-shadow:inset 2px 0 0 var(--accent);padding-left:6px;margin-left:-6px}
+.hhead{border-top:0;color:var(--muted);font-size:11.5px;padding-bottom:4px}
 .fc{cursor:crosshair}
 .foot{margin-top:auto;padding-top:14px;font-size:12px;color:var(--muted)}
 .foot button{border:0;background:none;padding:0;margin-left:6px;color:var(--ink);text-decoration:underline;text-underline-offset:2px;font-size:12px}
@@ -147,7 +165,7 @@ td.num,th.num{text-align:right;padding-right:0}
   .map{height:54vh;min-height:320px}
   .panel{min-height:50vh;border-left:0}
   .body{overflow:visible;padding-inline:16px}
-  .chips{margin:0 -16px;padding:0 16px}
+  .chips,.dcards{margin-inline:-16px;padding-inline:16px}
   .tabs{padding:0 16px}
   .time{grid-template-columns:minmax(0,1fr) auto;padding-inline:16px}
   .track{grid-column:1/-1;grid-row:2}
@@ -367,11 +385,12 @@ function windScore(s,ws,wd){if(ws==null||wd==null)return{q:1,word:"No wind data"
   const word=ws<4?"Light":d<35?"Offshore":d<70?"Cross-offshore":d<110?"Cross-shore":d<145?"Cross-onshore":"Onshore";return{q,word,d}}
 function tideScore(td,ft){const r=TIDE_RANGE[td];if(!r||ft==null)return 1;const o=ft<r[0]?r[0]-ft:ft>r[1]?ft-r[1]:0;return 1-Math.min(0.3,0.1*o)}
 function sizeScore(f,lo,hi){if(f<1)return 0;if(f<lo)return 0.2+0.4*(f-1)/Math.max(0.5,lo-1);if(f<=hi)return 0.6+0.4*(f-lo)/(hi-lo);return Math.max(0.45,1-0.55*(f-hi)/hi)}
+const clsOf=(face,rate)=>face<1?0:rate<2?1:rate<3.5?2:rate<5?3:rate<6.5?4:rate<8.8?5:6;
 function rateHour(s,i){const cs=comps(s,i);let e=0,dom=null;for(const c of cs){e+=c.face*c.face;if(!dom||c.face>dom.face)dom=c}
   const face=Math.sqrt(e),w=windScore(s,s.wx.ws[i],s.wx.wd[i]),tide=s.tide?s.tide[i]:null;
   const per=dom?clamp((dom.p-6)/8,0,1)*0.8+0.2:0.2;
   const rate=Math.min(windCap(s.wx.ws[i],w.d),10*sizeScore(face,s.sz[0],s.sz[1])*(0.25+0.75*w.q)*(0.55+0.45*per)*tideScore(s.td,tide));
-  const cls=face<1?0:rate<2?1:rate<3.5?2:rate<5?3:rate<6.5?4:rate<8.8?5:6;
+  const cls=clsOf(face,rate);
   return{face,rate,cls,dom,w,tide,cs}}
 function faceText(f){if(f<1)return"Flat";const lo=Math.max(1,Math.round(f*0.85)),hi=Math.max(lo+1,Math.round(f*1.15));return`${lo}–${hi} ft`}
 
@@ -644,6 +663,19 @@ function fcChart(s){const T=DATA.times,W=372,H=176,x0=24,bw=(W-x0-4)/T.length,x=
     g+=`<path d="${d}" fill="none" stroke="var(--map-ink)" stroke-width="1.3"/><text x="${x0-4}" y="${t0+5}" font-size="9" text-anchor="end" fill="var(--muted)">${hi.toFixed(0)}</text><text x="${x0-4}" y="${t1+2}" font-size="9" text-anchor="end" fill="var(--muted)">${lo.toFixed(0)}</text>`}
   g+=`<line x1="${x(TI)+bw/2}" x2="${x(TI)+bw/2}" y1="6" y2="${H-14}" stroke="var(--accent)" stroke-width="1.5"/>`;
   return`<div class="fc" id="fc" data-x0="${x0/W}" data-x1="${(W-4)/W}"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Seven-day surf height, rating and tide for ${esc(s.n)}">${g}</svg></div><p class="note" style="font-size:12px;margin-top:6px">Bars: surf height in feet, coloured by rating. Line: tide. Tap to jump to a time.</p>`}
+function dayIdx(){const T=DATA.times,out=[];let i=0;while(i<T.length){const d=T[i].slice(0,10),idx=[];for(;i<T.length&&T[i].slice(0,10)===d;i++)idx.push(i);out.push({d,idx})}return out}
+const hourOf=k=>+DATA.times[k].slice(11,13);
+function rangeText(fs){const mn=Math.min(...fs),mx=Math.max(...fs);if(mx<1)return"Flat";const lo=Math.max(1,Math.round(mn*0.9)),hi=Math.max(lo+1,Math.round(mx*1.1));return`${lo}\u2013${hi} ft`}
+function dayCards(s){const T=DATA.times,cur=T[TI].slice(0,10),today=laNow().date,hNow=hourOf(TI);
+  return`<div class="dcards" role="group" aria-label="Forecast day">${dayIdx().map(({d,idx})=>{const p=tparts(T[idx[0]]),lit=idx.filter(k=>s.wx.day[k]),use=lit.length?lit:idx;
+    const seg=[[5,10,"Morning"],[10,14,"Midday"],[14,19,"Afternoon"]].map(([a,b,nm])=>{const ks=idx.filter(k=>hourOf(k)>=a&&hourOf(k)<b);if(!ks.length)return`<i style="background:var(--line)"></i>`;
+      const f=ks.reduce((t,k)=>t+s.hr[k].face,0)/ks.length,r=ks.reduce((t,k)=>t+s.hr[k].rate,0)/ks.length,c=clsOf(f,r);return`<i style="background:${rtCol(c)}" title="${nm}: ${RT[c].n}"></i>`}).join("");
+    const go=idx.find(k=>hourOf(k)===hNow)??idx[Math.min(idx.length-1,12)];
+    return`<button class="dcard" data-time="${go}" aria-pressed="${d===cur}"><span class="dn">${d===today?"Today":DOW[p.dow]+" "+p.d}</span><span class="dh">${rangeText(use.map(k=>s.hr[k].face))}</span><span class="dseg">${seg}</span></button>`}).join("")}</div>`}
+function hourly(s){const T=DATA.times,cur=T[TI].slice(0,10),day=dayIdx().find(x=>x.d===cur),ks=day.idx.filter(k=>hourOf(k)>=5&&hourOf(k)<=20);
+  return`<div class="hours"><div class="hrow hhead"><span>Time</span><span>Surf</span><span>Swell</span><span>Wind</span><span class="num">Tide</span></div>${ks.map(k=>{const h=s.hr[k],ws=s.wx.ws[k],wd=s.wx.wd[k];
+    return`<button class="hrow${k===TI?" on":""}${s.wx.day[k]?"":" night"}" data-time="${k}" title="${RT[h.cls].n}"><span>${h12(hourOf(k))}</span><span class="hs"><i class="dot" style="background:${rtCol(h.cls)}"></i>${faceText(h.face)}</span>
+    <span>${h.dom?`${h.dom.h.toFixed(1)} ft ${Math.round(h.dom.p)} s ${comp(h.dom.d)}`:"\u2013"}</span><span>${ws==null?"\u2013":`${Math.round(ws)} kn ${arrow(wd)}<small>${h.w.word}</small>`}</span><span class="num">${h.tide==null?"\u2013":h.tide.toFixed(1)}</span></button>`}).join("")}</div>`}
 function windows(s){const T=DATA.times,out=[];let i=0;
   while(i<T.length){const day=T[i].slice(0,10);let best=null;let j=i;for(;j<T.length&&T[j].slice(0,10)===day;j++){if(j<NOWI||j+2>=T.length||T[j+2].slice(0,10)!==day)continue;if(!(s.wx.day[j]&&s.wx.day[j+2]))continue;
       const r=(s.hr[j].rate+s.hr[j+1].rate+s.hr[j+2].rate)/3;if(!best||r>best.r)best={r,j}}
@@ -663,10 +695,11 @@ function detail(s){const h=s.hr[TI];
    <div><dt>Water</dt><dd>${sst==null?"n/a":`${Math.round(sst*9/5+32)}°F<small>Model sea surface</small>`}</dd></div>
    <div><dt>Nearest buoy</dt><dd>${nb?`${nb.d.hs[nb.d.hs.length-1].toFixed(1)} ft @ ${Math.round(nb.d.tp[nb.d.tp.length-1])} s<small>${esc(nb.b.n)}, ${ageText(nb.d)}</small>`:"n/a"}</dd></div>
   </dl>
+  <div><p class="lab" style="margin-bottom:8px">By day</p>${dayCards(s)}</div>
+  <div><p class="lab" style="margin-bottom:4px">${fmt(TI).split(" ")[0]} by hour \u00b7 dot colour is the rating</p>${hourly(s)}</div>
   <div><p class="lab" style="margin-bottom:8px">Swell in the water</p><table><thead><tr><th>Source</th><th>Offshore</th><th>From</th><th class="num">At this spot</th></tr></thead><tbody>
   ${h.cs.length?h.cs.map(c=>`<tr><td>${c.k}</td><td>${c.h.toFixed(1)} ft @ ${Math.round(c.p)} s</td><td>${arrow(c.d)} ${comp(c.d)} ${Math.round(c.d)}°</td><td class="num">${c.face<0.5?(c.p<5?"too short":c.df<0.5?"blocked":"under 1 ft"):c.face.toFixed(1)+" ft"}</td></tr>`).join(""):`<tr><td colspan="4">No swell reaching this point</td></tr>`}</tbody></table></div>
   <div><p class="lab" style="margin-bottom:8px">Next seven days</p>${fcChart(s)}</div>
-  <div><p class="lab">Best daylight window each day</p><div class="wins" style="margin-top:6px">${windows(s)||'<p class="note">No daylight hours left in the forecast.</p>'}</div></div>
   <p class="note">${esc(s.note)} Faces ${comp(s.f)}. Accepts swell from ${s.w.map(([a,b])=>`${comp(a)} to ${comp(b)}`).join(" and ")}; ideal faces ${s.sz[0]}–${s.sz[1]} ft.</p></div>`}
 const buoyAge=d=>(Date.now()/1000-d.t[d.t.length-1])/60;
 function ageText(d){const m=Math.round(buoyAge(d));return m<90?`${m} min ago`:`${Math.round(m/60)} h ago`}
