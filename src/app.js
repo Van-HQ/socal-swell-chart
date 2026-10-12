@@ -327,7 +327,7 @@ $("play").onclick=()=>{if(!DATA)return;const on=!playT;$("play").setAttribute("a
   if(on)playT=setInterval(()=>setTime(TI>=DATA.times.length-1?NOWI:TI+1,true),380);else{clearInterval(playT);playT=0}};
 
 /* ---------- panel ---------- */
-const S={tab:"spots",sel:null,region:"all",step:1,sort:"best",look:"night"};
+const S={tab:"spots",sel:null,region:"all",step:3,sort:"best",look:"night"};
 const REG={all:"All",sb:"Santa Barbara",vc:"Ventura",la:"Los Angeles",oc:"Orange County",sd:"San Diego"};
 const CHIPS={all:"All",fav:"\u2605 Favorites",sb:"Santa Barbara",vc:"Ventura",la:"Los Angeles",oc:"Orange County",sd:"San Diego"};
 // Favorites and list preferences are kept in this browser only.
@@ -511,8 +511,8 @@ function detail(s){const h=s.hr[TI];
    <div class="tile"><span class="tk">${ICON.buoy}Buoy</span><b>${nb?`${nb.d.hs[nb.d.hs.length-1].toFixed(1)} ft · ${Math.round(nb.d.tp[nb.d.tp.length-1])} s`:"n/a"}</b><small>${nb?`${esc(nb.b.n)} · ${ageText(nb.d)}`:""}</small></div>
   </div>
   <div><p class="lab" style="margin-bottom:8px">By day</p>${dayCards(s)}</div>
-  <div><p class="lab" style="margin-bottom:8px">${fmt(TI).split(" ")[0]} through the day</p>${dayChart(s)}<div class="steprow"><div class="seg2" role="group" aria-label="Table interval"><button data-step="1" aria-pressed="${S.step===1}">Hourly</button><button data-step="3" aria-pressed="${S.step===3}">3-hour</button></div></div>${hourly(s)}</div>
-  <div><p class="lab" style="margin-bottom:8px">Swell breakdown · ${fmt(TI)}</p>${spectra(s)}</div>
+  <div><p class="lab" style="margin-bottom:8px">Outlook · ${fmt(TI).split(" ")[0]}</p>${dayChart(s)}<div class="steprow"><div class="seg2" role="group" aria-label="Table interval"><button data-step="3" aria-pressed="${S.step===3}">3-hour</button><button data-step="1" aria-pressed="${S.step===1}">Hourly</button></div></div>${hourly(s)}</div>
+  <div><p class="lab" style="margin-bottom:8px">Swell Breakdown · ${fmt(TI)}</p>${spectra(s)}</div>
   <div><p class="lab" style="margin-bottom:8px">7 Day Forecast</p>${fcChart(s)}</div>
   ${bestWindowsView(s)}
   <p class="note">${esc(s.note)} Faces ${comp(s.f)}. Accepts swell from ${s.w.map(([a,b])=>`${comp(a)} to ${comp(b)}`).join(" and ")}; ideal faces ${s.sz[0]}–${s.sz[1]} ft.</p></div>`}
