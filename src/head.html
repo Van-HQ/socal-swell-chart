@@ -3,7 +3,17 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>SoCal Swell Chart</title>
+<title>Swell</title>
+<meta name="application-name" content="Swell">
+<meta name="apple-mobile-web-app-title" content="Swell">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0a1217">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/svg+xml" href="icons/icon.svg">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Source+Serif+4:ital,wght@1,400&display=swap">
 <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
@@ -74,7 +84,8 @@ button{font:inherit;color:inherit;cursor:pointer}
 .glass{background:var(--glass);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-radius:9px}
 .maphead{position:absolute;left:12px;top:12px;right:12px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between;pointer-events:none}
 .brand{padding:8px 12px;pointer-events:auto}
-.brand h1{margin:0;font:600 15px/1 var(--f-ui);letter-spacing:.005em}
+.brand h1{margin:0;font:600 16px/1 var(--f-ui);letter-spacing:.01em;display:flex;align-items:center;gap:8px}
+.brand h1 img{border-radius:5px;display:block}
 .seg{display:flex;padding:3px;gap:2px;pointer-events:auto}
 .seg button{border:0;background:none;padding:6px 11px;font:500 13px/1 var(--f-ui);color:var(--muted);border-radius:7px}
 .seg button[aria-pressed="true"]{background:var(--ink);color:var(--panel)}
@@ -235,7 +246,7 @@ td.num,th.num{text-align:right;padding-right:0}
       <div id="mapgl"></div><canvas id="cField"></canvas><canvas id="cPart"></canvas>
       <div id="marks"></div>
       <div class="maphead">
-        <div class="brand glass"><h1>SoCal Swell Chart</h1></div>
+        <div class="brand glass"><h1>Swell</h1></div>
         <div class="seg glass" role="group" aria-label="Map layer">
           <button id="lyr-swell" aria-pressed="true">Swell</button><button id="lyr-period" aria-pressed="false">Period</button><button id="lyr-wind" aria-pressed="false">Wind</button>
         </div>

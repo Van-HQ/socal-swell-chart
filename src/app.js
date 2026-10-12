@@ -128,7 +128,7 @@ function build(fc,tides,buoys){
     F.WU.push(fillGrid(fc.gw.map(g=>g.d[t]==null?null:-Math.sin(g.d[t]*rad))));F.WV.push(fillGrid(fc.gw.map(g=>g.d[t]==null?null:-Math.cos(g.d[t]*rad))))}
   return{at:fc.at,times:fc.times,spots,F,ref:fc.m[FP.length],buoys:buoys||BUOYS.map(()=>({ok:false})),tidesOk:!!tides&&Object.values(tides).some(Boolean)}}
 async function load(force){
-  $("msg").hidden=false;$("msg").innerHTML="<b>Loading the forecast</b>Pulling swell, wind, tide and buoy data.";
+  $("msg").hidden=false;$("msg").innerHTML="<b>Loading forecast</b>Swell, wind, tide and buoys.";
   try{
     let fc=null;
     if(!force)try{const c=JSON.parse(localStorage.getItem(CACHE_KEY)||"null");if(c&&Date.now()-c.at<CACHE_MIN*6e4&&c.times&&c.m&&c.m.length===FP.length+1&&c.times[0].slice(0,10)===laNow().date)fc=c}catch(e){}
@@ -139,7 +139,7 @@ async function load(force){
     NOWI=Math.max(0,DATA.times.indexOf(laNow().key));TI=NOWI;$("t").max=DATA.times.length-1;$("t").value=TI;
     $("msg").hidden=true;buildDays();makeMarks();setTime(TI);redraw();
   }catch(e){
-    $("msg").innerHTML=`<b>Could not load the forecast</b>${esc(e.message||e)}. This page needs a network connection to Open-Meteo. <br><button id="retry">Try again</button>`;
+    $("msg").innerHTML=`<b>Forecast unavailable</b>${esc(e.message||e)}. Check your connection. <br><button id="retry">Try again</button>`;
     $("retry").className="btn";$("retry").onclick=()=>load(true)}}
 
 /* ---------- map ---------- */
@@ -296,7 +296,7 @@ function probe(x,y){const el=$("probe");if(!el||!DATA)return;if(!isWater(x,y)){e
   if(LAYER==="wind"){const d=(Math.atan2(-sample(F.WU[TI],lo,la),-sample(F.WV[TI],lo,la))*180/Math.PI+360)%360;el.textContent=`${pos} · ${sample(F.WS[TI],lo,la).toFixed(0)} kn from ${comp(d)}`}
   else{const d=(Math.atan2(-sample(F.U[TI],lo,la),-sample(F.V[TI],lo,la))*180/Math.PI+360)%360;el.textContent=`${pos} · ${sample(F.H[TI],lo,la).toFixed(1)} ft @ ${sample(F.P[TI],lo,la).toFixed(0)} s from ${comp(d)} ${Math.round(d)}°`}}
 function initMap(){
-  if(!window.maplibregl){$("msg").hidden=false;$("msg").innerHTML="<b>Could not load the map</b>The map library did not download. Check your connection and reload.";return false}
+  if(!window.maplibregl){$("msg").hidden=false;$("msg").innerHTML="<b>Map unavailable</b>Check your connection and reload.";return false}
   setupTerrain();
   const touch=matchMedia("(pointer: coarse)").matches&&matchMedia("(max-width:860px)").matches;
   MAP=new maplibregl.Map({container:"mapgl",style:mapStyle(),bounds:FIT,fitBoundsOptions:{padding:8},minZoom:6.5,maxZoom:15.5,maxBounds:[[-125,30],[-113.5,37]],dragRotate:false,pitchWithRotate:false,attributionControl:false,cooperativeGestures:touch});
@@ -380,7 +380,7 @@ function outlook(){const r=DATA.ref,T=DATA.times;if(!r||!r.sh.some(v=>v!=null))r
 function listView(){const rows=DATA.spots.filter(inFilter);if(S.sort==="best")rows.sort((a,b)=>b.hr[TI].rate-a.hr[TI].rate);else rows.sort((a,b)=>a.idx-b.idx);
   return outlook()+`<div style="display:flex;flex-direction:column;gap:8px"><div class="chips" role="group" aria-label="Region">${Object.entries(CHIPS).map(([k,n])=>`<button data-reg="${k}" aria-pressed="${S.region===k}">${n}</button>`).join("")}</div>
   <div class="steprow" style="margin-top:2px;justify-content:space-between;align-items:center"><span class="lab">${rows.length} spot${rows.length===1?"":"s"}</span><div class="seg2" role="group" aria-label="Sort order"><button data-sort="best" aria-pressed="${S.sort==="best"}">Best first</button><button data-sort="ns" aria-pressed="${S.sort==="ns"}">North to south</button></div></div>
-  ${rows.length?"":`<p class="note">${S.region==="fav"?"No favorites yet. Open a spot and tap Save to add it here.":"No spots here."}</p>`}<div class="rows">${rows.map(s=>{const h=s.hr[TI];
+  ${rows.length?"":`<p class="note">${S.region==="fav"?"No favorites yet. Open a spot and tap the star.":"No spots here."}</p>`}<div class="rows">${rows.map(s=>{const h=s.hr[TI];
     if(!s.ok)return`<button class="row" data-spot="${s.idx}"><i class="dot" style="background:var(--line)"></i><span class="nm">${esc(s.n)}</span><span class="ft"></span><span class="sub">No wave data near this spot</span></button>`;
     return`<button class="row" data-spot="${s.idx}"><i class="dot" style="background:${rtCol(h.cls)}"></i><span class="nm">${esc(s.n)}${FAVS.has(s.n)?' <span class="fv" aria-label="Favorite">★</span>':""}</span><span class="ft">${faceText(h.face)}</span>
     <span class="sub"><b>${RT[h.cls].n}</b> · ${h.dom?`${comp(h.dom.d)} ${Math.round(h.dom.p)} s`:"no swell"} · ${h.w.d==null?"wind n/a":`${h.w.word.toLowerCase()} ${Math.round(s.wx.ws[TI])} kn`}</span></button>`}).join("")}</div></div>${foot()}`}
@@ -396,7 +396,7 @@ function fcChart(s){const T=DATA.times,W=372,H=176,x0=24,bw=(W-x0-4)/T.length,x=
     s.tide.forEach((v,i)=>{if(v==null){pen=false;return}d+=(pen?"L":"M")+(x(i)+bw/2).toFixed(1)+" "+ty(v).toFixed(1);pen=true});
     g+=`<path d="${d}" fill="none" stroke="var(--map-ink)" stroke-width="1.3"/><text x="${x0-4}" y="${t0+5}" font-size="9" text-anchor="end" fill="var(--muted)">${hi.toFixed(0)}</text><text x="${x0-4}" y="${t1+2}" font-size="9" text-anchor="end" fill="var(--muted)">${lo.toFixed(0)}</text>`}
   g+=`<line x1="${x(TI)+bw/2}" x2="${x(TI)+bw/2}" y1="18" y2="${H-14}" stroke="var(--ink)" stroke-width="1" opacity=".55"/><circle cx="${x(TI)+bw/2}" cy="${H-14}" r="2.5" fill="var(--ink)"/>`;
-  return`<div class="fc" id="fc" data-x0="${x0/W}" data-x1="${(W-4)/W}"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Seven-day surf height, rating and tide for ${esc(s.n)}">${g}</svg></div><p class="note" style="font-size:12px;margin-top:6px">Bars: surf height in feet, coloured by rating. Line: tide. Tap to jump to a time.</p>`}
+  return`<div class="fc" id="fc" data-x0="${x0/W}" data-x1="${(W-4)/W}"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Seven-day surf height, rating and tide for ${esc(s.n)}">${g}</svg></div><p class="note" style="font-size:12px;margin-top:6px">Bars: surf height (ft), coloured by rating. Line: tide.</p>`}
 function dayIdx(){const T=DATA.times,out=[];let i=0;while(i<T.length){const d=T[i].slice(0,10),idx=[];for(;i<T.length&&T[i].slice(0,10)===d;i++)idx.push(i);out.push({d,idx})}return out}
 const hourOf=k=>+DATA.times[k].slice(11,13);
 function rangeText(fs){const mn=Math.min(...fs),mx=Math.max(...fs);if(mx<1)return"Flat";const lo=Math.max(1,Math.round(mn*0.9)),hi=Math.max(lo+1,Math.round(mx*1.1));return`${lo}\u2013${hi} ft`}
@@ -432,7 +432,7 @@ function dayChart(s){const T=DATA.times,cur=T[TI].slice(0,10),ks=dayIdx().find(x
       g+=`<line x1="${x(hh).toFixed(1)}" x2="${x(hh).toFixed(1)}" y1="${py.toFixed(1)}" y2="${t1+6}" stroke="var(--map-ink)" stroke-width=".8" opacity=".6"/><text x="${px.toFixed(1)}" y="${(py-15).toFixed(1)}" font-size="10" font-weight="600" text-anchor="middle" fill="var(--ink)">${e.t.slice(11,16)}</text><text x="${px.toFixed(1)}" y="${(py-4).toFixed(1)}" font-size="10" text-anchor="middle" fill="var(--muted)">${e.v.toFixed(1)} ft</text>`}}
   const ci=ks.indexOf(TI);if(ci>=0)g=`<rect x="${x(ci).toFixed(1)}" y="2" width="${bw.toFixed(1)}" height="${H-22}" rx="3" fill="var(--ink)" opacity=".09"/>`+g;
   return`<div class="fc" data-chart="1" data-i0="${ks[0]}" data-n="${n}" data-x0="${x0/W}" data-x1="${(W-4)/W}"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Hourly wave energy, rating, wind and tide for the selected day">${g}</svg></div>
-  <p class="note" style="font-size:12px;margin-top:6px">Bars: wave energy reaching the spot. Colour strip: rating. Tap to jump to an hour.</p>`}
+  <p class="note" style="font-size:12px;margin-top:6px">Bars: wave energy. Strip: rating.</p>`}
 function spectra(s){const h=s.hr[TI],cs=h.cs.map((c,i)=>Object.assign({i,kj:waveKJ(c.h,c.p)},c));if(!cs.length)return`<p class="note">No swell reaching this point.</p>`;
   const R=58,C=75,mx=Math.max(...cs.map(c=>c.kj),1),pt=(deg,r)=>[C+r*Math.sin(deg*Math.PI/180),C-r*Math.cos(deg*Math.PI/180)];let g="";
   for(const [a,b] of s.w){const span=(b-a+360)%360,[x1,y1]=pt(a,R),[x2,y2]=pt(b,R);g+=`<path d="M${C} ${C}L${x1.toFixed(1)} ${y1.toFixed(1)}A${R} ${R} 0 ${span>180?1:0} 1 ${x2.toFixed(1)} ${y2.toFixed(1)}Z" fill="var(--map-ink)" opacity=".13"/>`}
@@ -443,7 +443,7 @@ function spectra(s){const h=s.hr[TI],cs=h.cs.map((c,i)=>Object.assign({i,kj:wave
   return`<div class="spec"><div class="slist">${cs.map(c=>`<div class="srow"><svg class="arr" viewBox="-6 -6 12 12" aria-hidden="true"><g transform="rotate(${Math.round(c.d+180)})"><path d="M0 -5 L3.4 3.6 L0 1.8 L-3.4 3.6 Z" fill="${CCOL[c.i%3]}"/></g></svg><b>${c.h.toFixed(1)} ft</b><span>${Math.round(c.p)} s</span><span>${comp(c.d)} ${Math.round(c.d)}°</span><span class="num">${Math.round(c.kj)} kJ</span>
     <small>${c.k} · ${c.face<0.5?(c.p<5?"too short to surf":c.df<0.5?"blocked here":"under 1 ft here"):c.face.toFixed(1)+" ft faces here"}</small></div>`).join("")}</div>
   <svg class="rose" viewBox="0 0 150 150" role="img" aria-label="Compass showing where each swell comes from, the spot's swell window, and the wind">${g}</svg></div>
-  <p class="note" style="font-size:12px;margin-top:6px">Wedges point to where each swell comes from, sized by energy. The shaded sector is the swell window this spot accepts. The dark arrow is the wind.</p>`}
+  <p class="note" style="font-size:12px;margin-top:6px">Wedges show where each swell comes from. Shaded: the spot's swell window. Arrow: wind.</p>`}
 function windows(s){const T=DATA.times,out=[];let i=0;
   while(i<T.length){const day=T[i].slice(0,10);let best=null;let j=i;for(;j<T.length&&T[j].slice(0,10)===day;j++){if(j<NOWI||j+2>=T.length||T[j+2].slice(0,10)!==day)continue;if(!(s.wx.day[j]&&s.wx.day[j+2]))continue;
       const r=(s.hr[j].rate+s.hr[j+1].rate+s.hr[j+2].rate)/3;if(!best||r>best.r)best={r,j}}
@@ -458,7 +458,7 @@ function summary(s,h,tide,trend,sst){const out=[],ws=s.wx.ws[TI],wd=s.wx.wd[TI];
   if(sst!=null)out.push(`${Math.round(sst*9/5+32)}° water`);
   const t=out.join(", ");return t?t[0].toUpperCase()+t.slice(1)+".":""}
 function detail(s){const h=s.hr[TI];
-  if(!s.ok)return`<div class="det"><button class="back" data-back="1">← All spots</button><h2>${esc(s.n)}</h2><p class="note">The wave model has no ocean cell close enough to this spot, so there is nothing to rate.</p></div>`;
+  if(!s.ok)return`<div class="det"><button class="back" data-back="1">← All spots</button><h2>${esc(s.n)}</h2><p class="note">No wave data close enough to rate this spot.</p></div>`;
   const tide=h.tide,nx=s.tide&&s.tide[Math.min(TI+1,s.tide.length-1)],trend=tide==null||nx==null?"":nx>tide+0.05?"rising":nx<tide-0.05?"falling":"slack";
   const nb=BUOYS.map((b,k)=>({b,d:DATA.buoys[k]})).filter(o=>o.d.ok).sort((a,c)=>dist2(a.b,s)-dist2(c.b,s))[0];
   const sst=s.m.sst[TI];
@@ -481,23 +481,23 @@ function detail(s){const h=s.hr[TI];
   <p class="note">${esc(s.note)} Faces ${comp(s.f)}. Accepts swell from ${s.w.map(([a,b])=>`${comp(a)} to ${comp(b)}`).join(" and ")}; ideal faces ${s.sz[0]}–${s.sz[1]} ft.</p></div>`}
 const buoyAge=d=>(Date.now()/1000-d.t[d.t.length-1])/60;
 function ageText(d){const m=Math.round(buoyAge(d));return m<90?`${m} min ago`:`${Math.round(m/60)} h ago`}
-function buoyView(){return`<p class="note">Live wave buoys, north to south. Harvest and San Nicolas sit outside the islands and see new swell first.</p><div class="rows">${BUOYS.map((b,k)=>{const d=DATA.buoys[k];
-  if(!d.ok)return`<button class="brow" data-buoy="${k}"><span class="nm">${esc(b.n)}</span><span class="v">Offline</span><span class="sub">No recent data from this buoy</span></button>`;
+function buoyView(){return`<p class="note">Live buoys, north to south. Harvest and San Nicolas see new swell first.</p><div class="rows">${BUOYS.map((b,k)=>{const d=DATA.buoys[k];
+  if(!d.ok)return`<button class="brow" data-buoy="${k}"><span class="nm">${esc(b.n)}</span><span class="v">Offline</span><span class="sub">No recent data</span></button>`;
   const n=d.hs.length-1,mx=Math.max(...d.hs,1),pts=d.hs.map((v,i)=>`${(i/n*368+2).toFixed(1)},${(24-v/mx*20).toFixed(1)}`).join(" ");
   return`<button class="brow" data-buoy="${k}"><span class="nm">${esc(b.n)}</span><span class="v">${d.hs[n].toFixed(1)} ft @ ${Math.round(d.tp[n])} s</span>
   <span class="sub">Peak direction ${arrow(d.dp[n])} ${comp(d.dp[n])} ${Math.round(d.dp[n])}° · ${d.sst==null?"":`water ${Math.round(d.sst)}°F · `}${ageText(d)}</span>
   <svg viewBox="0 0 372 26" preserveAspectRatio="none" aria-hidden="true"><polyline points="${pts}" fill="none" stroke="var(--muted)" stroke-width="1.2" vector-effect="non-scaling-stroke"/></svg></button>`}).join("")}</div>
-  <p class="note" style="font-size:12px">Height is significant wave height; the line is the last 24 hours.</p>`}
-function howView(){return`<div class="det"><h2>How a spot gets its rating</h2>
-  <p class="note" style="color:var(--ink)">Each spot is scored every hour from four things, then multiplied together so a flat ocean can never rate well.</p>
+  <p class="note" style="font-size:12px">Significant wave height, last 24 hours.</p>`}
+function howView(){return`<div class="det"><h2>How spots are rated</h2>
+  <p class="note" style="color:var(--ink)">Every hour, each spot is scored on four things. They multiply, so flat water never rates well.</p>
   <dl class="kv" style="grid-template-columns:1fr">
-  <div><dt>Surf size</dt><dd><small>Each swell train from the wave model is converted to a breaking-wave height from its height and period, marked down if it is short-period wind chop (under 9 seconds), cut down if its direction falls outside the spot's swell window, and scaled by a local factor for spots that focus or shelter swell. Size scores best inside the spot's ideal range.</small></dd></div>
-  <div><dt>Wind</dt><dd><small>Under 4 knots counts as glassy. Above that, offshore wind costs little and onshore wind costs a lot, judged against the direction the beach faces. Onshore wind also sets a ceiling: about 6 knots onshore caps a spot at Fair, 8 knots at Poor to fair, and 10 knots or more at Poor, however big the swell.</small></dd></div>
-  <div><dt>Period</dt><dd><small>Longer-period swell scores higher, from 6 seconds (weak) to 14 seconds and up (full marks).</small></dd></div>
-  <div><dt>Tide</dt><dd><small>A small penalty when the NOAA tide prediction is outside the tide the spot likes.</small></dd></div></dl>
+  <div><dt>Size</dt><dd><small>Breaking height from each swell's height and period. Short chop under 9 s is marked down, swell outside the spot's window is cut, and a local gain adjusts for spots that focus or shelter swell.</small></dd></div>
+  <div><dt>Wind</dt><dd><small>Under 4 kn is glassy. Offshore costs little, onshore costs a lot. Onshore also caps the rating: about 6 kn limits a spot to Fair, 10 kn to Poor.</small></dd></div>
+  <div><dt>Period</dt><dd><small>Longer is better, from 6 s (weak) to 14 s and up (full marks).</small></dd></div>
+  <div><dt>Tide</dt><dd><small>A small penalty outside the tide the spot likes.</small></dd></div></dl>
   <div class="wins">${RT.map((r,c)=>`<div class="win" style="grid-template-columns:130px 1fr">${rlab(c)}<span class="m">${["Faces under 1 ft","Score below 2","2 to 3.5","3.5 to 5","5 to 6.5","6.5 to 8.8","Above 8.8"][c]}</span></div>`).join("")}</div>
-  <p class="note">These are model estimates, not surf-cam reports. The wave model's cells are several miles wide, so sandbars, kelp, local shadowing and crowds are invisible to it. Spot windows and gain factors are hand-set starting values and are meant to be tuned against what you see in the water.</p>
-  <p class="note">Sources: Open-Meteo marine and weather forecast APIs, Scripps CDIP buoy network, NOAA CO-OPS tide predictions.</p></div>`}
+  <p class="note">Model estimates, not cam reports. Sandbars, kelp and local shadowing are invisible to it. Spot windows and gains are starting values to tune.</p>
+  <p class="note">Data: Open-Meteo, Scripps CDIP, NOAA CO-OPS.</p></div>`}
 let lastRender=0;
 function render(fromPlay){if(!DATA)return;const b=$("body"),keep=b.scrollTop;
   for(const t of ["spots","buoys","how"])$("tab-"+t).setAttribute("aria-selected",S.tab===t);
