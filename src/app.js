@@ -417,7 +417,7 @@ function hourly(s){const T=DATA.times,cur=T[TI].slice(0,10),day=dayIdx().find(x=
 function dayChart(s){const T=DATA.times,cur=T[TI].slice(0,10),ks=dayIdx().find(x=>x.d===cur).idx,n=ks.length,W=372,H=306,x0=4,bw=(W-8)/n,x=h=>x0+h*bw,xc=h=>x0+(h+0.5)*bw;
   const kj=ks.map(k=>spotKJ(s.hr[k])),mx=Math.max(20,...kj),top=10,base=74;let g="";
   ks.forEach((k,i)=>{if(s.wx.day[k]===0)g+=`<rect x="${x(i).toFixed(1)}" y="2" width="${(bw+.05).toFixed(2)}" height="${H-22}" fill="var(--night)"/>`});
-  ks.forEach((k,i)=>{const bh=Math.max(2,kj[i]/mx*(base-top));g+=`<rect x="${(x(i)+1).toFixed(1)}" y="${(base-bh).toFixed(1)}" width="${(bw-2).toFixed(1)}" height="${bh.toFixed(1)}" rx="2" fill="var(--map-ink)" opacity="${k===TI?1:.45}"/>`;
+  ks.forEach((k,i)=>{const bh=Math.max(2,kj[i]/mx*(base-top));g+=`<rect x="${(x(i)+1).toFixed(1)}" y="${(base-bh).toFixed(1)}" width="${(bw-2).toFixed(1)}" height="${bh.toFixed(1)}" rx="2" fill="${rtCol(s.hr[k].cls)}" opacity="${k===TI?1:.62}"/>`;
     g+=`<rect x="${x(i).toFixed(1)}" y="${base+22}" width="${(bw+.05).toFixed(2)}" height="4" fill="${rtCol(s.hr[k].cls)}"/>`});
   g+=`<text x="${x0+8}" y="${base+14}" font-size="9.5" fill="var(--muted)">kJ</text>`;
   for(let i=3;i<n;i+=3){const k=ks[i];g+=`<text x="${xc(i)}" y="${base+14}" font-size="10" text-anchor="middle" fill="var(--ink)">${Math.round(kj[i])}</text>`;
@@ -432,7 +432,7 @@ function dayChart(s){const T=DATA.times,cur=T[TI].slice(0,10),ks=dayIdx().find(x
       g+=`<line x1="${x(hh).toFixed(1)}" x2="${x(hh).toFixed(1)}" y1="${py.toFixed(1)}" y2="${t1+6}" stroke="var(--map-ink)" stroke-width=".8" opacity=".6"/><text x="${px.toFixed(1)}" y="${(py-15).toFixed(1)}" font-size="10" font-weight="600" text-anchor="middle" fill="var(--ink)">${e.t.slice(11,16)}</text><text x="${px.toFixed(1)}" y="${(py-4).toFixed(1)}" font-size="10" text-anchor="middle" fill="var(--muted)">${e.v.toFixed(1)} ft</text>`}}
   const ci=ks.indexOf(TI);if(ci>=0)g=`<rect x="${x(ci).toFixed(1)}" y="2" width="${bw.toFixed(1)}" height="${H-22}" rx="3" fill="var(--ink)" opacity=".09"/>`+g;
   return`<div class="fc" data-chart="1" data-i0="${ks[0]}" data-n="${n}" data-x0="${x0/W}" data-x1="${(W-4)/W}"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Hourly wave energy, rating, wind and tide for the selected day">${g}</svg></div>
-  <p class="note" style="font-size:12px;margin-top:6px">Bars: wave energy. Strip: rating.</p>`}
+  <p class="note" style="font-size:12px;margin-top:6px">Bars: wave energy, coloured by rating.</p>`}
 function spectra(s){const h=s.hr[TI],cs=h.cs.map((c,i)=>Object.assign({i,kj:waveKJ(c.h,c.p)},c));if(!cs.length)return`<p class="note">No swell reaching this point.</p>`;
   const R=58,C=75,mx=Math.max(...cs.map(c=>c.kj),1),pt=(deg,r)=>[C+r*Math.sin(deg*Math.PI/180),C-r*Math.cos(deg*Math.PI/180)];let g="";
   for(const [a,b] of s.w){const span=(b-a+360)%360,[x1,y1]=pt(a,R),[x2,y2]=pt(b,R);g+=`<path d="M${C} ${C}L${x1.toFixed(1)} ${y1.toFixed(1)}A${R} ${R} 0 ${span>180?1:0} 1 ${x2.toFixed(1)} ${y2.toFixed(1)}Z" fill="var(--map-ink)" opacity=".13"/>`}
