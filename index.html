@@ -229,7 +229,7 @@ td.num,th.num{text-align:right;padding-right:0}
 .seg2 button{border:0;background:none;padding:5px 10px;font:500 12.5px/1 var(--f-ui);color:var(--muted);border-radius:6px}
 .seg2 button[aria-pressed="true"]{background:var(--ink);color:var(--panel)}
 .hhead{border-top:0;color:var(--muted);font-size:11.5px;padding-bottom:4px}
-.fc{cursor:crosshair}
+.fc{cursor:crosshair;touch-action:pan-y;-webkit-user-select:none;user-select:none}
 .foot{margin-top:auto;padding-top:14px;font-size:12px;color:var(--muted)}
 .foot button{border:0;background:none;padding:0;margin-left:6px;color:var(--ink);text-decoration:underline;text-underline-offset:2px;font-size:12px}
 .msg{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);padding:16px 20px;max-width:min(400px,calc(100% - 32px));text-align:center}
@@ -978,6 +978,16 @@ $("body").addEventListener("click",e=>{const t=e.target.closest("[data-spot],[da
   else if(t.id==="refresh"){load(true)}
   else if(t.dataset.chart){const r=t.querySelector("svg").getBoundingClientRect(),f=((e.clientX-r.left)/r.width-+t.dataset.x0)/(+t.dataset.x1-+t.dataset.x0);setTime(+t.dataset.i0+Math.floor(clamp(f,0,0.9999)*+t.dataset.n))}
   else if(t.id==="fc"){const r=t.querySelector("svg").getBoundingClientRect(),f=((e.clientX-r.left)/r.width-+t.dataset.x0)/(+t.dataset.x1-+t.dataset.x0);setTime(Math.floor(clamp(f,0,0.9999)*DATA.times.length))}});
+/* Press and drag across the Outlook chart or the 7 day forecast to scrub through time. The listener sits on the
+   panel body, which is never rebuilt, so the drag survives the re-render that each time change triggers. */
+let DRAG=null;
+function scrub(e){const t=$("body").querySelector(DRAG==="fc"?"#fc":"[data-chart]");if(!t)return;
+  const r=t.querySelector("svg").getBoundingClientRect(),f=clamp(((e.clientX-r.left)/r.width-+t.dataset.x0)/(+t.dataset.x1-+t.dataset.x0),0,0.9999);
+  const i=DRAG==="fc"?Math.floor(f*DATA.times.length):+t.dataset.i0+Math.floor(f*+t.dataset.n);if(i!==TI)setTime(i)}
+$("body").addEventListener("pointerdown",e=>{if(!DATA||e.button>0)return;const t=e.target.closest("[data-chart],#fc");if(!t)return;
+  DRAG=t.id==="fc"?"fc":"chart";try{$("body").setPointerCapture(e.pointerId)}catch(_){}scrub(e)});
+$("body").addEventListener("pointermove",e=>{if(DRAG&&DATA)scrub(e)});
+for(const n of["pointerup","pointercancel"])$("body").addEventListener(n,()=>{DRAG=null});
 syncTheme();legend();renderLoc();if(initMap()){if(!REDUCED)tick();load(false)}
 </script>
 </body></html>
