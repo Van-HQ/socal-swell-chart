@@ -194,6 +194,26 @@ td.num,th.num{text-align:right;padding-right:0}
 .bwr b{font-weight:600;color:var(--muted)}
 .bwr .r{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:var(--muted)}
 .bwr .dot{width:8px;height:8px;border-radius:50%}
+.al{border:1px solid color-mix(in srgb,var(--r-pf) 55%,var(--line));background:color-mix(in srgb,var(--r-pf) 14%,var(--raise));border-radius:14px;color:var(--ink)}
+.al summary{list-style:none;display:flex;gap:10px;align-items:flex-start;padding:11px 13px;cursor:pointer}
+.al summary::-webkit-details-marker{display:none}
+.al summary svg{flex:none;margin-top:1px;color:var(--r-pf)}
+.al b{display:block;font:600 14px/1.25 var(--f-ui)}
+.al small{display:block;color:var(--muted);font-size:12.5px;margin-top:2px}
+.al p{margin:0;padding:0 13px 12px 43px;font-size:12.5px;line-height:1.45;color:var(--muted)}
+.wx{border:1px solid var(--line);background:var(--raise);border-radius:16px;padding:14px}
+.wx .big{font:600 26px/1 var(--f-ui)}
+.wx .big small{font:500 13px/1 var(--f-ui);color:var(--muted);margin-left:8px}
+.wx .sub{font-size:12.5px;color:var(--muted);margin-top:6px;min-height:1em}
+.wx .row{display:grid;grid-template-columns:repeat(6,1fr);gap:2px;margin-top:12px;text-align:center}
+.wx .row button{display:flex;flex-direction:column;align-items:center;gap:6px;border:0;background:none;font-size:12px;color:var(--muted);padding:8px 0;border-radius:10px}
+.wx .row button.on{background:color-mix(in srgb,var(--ink) 9%,transparent);color:var(--ink)}
+.wx .row b{font:600 15px/1 var(--f-ui);color:var(--ink)}
+.wx .row em{font-style:normal;color:#6fb3e0;font-size:11.5px;min-height:13px}
+.wx .mini{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}
+.wx .mini div{background:color-mix(in srgb,var(--ink) 6%,transparent);border-radius:12px;padding:9px 10px}
+.wx .mini span{display:block;font-size:11.5px;color:var(--muted)}
+.wx .mini b{font:600 15px/1.2 var(--f-ui);display:block;margin-top:3px}
 .dcards{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;margin:0 -18px;padding:0 18px 2px}
 .dcards::-webkit-scrollbar{display:none}
 .dcard{flex:none;min-width:92px;display:flex;flex-direction:column;gap:0;align-items:flex-start;text-align:left;border:1px solid var(--line);background:var(--raise);border-radius:16px;padding:11px 12px}
@@ -508,15 +528,30 @@ async function loadForecast(){
   const sp=FP.concat([REF]);
   const [sm,sw,gm,gw]=await Promise.all([
     openMeteo(MAR,sp,"wave_height,swell_wave_height,swell_wave_direction,swell_wave_period,secondary_swell_wave_height,secondary_swell_wave_period,secondary_swell_wave_direction,wind_wave_height,wind_wave_direction,wind_wave_period,sea_surface_temperature","&length_unit=imperial&cell_selection=sea"),
-    openMeteo(WX,FP,"wind_speed_10m,wind_direction_10m,wind_gusts_10m,is_day","&wind_speed_unit=kn"),
+    openMeteo(WX,FP,"wind_speed_10m,wind_direction_10m,wind_gusts_10m,is_day,temperature_2m,cloud_cover,precipitation_probability,uv_index,relative_humidity_2m","&wind_speed_unit=kn&temperature_unit=fahrenheit&daily=sunrise,sunset"),
     openMeteo(MAR,G.pts,"swell_wave_height,swell_wave_direction,swell_wave_period","&length_unit=imperial&cell_selection=sea"),
     openMeteo(WX,G.pts,"wind_speed_10m,wind_direction_10m","&wind_speed_unit=kn")]);
   const pack=h=>({wh:r1(h.wave_height),sh:r1(h.swell_wave_height),sd:h.swell_wave_direction,sp:r1(h.swell_wave_period),s2h:r1(h.secondary_swell_wave_height),s2p:r1(h.secondary_swell_wave_period),s2d:h.secondary_swell_wave_direction,wwh:r1(h.wind_wave_height),wwd:h.wind_wave_direction,wwp:r1(h.wind_wave_period),sst:r1(h.sea_surface_temperature)});
   return{at:Date.now(),times:sm[0].hourly.time,
     m:sm.map(x=>pack(x.hourly)),
-    wx:sw.map(x=>({ws:r1(x.hourly.wind_speed_10m),wd:x.hourly.wind_direction_10m,wg:r1(x.hourly.wind_gusts_10m),day:x.hourly.is_day})),
+    wx:sw.map(x=>({ws:r1(x.hourly.wind_speed_10m),wd:x.hourly.wind_direction_10m,wg:r1(x.hourly.wind_gusts_10m),day:x.hourly.is_day,tp:r1(x.hourly.temperature_2m),cc:x.hourly.cloud_cover,pp:x.hourly.precipitation_probability,uv:r1(x.hourly.uv_index),rh:x.hourly.relative_humidity_2m,sun:x.daily?{d:x.daily.time,r:x.daily.sunrise,s:x.daily.sunset}:null})),
     gm:gm.map(x=>({h:r1(x.hourly.swell_wave_height),d:x.hourly.swell_wave_direction,p:r1(x.hourly.swell_wave_period)})),
     gw:gw.map(x=>({s:r1(x.hourly.wind_speed_10m),d:x.hourly.wind_direction_10m}))}}
+/* NWS alerts that matter to a surfer. One request per region, using the middle of that region's spots. */
+const ALERT_RE=/surf|beach hazard|rip current|coastal flood|tsunami|tropical|hurricane|storm warning/i;
+let ALERTS={};
+async function loadAlerts(){const reg={};for(const s of SPOTS){(reg[s.r]=reg[s.r]||[]).push(s)}
+  await Promise.all(Object.entries(reg).map(async([k,a])=>{try{
+    const la=a.reduce((t,x)=>t+x.la,0)/a.length,lo=a.reduce((t,x)=>t+x.lo,0)/a.length;
+    const j=await getJSON(`https://api.weather.gov/alerts/active?point=${la.toFixed(3)},${lo.toFixed(3)}`);
+    ALERTS[k]=(j.features||[]).map(f=>f.properties).filter(p=>ALERT_RE.test(p.event)).map(p=>({id:p.id,event:p.event,ends:p.ends||p.expires,by:p.senderName,text:(p.description||p.headline||"").replace(/\s*\n\s*/g," ").trim()}))}catch(e){ALERTS[k]=ALERTS[k]||[]}}));
+  if(DATA)render()}
+function untilText(iso){if(!iso)return"";const d=new Date(iso);if(isNaN(d))return"";const p=Object.fromEntries(new Intl.DateTimeFormat("en-US",{timeZone:TZ,weekday:"short",hour:"numeric",hour12:true}).formatToParts(d).map(x=>[x.type,x.value]));return`Until ${p.weekday} ${p.hour} ${p.dayPeriod}`}
+const alertSvg='<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 2.5 20h19L12 3z"/><path d="M12 10v4.5M12 17.5v.1"/></svg>';
+/* Banner HTML for a region key, or for every region when none is given. Easy to move: call alertBanner() wherever it should sit. */
+function alertBanner(region){const seen=new Set(),out=[];
+  for(const k of region&&ALERTS[region]?[region]:Object.keys(ALERTS))for(const a of ALERTS[k]||[]){if(seen.has(a.event+a.ends))continue;seen.add(a.event+a.ends);out.push(a)}
+  return out.map(a=>`<details class="al"><summary>${alertSvg}<span><b>${esc(a.event)}</b><small>${esc(untilText(a.ends))}${a.by?" \u00b7 "+esc(a.by):""}</small></span></summary><p>${esc(a.text.length>420?a.text.slice(0,420).replace(/\s\S*$/,"")+"\u2026":a.text)}</p></details>`).join("")}
 async function loadTides(date){const out={};await Promise.all(TIDES.map(async st=>{try{
   const j=await getJSON(`https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?begin_date=${date.replace(/-/g,"")}&range=168&station=${st.id}&product=predictions&datum=MLLW&time_zone=lst_ldt&units=english&interval=h&format=json`);
   const m={};for(const p of j.predictions||[])m[p.t.replace(" ","T")]=+p.v;out[st.id]=m;
@@ -556,13 +591,13 @@ async function load(force){
   $("msg").hidden=false;$("msg").innerHTML="<b>Loading forecast</b>Swell, wind, tide and buoys.";
   try{
     let fc=null;
-    if(!force)try{const c=JSON.parse(localStorage.getItem(CACHE_KEY)||"null");if(c&&Date.now()-c.at<CACHE_MIN*6e4&&c.times&&c.m&&c.m.length===FP.length+1&&c.times[0].slice(0,10)===laNow().date)fc=c}catch(e){}
+    if(!force)try{const c=JSON.parse(localStorage.getItem(CACHE_KEY)||"null");if(c&&Date.now()-c.at<CACHE_MIN*6e4&&c.times&&c.m&&c.m.length===FP.length+1&&c.wx&&c.wx[0]&&c.wx[0].tp&&c.times[0].slice(0,10)===laNow().date)fc=c}catch(e){}
     const fresh=!fc;
     const [f2,tides,buoys]=await Promise.all([fc||loadForecast(),loadTides(laNow().date),loadBuoys()]);
     if(fresh)try{localStorage.setItem(CACHE_KEY,JSON.stringify(f2))}catch(e){}
     DATA=build(f2,tides,buoys);
     NOWI=Math.max(0,DATA.times.indexOf(laNow().key));TI=NOWI;$("t").max=DATA.times.length-1;$("t").value=TI;
-    $("msg").hidden=true;buildDays();makeMarks();setTime(TI);redraw();
+    $("msg").hidden=true;buildDays();makeMarks();setTime(TI);redraw();loadAlerts();
   }catch(e){
     $("msg").innerHTML=`<b>Forecast unavailable</b>${esc(e.message||e)}. Check your connection. <br><button id="retry">Try again</button>`;
     $("retry").className="btn";$("retry").onclick=()=>load(true)}}
@@ -803,7 +838,7 @@ function outlook(){const r=DATA.ref,T=DATA.times;if(!r||!r.sh.some(v=>v!=null))r
   <path d="${path(r.s2h)}" fill="none" stroke="var(--muted)" stroke-width="1.2" stroke-dasharray="3 3"/><path d="${path(r.sh)}" fill="none" stroke="var(--ink)" stroke-width="1.8"/>
   <line x1="${x(TI)}" y1="8" x2="${x(TI)}" y2="${H-22}" stroke="var(--ink)" stroke-width="1" opacity=".55"/><circle cx="${x(TI)}" cy="6" r="2.5" fill="var(--ink)"/></svg></div>`}
 function listView(){const rows=DATA.spots.filter(inFilter);if(S.sort==="best")rows.sort((a,b)=>b.hr[TI].rate-a.hr[TI].rate);else rows.sort((a,b)=>a.idx-b.idx);
-  return outlook()+`<div style="display:flex;flex-direction:column;gap:8px"><div class="chips" role="group" aria-label="Region">${Object.entries(CHIPS).map(([k,n])=>`<button data-reg="${k}" aria-pressed="${S.region===k}">${n}</button>`).join("")}</div>
+  return alertBanner(S.region in ALERTS?S.region:null)+outlook()+`<div style="display:flex;flex-direction:column;gap:8px"><div class="chips" role="group" aria-label="Region">${Object.entries(CHIPS).map(([k,n])=>`<button data-reg="${k}" aria-pressed="${S.region===k}">${n}</button>`).join("")}</div>
   <div class="steprow" style="margin-top:2px;justify-content:space-between;align-items:center"><span class="lab">${rows.length} spot${rows.length===1?"":"s"}</span><div class="seg2" role="group" aria-label="Sort order"><button data-sort="best" aria-pressed="${S.sort==="best"}">Best first</button><button data-sort="ns" aria-pressed="${S.sort==="ns"}">North to south</button></div></div>
   ${rows.length?"":`<p class="note">${S.region==="fav"?"No favorites yet. Open a spot and tap the star.":"No spots here."}</p>`}<div class="rows">${rows.map(s=>{const h=s.hr[TI];
     if(!s.ok)return`<button class="row" data-spot="${s.idx}"><i class="dot" style="background:var(--line)"></i><span class="nm">${esc(s.n)}</span><span class="ft"></span><span class="sub">No wave data near this spot</span></button>`;
@@ -918,6 +953,29 @@ function bestWindowsView(s){
     rows.push(`<button class="bwr" data-time="${w.startIdx}"><b>${DOW[p.dow]}</b><span>${winRange(w)}</span><span class="r"><i class="dot" style="background:${rtCol(c)}"></i>${RT[c].n}</span></button>`)}
   return`<div><p class="lab" style="margin-bottom:8px">${top[0].weak?"Best Windows (flat week)":"Best Windows"}</p><div class="bw">${top.map(w=>winCard(s,w)).join("")}</div></div>`+
     (rows.length?`<div><p class="lab" style="margin-bottom:4px">Other days</p><div class="bwd">${rows.join("")}</div></div>`:"")}
+/* Weather card: temperature, sky, rain, 3-hour strip, sunrise/sunset and UV for the selected day. */
+const wxI=(p,c)=>`<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${p}</svg>`;
+const SKY={sun:wxI('<circle cx="12" cy="12" r="4.2"/><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M4.9 19.1l1.8-1.8M17.3 6.7l1.8-1.8"/>',"#e7c14a"),
+  part:wxI('<circle cx="8.5" cy="8" r="3" stroke="#e7c14a"/><path d="M8 19h9a3.6 3.6 0 0 0 .5-7.2A5 5 0 0 0 8.2 11 4 4 0 0 0 8 19z"/>',"#c8c3a0"),
+  cloud:wxI('<path d="M7 18h10a4 4 0 0 0 .6-7.95A5.5 5.5 0 0 0 7 9.5 4.3 4.3 0 0 0 7 18z"/>',"#9fb0b8"),
+  rain:wxI('<path d="M7 15h10a4 4 0 0 0 .6-7.95A5.5 5.5 0 0 0 7 6.5 4.3 4.3 0 0 0 7 15z"/><path d="M9 18l-1 2.5M13 18l-1 2.5M17 18l-1 2.5"/>',"#6fb3e0"),
+  moon:wxI('<path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/>',"#aab6c8")};
+function skyOf(wx,k){const cc=wx.cc[k],pp=wx.pp[k]||0,day=wx.day[k];if(pp>=50)return{i:SKY.rain,t:"Rain likely"};
+  if(cc==null)return{i:SKY.cloud,t:""};if(cc<15)return day?{i:SKY.sun,t:"Sunny"}:{i:SKY.moon,t:"Clear"};
+  if(cc<50)return day?{i:SKY.part,t:"Mostly sunny"}:{i:SKY.cloud,t:"Mostly clear"};if(cc<80)return{i:SKY.part,t:"Partly cloudy"};return{i:SKY.cloud,t:cc>=92?"Overcast":"Mostly cloudy"}}
+const clk=iso=>{if(!iso)return"\u2013";const h=+iso.slice(11,13),m=iso.slice(14,16);return`${h12s(h)}:${m} ${ampm(h).toUpperCase()}`};
+function weatherCard(s){const w=s.wx;if(!w||!w.tp||w.tp[TI]==null)return"";
+  const cur=tparts(DATA.times[TI]),cd=DATA.times[TI].slice(0,10),day=dayIdx().find(x=>x.d===cd);if(!day)return"";
+  const sk=skyOf(w,TI),pp=w.pp[TI];
+  // Marine layer guess: a cloudy, humid early morning that burns off later the same day.
+  const am=day.idx.filter(k=>hourOf(k)>=5&&hourOf(k)<=9),aw=am.length?am.reduce((t,k)=>t+(w.cc[k]||0),0)/am.length:0,ah=am.length?am.reduce((t,k)=>t+(w.rh[k]||0),0)/am.length:0;
+  let ml="";if(aw>=80&&ah>=78){const clr=day.idx.find(k=>hourOf(k)>9&&(w.cc[k]||0)<60);ml=clr!=null?`Marine layer likely until about ${h12s(hourOf(clr))} ${ampm(hourOf(clr)).toUpperCase()}`:"Marine layer likely most of the day"}
+  const cols=[6,9,12,15,18,21].map(h=>day.idx.find(k=>hourOf(k)===h)).filter(k=>k!=null),on=cols.reduce((m,k)=>Math.abs(k-TI)<Math.abs(m-TI)?k:m,cols[0]);
+  const sd=w.sun&&w.sun.d?w.sun.d.indexOf(cd):-1,rise=sd>=0?w.sun.r[sd]:null,set=sd>=0?w.sun.s[sd]:null,uvm=Math.max(0,...day.idx.map(k=>w.uv[k]||0)),uvn=uvm<3?"Low":uvm<6?"Moderate":uvm<8?"High":uvm<11?"Very high":"Extreme";
+  return`<div><p class="lab" style="margin-bottom:8px">Weather \u00b7 ${fmt(TI)}</p><div class="wx"><div class="hd"><span class="big">${Math.round(w.tp[TI])}\u00b0F<small>${sk.t}</small></span></div>
+   <div class="sub">${[ml,pp!=null?`Rain ${pp}%`:""].filter(Boolean).join(" \u00b7 ")}</div>
+   <div class="row">${cols.map(k=>{const q=skyOf(w,k),h=hourOf(k),r=w.pp[k]||0;return`<button data-time="${k}" class="${k===on?"on":""}"><span>${h12s(h)}${ampm(h)}</span>${q.i}<b>${Math.round(w.tp[k])}\u00b0</b><em>${r>=20?r+"%":""}</em></button>`}).join("")}</div>
+   <div class="mini"><div><span>Sunrise</span><b>${clk(rise)}</b></div><div><span>Sunset</span><b>${clk(set)}</b></div><div><span>UV</span><b>${Math.round(uvm)} \u00b7 ${uvn}</b></div></div></div></div>`}
 function detail(s){const h=s.hr[TI];
   if(!s.ok)return`<div class="det"><button class="back" data-back="1">← All spots</button><h2>${esc(s.n)}</h2><p class="note">No wave data close enough to rate this spot.</p></div>`;
   const tide=h.tide,nx=s.tide&&s.tide[Math.min(TI+1,s.tide.length-1)],trend=tide==null||nx==null?"":nx>tide+0.05?"rising":nx<tide-0.05?"falling":"slack";
@@ -935,6 +993,8 @@ function detail(s){const h=s.hr[TI];
    <div class="tile"><span class="tk">${ICON.temp}Water</span><b>${sst==null?"n/a":`${Math.round(sst*9/5+32)}°F`}</b><small>Sea surface</small></div>
    <div class="tile"><span class="tk">${ICON.buoy}Buoy</span><b>${nb?`${nb.d.hs[nb.d.hs.length-1].toFixed(1)} ft · ${Math.round(nb.d.tp[nb.d.tp.length-1])} s`:"n/a"}</b><small>${nb?`${esc(nb.b.n)} · ${ageText(nb.d)}`:""}</small></div>
   </div>
+  ${alertBanner(s.r)}
+  ${weatherCard(s)}
   <div><p class="lab" style="margin-bottom:8px">By day</p>${dayCards(s)}</div>
   <div><p class="lab" style="margin-bottom:8px">Outlook · ${fmt(TI).split(" ")[0]}</p>${dayChart(s)}<div class="steprow"><div class="seg2" role="group" aria-label="Table interval"><button data-step="3" aria-pressed="${S.step===3}">3-hour</button><button data-step="1" aria-pressed="${S.step===1}">Hourly</button></div></div>${hourly(s)}</div>
   <div><p class="lab" style="margin-bottom:8px">Swell Breakdown · ${fmt(TI)}</p>${spectra(s)}</div>
