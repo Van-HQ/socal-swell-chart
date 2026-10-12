@@ -457,6 +457,42 @@ function summary(s,h,tide,trend,sst){const out=[],ws=s.wx.ws[TI],wd=s.wx.wd[TI];
   if(tide!=null)out.push(`${tide<1.5?"low":tide<4?"mid":"high"} tide ${trend}`.trim());
   if(sst!=null)out.push(`${Math.round(sst*9/5+32)}° water`);
   const t=out.join(", ");return t?t[0].toUpperCase()+t.slice(1)+".":""}
+
+/* Best windows: 2-3 daylight hour runs inside one day, every hour Poor-to-fair or better, ranked by mean rate. */
+function bestWindows(s,count,dayIdxs){
+  if(!s||!s.ok)return[];const T=DATA.times,cands=[];
+  for(const {idx} of dayIdx()){if(dayIdxs&&!dayIdxs.includes(idx[0]))continue;
+    for(let a=0;a<idx.length;a++)for(const len of[2,3]){const b=a+len-1;if(b>=idx.length)continue;
+      const ks=idx.slice(a,b+1);if(ks[ks.length-1]<NOWI)continue;
+      if(ks.some(k=>!s.wx.day[k]))continue;
+      const hs=ks.map(k=>s.hr[k]);if(hs.some(h=>!h||h.cls==null))continue;
+      const score=hs.reduce((t,h)=>t+h.rate,0)/len,face=hs.reduce((t,h)=>t+h.face,0)/len,
+        peakIdx=ks.reduce((m,k)=>s.hr[k].rate>s.hr[m].rate?k:m,ks[0]);
+      cands.push({startIdx:ks[0],endIdx:ks[ks.length-1],score,face,peakIdx,ok:hs.every(h=>h.cls>=2)})}}
+  const rank=(x,y)=>y.score-x.score||y.face-x.face;
+  let pool=cands.filter(c=>c.ok).sort(rank),weak=false;
+  if(!pool.length){pool=cands.sort(rank).slice(0,1);weak=true}
+  const out=[];for(const c of pool){if(out.length>=count)break;
+    if(out.some(o=>c.startIdx<=o.endIdx+1&&o.startIdx<=c.endIdx+1))continue;out.push(Object.assign(c,{weak}))}
+  return out}
+const h12s=h=>h===0?12:h>12?h-12:h,ampm=h=>h<12?"am":"pm";
+function winRange(w){const a=hourOf(w.startIdx),b=hourOf(w.endIdx)+1,ea=b%24;
+  return ampm(a)===ampm(ea)?`${h12s(a)}–${h12s(ea)}${ampm(ea)}`:`${h12s(a)}${ampm(a)}–${h12s(ea)}${ampm(ea)}`}
+const sessionName=h=>h<8?"Dawn patrol":h<11?"Morning":h<14?"Midday":h<17?"Afternoon":"Evening";
+function winCard(s,w){const k=w.peakIdx,h=s.hr[k],p=tparts(DATA.times[w.startIdx]),ws=s.wx.ws[k];
+  const tide=h.tide,nx=s.tide&&s.tide[Math.min(k+1,s.tide.length-1)],trend=tide==null||nx==null?"":nx>tide+0.05?"rising":nx<tide-0.05?"falling":"slack";
+  const r=TIDE_RANGE[s.td],zone=tide!=null&&r&&tide>=r[0]&&tide<=r[1];
+  const l1=[h.dom?`${h.dom.h.toFixed(1)} ft @ ${Math.round(h.dom.p)} s ${comp(h.dom.d)}`:"",ws==null||h.w.d==null?"":`${h.w.word} ${Math.round(ws)} kn`].filter(Boolean).join(" · ");
+  const l2=tide==null?"":`${tide.toFixed(1)} ft${trend?", "+trend:""}${zone?` <span class="z">· in the zone</span>`:""}`;
+  return`<button class="bwc" data-time="${w.startIdx}" style="--rc:${rtCol(h.cls)}"><i></i><div class="t">${DOW[p.dow]} ${MON[p.m-1]} ${p.d} · ${winRange(w)}<small>${sessionName(hourOf(w.startIdx))}</small></div><div class="f">${faceText(h.face)}</div><div class="p"><span class="pill${RT[h.cls].dk?" dk":""}">${RT[h.cls].n}</span></div><div class="c">${l1}${l1&&l2?"<br>":""}${l2}</div></button>`}
+function bestWindowsView(s){
+  const top=bestWindows(s,3);if(!top.length)return"";
+  const days=dayIdx().filter(({idx})=>idx[idx.length-1]>=NOWI),rows=[];
+  for(const {d,idx} of days){if(top.some(w=>DATA.times[w.startIdx].slice(0,10)===d))continue;
+    const w=bestWindows(s,1,[idx[0]])[0];if(!w||w.weak||s.hr[w.peakIdx].cls<2)continue;const p=tparts(DATA.times[w.startIdx]),c=s.hr[w.peakIdx].cls;
+    rows.push(`<button class="bwr" data-time="${w.startIdx}"><b>${DOW[p.dow]}</b><span>${winRange(w)}</span><span class="r"><i class="dot" style="background:${rtCol(c)}"></i>${RT[c].n}</span></button>`)}
+  return`<div><p class="lab" style="margin-bottom:8px">${top[0].weak?"Best of a flat week":"Best windows this week"}</p><div class="bw">${top.map(w=>winCard(s,w)).join("")}</div></div>`+
+    (rows.length?`<div><p class="lab" style="margin-bottom:4px">Other days</p><div class="bwd">${rows.join("")}</div></div>`:"")}
 function detail(s){const h=s.hr[TI];
   if(!s.ok)return`<div class="det"><button class="back" data-back="1">← All spots</button><h2>${esc(s.n)}</h2><p class="note">No wave data close enough to rate this spot.</p></div>`;
   const tide=h.tide,nx=s.tide&&s.tide[Math.min(TI+1,s.tide.length-1)],trend=tide==null||nx==null?"":nx>tide+0.05?"rising":nx<tide-0.05?"falling":"slack";
@@ -475,6 +511,7 @@ function detail(s){const h=s.hr[TI];
    <div class="tile"><span class="tk">${ICON.buoy}Buoy</span><b>${nb?`${nb.d.hs[nb.d.hs.length-1].toFixed(1)} ft · ${Math.round(nb.d.tp[nb.d.tp.length-1])} s`:"n/a"}</b><small>${nb?`${esc(nb.b.n)} · ${ageText(nb.d)}`:""}</small></div>
   </div>
   <div><p class="lab" style="margin-bottom:8px">By day</p>${dayCards(s)}</div>
+  ${bestWindowsView(s)}
   <div><p class="lab" style="margin-bottom:8px">${fmt(TI).split(" ")[0]} through the day</p>${dayChart(s)}<div class="steprow"><div class="seg2" role="group" aria-label="Table interval"><button data-step="1" aria-pressed="${S.step===1}">Hourly</button><button data-step="3" aria-pressed="${S.step===3}">3-hour</button></div></div>${hourly(s)}</div>
   <div><p class="lab" style="margin-bottom:8px">Swell breakdown · ${fmt(TI)}</p>${spectra(s)}</div>
   <div><p class="lab" style="margin-bottom:8px">Next seven days</p>${fcChart(s)}</div>
