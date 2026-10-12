@@ -419,15 +419,15 @@ function dayChart(s){const T=DATA.times,cur=T[TI].slice(0,10),ks=dayIdx().find(x
   ks.forEach((k,i)=>{if(s.wx.day[k]===0)g+=`<rect x="${x(i).toFixed(1)}" y="2" width="${(bw+.05).toFixed(2)}" height="${H-22}" fill="var(--night)"/>`});
   ks.forEach((k,i)=>{const bh=Math.max(2,kj[i]/mx*(base-top));g+=`<rect x="${(x(i)+1).toFixed(1)}" y="${(base-bh).toFixed(1)}" width="${(bw-2).toFixed(1)}" height="${bh.toFixed(1)}" rx="2" fill="var(--map-ink)" opacity="${k===TI?1:.45}"/>`;
     g+=`<rect x="${x(i).toFixed(1)}" y="${base+22}" width="${(bw+.05).toFixed(2)}" height="4" fill="${rtCol(s.hr[k].cls)}"/>`});
-  g+=`<text x="${x0}" y="${base+14}" font-size="9.5" fill="var(--muted)">kJ</text>`;
+  g+=`<text x="${x0+8}" y="${base+14}" font-size="9.5" fill="var(--muted)">kJ</text>`;
   for(let i=3;i<n;i+=3){const k=ks[i];g+=`<text x="${xc(i)}" y="${base+14}" font-size="10" text-anchor="middle" fill="var(--ink)">${Math.round(kj[i])}</text>`;
     const ws=s.wx.ws[k],wd=s.wx.wd[k];if(ws!=null)g+=`<g transform="translate(${xc(i)},146) rotate(${Math.round(wd+180)})"><path d="M0 -5.5 L3.8 4 L0 2 L-3.8 4 Z" fill="var(--ink)"/></g><text x="${xc(i)}" y="168" font-size="12" font-weight="600" text-anchor="middle" fill="var(--ink)">${Math.round(ws)}</text><text x="${xc(i)}" y="183" font-size="10" text-anchor="middle" fill="var(--muted)">${Math.round(s.wx.wg[k]||ws)}</text>`;
     g+=`<text x="${xc(i)}" y="${H-6}" font-size="10" text-anchor="middle" fill="var(--muted)">${h12(hourOf(k)).replace(" ","").toLowerCase()}</text>`}
   const wm=Math.max(15,...ks.map(k=>s.wx.wg[k]||0));let wa=`M${x(0)} 194`;ks.forEach((k,i)=>{wa+=`L${xc(i).toFixed(1)} ${(194-(s.wx.ws[k]||0)/wm*46).toFixed(1)}`});wa+=`L${x(n)} 194Z`;
-  g=`<path d="${wa}" fill="var(--map-ink)" opacity=".13"/>`+g+`<text x="${x0}" y="128" font-size="9.5" fill="var(--muted)">Wind, kn (gust below)</text>`;
+  g=`<path d="${wa}" fill="var(--map-ink)" opacity=".13"/>`+g+`<text x="${x0+8}" y="128" font-size="9.5" fill="var(--muted)">Wind/Gust (kn)</text>`;
   if(s.tide){const vals=ks.map(k=>s.tide[k]).filter(v=>v!=null),ex=s.hilo.filter(e=>e.t.slice(0,10)===cur),lo=Math.min(...vals,...ex.map(e=>e.v)),hi=Math.max(...vals,...ex.map(e=>e.v)),t0=244,t1=284,ty=v=>t1-(v-lo)/(hi-lo||1)*(t1-t0);
     let d="",pen=false;ks.forEach((k,i)=>{const v=s.tide[k];if(v==null){pen=false;return}d+=(pen?"L":"M")+x(i).toFixed(1)+" "+ty(v).toFixed(1);pen=true});
-    g+=`<text x="${x0}" y="222" font-size="9.5" fill="var(--muted)">Tide, ft</text><path d="${d}" fill="none" stroke="var(--map-ink)" stroke-width="1.6"/>`;
+    g+=`<text x="${x0+8}" y="222" font-size="9.5" fill="var(--muted)">Tide (ft)</text><path d="${d}" fill="none" stroke="var(--map-ink)" stroke-width="1.6"/>`;
     for(const e of ex){const hh=+e.t.slice(11,13)+(+e.t.slice(14,16))/60,px=clamp(x(hh),26,W-26),py=ty(e.v);
       g+=`<line x1="${x(hh).toFixed(1)}" x2="${x(hh).toFixed(1)}" y1="${py.toFixed(1)}" y2="${t1+6}" stroke="var(--map-ink)" stroke-width=".8" opacity=".6"/><text x="${px.toFixed(1)}" y="${(py-15).toFixed(1)}" font-size="10" font-weight="600" text-anchor="middle" fill="var(--ink)">${e.t.slice(11,16)}</text><text x="${px.toFixed(1)}" y="${(py-4).toFixed(1)}" font-size="10" text-anchor="middle" fill="var(--muted)">${e.v.toFixed(1)} ft</text>`}}
   const ci=ks.indexOf(TI);if(ci>=0)g=`<rect x="${x(ci).toFixed(1)}" y="2" width="${bw.toFixed(1)}" height="${H-22}" rx="3" fill="var(--ink)" opacity=".09"/>`+g;
@@ -491,7 +491,7 @@ function bestWindowsView(s){
   for(const {d,idx} of days){if(top.some(w=>DATA.times[w.startIdx].slice(0,10)===d))continue;
     const w=bestWindows(s,1,[idx[0]])[0];if(!w||w.weak||s.hr[w.peakIdx].cls<2)continue;const p=tparts(DATA.times[w.startIdx]),c=s.hr[w.peakIdx].cls;
     rows.push(`<button class="bwr" data-time="${w.startIdx}"><b>${DOW[p.dow]}</b><span>${winRange(w)}</span><span class="r"><i class="dot" style="background:${rtCol(c)}"></i>${RT[c].n}</span></button>`)}
-  return`<div><p class="lab" style="margin-bottom:8px">${top[0].weak?"Best of a flat week":"Best windows this week"}</p><div class="bw">${top.map(w=>winCard(s,w)).join("")}</div></div>`+
+  return`<div><p class="lab" style="margin-bottom:8px">${top[0].weak?"Best Windows (flat week)":"Best Windows"}</p><div class="bw">${top.map(w=>winCard(s,w)).join("")}</div></div>`+
     (rows.length?`<div><p class="lab" style="margin-bottom:4px">Other days</p><div class="bwd">${rows.join("")}</div></div>`:"")}
 function detail(s){const h=s.hr[TI];
   if(!s.ok)return`<div class="det"><button class="back" data-back="1">← All spots</button><h2>${esc(s.n)}</h2><p class="note">No wave data close enough to rate this spot.</p></div>`;
@@ -513,7 +513,7 @@ function detail(s){const h=s.hr[TI];
   <div><p class="lab" style="margin-bottom:8px">By day</p>${dayCards(s)}</div>
   <div><p class="lab" style="margin-bottom:8px">${fmt(TI).split(" ")[0]} through the day</p>${dayChart(s)}<div class="steprow"><div class="seg2" role="group" aria-label="Table interval"><button data-step="1" aria-pressed="${S.step===1}">Hourly</button><button data-step="3" aria-pressed="${S.step===3}">3-hour</button></div></div>${hourly(s)}</div>
   <div><p class="lab" style="margin-bottom:8px">Swell breakdown · ${fmt(TI)}</p>${spectra(s)}</div>
-  <div><p class="lab" style="margin-bottom:8px">Next seven days</p>${fcChart(s)}</div>
+  <div><p class="lab" style="margin-bottom:8px">7 Day Forecast</p>${fcChart(s)}</div>
   ${bestWindowsView(s)}
   <p class="note">${esc(s.note)} Faces ${comp(s.f)}. Accepts swell from ${s.w.map(([a,b])=>`${comp(a)} to ${comp(b)}`).join(" and ")}; ideal faces ${s.sz[0]}–${s.sz[1]} ft.</p></div>`}
 const buoyAge=d=>(Date.now()/1000-d.t[d.t.length-1])/60;
