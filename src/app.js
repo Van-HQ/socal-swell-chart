@@ -324,7 +324,7 @@ $("t").addEventListener("input",e=>{if(DATA)setTime(+e.target.value)});
 $("now").onclick=()=>{if(DATA)setTime(NOWI)};
 let playT=0;
 $("play").onclick=()=>{if(!DATA)return;const on=!playT;$("play").setAttribute("aria-pressed",on);$("play").textContent=on?"Pause":"Play";
-  if(on)playT=setInterval(()=>setTime(TI>=DATA.times.length-1?NOWI:TI+1,true),380);else{clearInterval(playT);playT=0}};
+  if(on)playT=setInterval(()=>setTime(TI>=DATA.times.length-1?NOWI:TI+1,true),900);else{clearInterval(playT);playT=0}};
 
 /* ---------- panel ---------- */
 const S={tab:"spots",sel:null,region:"all",step:3,sort:"best",look:"night"};
