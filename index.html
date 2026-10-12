@@ -756,6 +756,7 @@ $("locpop").addEventListener("click",e=>{e.stopPropagation();const t=e.target.cl
   else{LOCOPEN=false;S.sel=null;S.tab="spots";render();colorMarks();if(matchMedia("(max-width:860px)").matches)document.querySelector(".panel").scrollIntoView({behavior:REDUCED?"auto":"smooth"})}
   renderLoc()});
 document.addEventListener("click",()=>{if(LOCOPEN){LOCOPEN=false;renderLoc()}});
+document.addEventListener("keydown",e=>{if(e.key==="Escape"&&LOCOPEN){LOCOPEN=false;renderLoc()}});
 function select(k){S.sel=k;S.tab="spots";render();$("body").scrollTop=0;colorMarks();placeMarks();
   if(k!=null&&window.matchMedia("(max-width:860px)").matches)document.querySelector(".panel").scrollIntoView({behavior:REDUCED?"auto":"smooth"})}
 for(const t of ["spots","buoys","how"])$("tab-"+t).onclick=()=>{S.tab=t;S.sel=null;render();colorMarks()};
