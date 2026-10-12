@@ -57,7 +57,7 @@ button{font:inherit;color:inherit;cursor:pointer}
 .map>canvas{position:absolute;inset:0;width:100%;height:100%;display:block;pointer-events:none}
 #marks{position:absolute;inset:0;pointer-events:none;z-index:3;overflow:hidden}
 .maphead,.legend,.zoom,.msg{z-index:4}
-.loc{position:absolute;left:12px;top:54px;z-index:6;max-width:calc(100% - 68px)}
+.loc{position:absolute;left:12px;top:calc(54px + env(safe-area-inset-top));z-index:6;max-width:calc(100% - 68px)}
 #locbtn{display:flex;align-items:center;gap:7px;border:0;padding:9px 12px;font:500 13.5px/1 var(--f-ui);color:var(--ink)}
 #locbtn svg:last-child{color:var(--muted);transition:transform .15s}
 #locbtn[aria-expanded="true"] svg:last-child{transform:rotate(180deg)}
@@ -82,14 +82,14 @@ button{font:inherit;color:inherit;cursor:pointer}
 .mk.buoy i{border-radius:1px;transform:rotate(45deg);background:var(--panel);border:1.5px solid var(--accent);width:7px;height:7px;margin:-3.5px 0 0 -3.5px}
 .mk.buoy.stale i{border-color:var(--muted)}
 .glass{background:var(--glass);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-radius:9px}
-.maphead{position:absolute;left:12px;top:12px;right:12px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between;pointer-events:none}
+.maphead{position:absolute;left:12px;top:calc(12px + env(safe-area-inset-top));right:12px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between;pointer-events:none}
 .brand{padding:8px 12px;pointer-events:auto}
 .brand h1{margin:0;font:600 16px/1 var(--f-ui);letter-spacing:.01em;display:flex;align-items:center;gap:8px}
 .brand h1 img{border-radius:5px;display:block}
 .seg{display:flex;padding:3px;gap:2px;pointer-events:auto}
 .seg button{border:0;background:none;padding:6px 11px;font:500 13px/1 var(--f-ui);color:var(--muted);border-radius:7px}
 .seg button[aria-pressed="true"]{background:var(--ink);color:var(--panel)}
-.zoom{position:absolute;right:12px;top:58px;display:flex;flex-direction:column;overflow:hidden}
+.zoom{position:absolute;right:12px;top:calc(58px + env(safe-area-inset-top));display:flex;flex-direction:column;overflow:hidden}
 .zoom button{border:0;background:none;width:32px;height:30px;font:500 17px/1 var(--f-ui);color:var(--muted)}
 .zoom button:hover{color:var(--ink)}
 .legend{position:absolute;left:12px;bottom:12px;padding:8px 10px;font:500 11.5px/1 var(--f-ui);color:var(--muted);max-width:calc(100% - 24px)}
