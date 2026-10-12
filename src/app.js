@@ -309,8 +309,7 @@ function initMap(){
 const inView=(lo,la)=>{const x=X(lo),y=Y(la);return x>24&&x<V.W-24&&y>64&&y<V.H-24};
 function goTo(lo,la,minZoom){if(!MAP)return;const z=MAP.getZoom();if(z>=minZoom&&inView(lo,la))return;MAP.easeTo({center:[lo,la],zoom:Math.max(z,minZoom),duration:REDUCED?0:700})}
 for(const l of ["swell","period","wind"])$("lyr-"+l).onclick=()=>{LAYER=l;for(const m of ["swell","period","wind"])$("lyr-"+m).setAttribute("aria-pressed",m===l);legend();clearParticles();redraw()};
-function lookButtons(){$("looks").innerHTML=Object.entries(LOOKS).map(([k,n])=>`<button data-look="${k}" aria-pressed="${S.look===k}">${n}</button>`).join("")}
-$("looks").addEventListener("click",e=>{const b=e.target.closest("[data-look]");if(!b)return;S.look=b.dataset.look;try{localStorage.setItem("swellchart.look",S.look)}catch(e){}lookButtons();themeChanged()});
+// The map look is fixed to Midnight for now; the other looks stay defined above for a future settings screen.
 const themeChanged=()=>{syncTheme();legend();if(MAP)MAP.setStyle(mapStyle());redraw()};
 matchMedia("(prefers-color-scheme: dark)").addEventListener("change",themeChanged);
 new MutationObserver(themeChanged).observe(document.documentElement,{attributes:true,attributeFilter:["data-theme"]});
@@ -328,7 +327,7 @@ $("play").onclick=()=>{if(!DATA)return;const on=!playT;$("play").setAttribute("a
   if(on)playT=setInterval(()=>setTime(TI>=DATA.times.length-1?NOWI:TI+1,true),380);else{clearInterval(playT);playT=0}};
 
 /* ---------- panel ---------- */
-const S={tab:"spots",sel:null,region:"all",step:1,sort:"best",look:"chart"};try{const l=localStorage.getItem("swellchart.look");if(l&&["chart","sat","night","paper"].includes(l))S.look=l}catch(e){}try{if(localStorage.getItem("swellchart.step")==="3")S.step=3}catch(e){}
+const S={tab:"spots",sel:null,region:"all",step:1,sort:"best",look:"night"};
 const REG={all:"All",sb:"Santa Barbara",vc:"Ventura",la:"Los Angeles",oc:"Orange County",sd:"San Diego"};
 const CHIPS={all:"All",fav:"\u2605 Favorites",sb:"Santa Barbara",vc:"Ventura",la:"Los Angeles",oc:"Orange County",sd:"San Diego"};
 // Favorites and list preferences are kept in this browser only.
@@ -338,6 +337,28 @@ const inFilter=s=>S.region==="all"||(S.region==="fav"?FAVS.has(s.n):s.r===S.regi
 function fitFilter(){if(!MAP||!DATA)return;const ss=DATA.spots.filter(inFilter);if(S.region==="all"||!ss.length){MAP.fitBounds(FIT,{padding:8,duration:REDUCED?0:700});return}
   let w=180,e=-180,so=90,n=-90;for(const s of ss){w=Math.min(w,s.lo);e=Math.max(e,s.lo);so=Math.min(so,s.la);n=Math.max(n,s.la)}
   MAP.fitBounds([[w,so],[e,n]],{padding:{top:70,bottom:50,left:40,right:60},maxZoom:12.5,duration:REDUCED?0:700})}
+// Well-known breaks shown first in the location picker, in this order.
+const POPULAR=["Rincon","Jalama","Leadbetter","Campus Point","Ventura Point","Silver Strand","County Line","Malibu First Point","El Porto","Venice Breakwater","Zuma","Topanga",
+  "HB Pier Southside","Lower Trestles","The Wedge","Salt Creek","Seal Beach Pier","Newport 56th St","San Onofre","Black's Beach","Swami's","Windansea","Oceanside Pier","Pacific Beach","Tourmaline"];
+const PIN='<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0c0 5.4-6.5 11-6.5 11z"/><circle cx="12" cy="10" r="2.3"/></svg>';
+const AREA={all:"All SoCal",fav:"Favorites",sb:"Santa Barbara",vc:"Ventura",la:"Los Angeles",oc:"Orange County",sd:"San Diego"};
+let LOCOPEN=false;
+function renderLoc(){const btn=$("locbtn"),pop=$("locpop");btn.innerHTML=`${PIN}<span>${AREA[S.region]}</span><svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M1.5 3.5 5 7l3.5-3.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+  btn.setAttribute("aria-expanded",LOCOPEN);pop.hidden=!LOCOPEN;if(!LOCOPEN)return;pop.style.maxHeight=Math.max(180,V.H-112)+"px";
+  let rows="",title="",n=0;
+  if(DATA){const inA=DATA.spots.filter(inFilter);n=inA.length;let pick;
+    if(S.region==="fav"){pick=inA;title="Your favorites"}
+    else{pick=POPULAR.map(nm=>inA.find(s=>s.n===nm)).filter(Boolean);if(S.region==="all")pick=pick.slice().sort((x,y)=>y.hr[TI].rate-x.hr[TI].rate).slice(0,8);title=S.region==="all"?"Popular spots, best right now":"Most popular"}
+    rows=pick.length?pick.map(s=>{const h=s.hr[TI];return`<button class="lrow" data-spot="${s.idx}"><i class="dot" style="background:${s.ok?rtCol(h.cls):"var(--line)"}"></i><span>${esc(s.n)}</span><b>${s.ok?faceText(h.face):""}</b></button>`}).join(""):`<p class="note" style="padding:6px 4px">${S.region==="fav"?"No favorites yet. Open a spot and tap the star.":"No spots here."}</p>`}
+  pop.innerHTML=`<div class="lareas">${Object.entries(AREA).map(([k,v])=>`<button data-reg="${k}" aria-pressed="${S.region===k}">${k==="fav"?"★ ":""}${v}</button>`).join("")}</div>
+    <p class="lab" style="margin:10px 4px 4px">${title}</p><div class="lrows">${rows}</div>${n?`<button class="lall" data-all="1">See all ${n} spots</button>`:""}`}
+$("locbtn").onclick=e=>{e.stopPropagation();LOCOPEN=!LOCOPEN;renderLoc()};
+$("locpop").addEventListener("click",e=>{e.stopPropagation();const t=e.target.closest("[data-reg],[data-spot],[data-all]");if(!t||!DATA)return;
+  if(t.dataset.reg){S.region=t.dataset.reg;S.sel=null;render();placeMarks();colorMarks();fitFilter()}
+  else if(t.dataset.spot!=null){const k=+t.dataset.spot,s=DATA.spots[k];LOCOPEN=false;select(k);goTo(s.lo,s.la,11.5)}
+  else{LOCOPEN=false;S.sel=null;S.tab="spots";render();colorMarks();if(matchMedia("(max-width:860px)").matches)document.querySelector(".panel").scrollIntoView({behavior:REDUCED?"auto":"smooth"})}
+  renderLoc()});
+document.addEventListener("click",()=>{if(LOCOPEN){LOCOPEN=false;renderLoc()}});
 function select(k){S.sel=k;S.tab="spots";render();$("body").scrollTop=0;colorMarks();placeMarks();
   if(k!=null&&window.matchMedia("(max-width:860px)").matches)document.querySelector(".panel").scrollIntoView({behavior:REDUCED?"auto":"smooth"})}
 for(const t of ["spots","buoys","how"])$("tab-"+t).onclick=()=>{S.tab=t;S.sel=null;render();colorMarks()};
@@ -480,7 +501,7 @@ let lastRender=0;
 function render(fromPlay){if(!DATA)return;const b=$("body"),keep=b.scrollTop;
   for(const t of ["spots","buoys","how"])$("tab-"+t).setAttribute("aria-selected",S.tab===t);
   b.innerHTML=S.tab==="buoys"?buoyView():S.tab==="how"?howView():S.sel!=null?detail(DATA.spots[S.sel]):listView();
-  b.scrollTop=keep;lastRender=Date.now();
+  b.scrollTop=keep;lastRender=Date.now();renderLoc();
   const ch=b.querySelector(".chips"),on=ch&&ch.querySelector('[aria-pressed="true"]');if(on)ch.scrollLeft=Math.max(0,on.offsetLeft-ch.offsetLeft-(ch.clientWidth-on.offsetWidth)/2)}
 $("body").addEventListener("click",e=>{const t=e.target.closest("[data-spot],[data-fav],[data-sort],[data-reg],[data-back],[data-time],[data-buoy],[data-step],#refresh,#fc,[data-chart]");if(!t||!DATA)return;
   if(t.dataset.spot!=null){const k=+t.dataset.spot,s=DATA.spots[k];select(k);goTo(s.lo,s.la,11.5)}
@@ -494,4 +515,4 @@ $("body").addEventListener("click",e=>{const t=e.target.closest("[data-spot],[da
   else if(t.id==="refresh"){load(true)}
   else if(t.dataset.chart){const r=t.querySelector("svg").getBoundingClientRect(),f=((e.clientX-r.left)/r.width-+t.dataset.x0)/(+t.dataset.x1-+t.dataset.x0);setTime(+t.dataset.i0+Math.floor(clamp(f,0,0.9999)*+t.dataset.n))}
   else if(t.id==="fc"){const r=t.querySelector("svg").getBoundingClientRect(),f=((e.clientX-r.left)/r.width-+t.dataset.x0)/(+t.dataset.x1-+t.dataset.x0);setTime(Math.floor(clamp(f,0,0.9999)*DATA.times.length))}});
-lookButtons();syncTheme();legend();if(initMap()){if(!REDUCED)tick();load(false)}
+syncTheme();legend();renderLoc();if(initMap()){if(!REDUCED)tick();load(false)}

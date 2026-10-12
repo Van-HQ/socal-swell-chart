@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
@@ -46,8 +46,21 @@ button{font:inherit;color:inherit;cursor:pointer}
 #mapgl{position:absolute;inset:0;font:inherit}
 .map>canvas{position:absolute;inset:0;width:100%;height:100%;display:block;pointer-events:none}
 #marks{position:absolute;inset:0;pointer-events:none;z-index:3;overflow:hidden}
-.maphead,.legend,.zoom,.msg,.looks{z-index:4}
-.looks{position:absolute;left:12px;top:54px}
+.maphead,.legend,.zoom,.msg{z-index:4}
+.loc{position:absolute;left:12px;top:54px;z-index:6;max-width:calc(100% - 68px)}
+#locbtn{display:flex;align-items:center;gap:7px;border:0;padding:9px 12px;font:500 13.5px/1 var(--f-ui);color:var(--ink)}
+#locbtn svg:last-child{color:var(--muted);transition:transform .15s}
+#locbtn[aria-expanded="true"] svg:last-child{transform:rotate(180deg)}
+#locpop{margin-top:6px;width:min(320px,calc(100vw - 80px));max-height:min(60vh,420px);overflow:auto;padding:10px;border-radius:16px;box-shadow:0 12px 32px rgba(0,0,0,.35)}
+.lareas{display:flex;flex-wrap:wrap;gap:5px}
+.lareas button{border:0;background:color-mix(in srgb,var(--ink) 8%,transparent);padding:7px 11px;font:500 13px/1 var(--f-ui);color:var(--ink);border-radius:999px}
+.lareas button[aria-pressed="true"]{background:var(--ink);color:var(--panel)}
+.lrows{display:flex;flex-direction:column}
+.lrow{display:grid;grid-template-columns:10px minmax(0,1fr) auto;gap:10px;align-items:center;text-align:left;border:0;background:none;padding:9px 6px;border-radius:10px;font-size:14.5px}
+.lrow:hover{background:color-mix(in srgb,var(--ink) 7%,transparent)}
+.lrow span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500}
+.lrow b{font-weight:600;white-space:nowrap}
+.lall{width:100%;margin-top:6px;border:0;background:color-mix(in srgb,var(--ink) 8%,transparent);padding:10px;border-radius:10px;font:500 13.5px/1 var(--f-ui);color:var(--ink)}
 .maplibregl-ctrl-attrib{font-size:10.5px}
 .mk{position:absolute;left:0;top:0;padding:0;border:0;background:none;pointer-events:auto;display:flex;align-items:center;gap:6px;white-space:nowrap}
 .mk i{display:block;width:10px;height:10px;border-radius:50%;border:1.5px solid var(--panel);margin:-5px 0 0 -5px;flex:none}
@@ -82,7 +95,11 @@ button{font:inherit;color:inherit;cursor:pointer}
 .btn{border:1px solid var(--line);background:none;padding:6px 11px;font:500 13px/1 var(--f-ui);border-radius:7px;color:var(--ink)}
 .btn:hover{background:var(--raise)}
 .track{position:relative;min-width:0}
-.track input{width:100%;margin:0;display:block;accent-color:var(--accent)}
+.track input{width:100%;margin:0;display:block;height:18px;background:none;-webkit-appearance:none;appearance:none}
+.track input::-webkit-slider-runnable-track{height:4px;border-radius:2px;background:color-mix(in srgb,var(--ink) 22%,transparent)}
+.track input::-moz-range-track{height:4px;border-radius:2px;background:color-mix(in srgb,var(--ink) 22%,transparent)}
+.track input::-webkit-slider-thumb{-webkit-appearance:none;width:18px;height:18px;margin-top:-7px;border-radius:50%;background:var(--ink);border:0;box-shadow:0 1px 4px rgba(0,0,0,.4)}
+.track input::-moz-range-thumb{width:18px;height:18px;border-radius:50%;background:var(--ink);border:0;box-shadow:0 1px 4px rgba(0,0,0,.4)}
 .days{display:flex;font:500 11px/1 var(--f-ui);color:var(--muted);margin-top:4px}
 .days i{font-style:normal}
 .days span{flex:1;overflow:hidden;white-space:nowrap}
@@ -223,7 +240,7 @@ td.num,th.num{text-align:right;padding-right:0}
           <button id="lyr-swell" aria-pressed="true">Swell</button><button id="lyr-period" aria-pressed="false">Period</button><button id="lyr-wind" aria-pressed="false">Wind</button>
         </div>
       </div>
-      <div class="seg glass looks" id="looks" role="group" aria-label="Map look"></div>
+      <div class="loc"><button class="glass" id="locbtn" aria-haspopup="true" aria-expanded="false"></button><div class="glass" id="locpop" hidden></div></div>
       <div class="legend glass" id="legend"></div>
       <div class="zoom glass"><button id="zin" aria-label="Zoom in">+</button><button id="zout" aria-label="Zoom out">&minus;</button><button id="zfit" aria-label="Show whole coast" title="Show whole coast">&#8962;</button></div>
       <div class="msg glass" id="msg"><b>Loading the forecast</b>Pulling swell, wind, tide and buoy data.</div>
@@ -689,8 +706,7 @@ function initMap(){
 const inView=(lo,la)=>{const x=X(lo),y=Y(la);return x>24&&x<V.W-24&&y>64&&y<V.H-24};
 function goTo(lo,la,minZoom){if(!MAP)return;const z=MAP.getZoom();if(z>=minZoom&&inView(lo,la))return;MAP.easeTo({center:[lo,la],zoom:Math.max(z,minZoom),duration:REDUCED?0:700})}
 for(const l of ["swell","period","wind"])$("lyr-"+l).onclick=()=>{LAYER=l;for(const m of ["swell","period","wind"])$("lyr-"+m).setAttribute("aria-pressed",m===l);legend();clearParticles();redraw()};
-function lookButtons(){$("looks").innerHTML=Object.entries(LOOKS).map(([k,n])=>`<button data-look="${k}" aria-pressed="${S.look===k}">${n}</button>`).join("")}
-$("looks").addEventListener("click",e=>{const b=e.target.closest("[data-look]");if(!b)return;S.look=b.dataset.look;try{localStorage.setItem("swellchart.look",S.look)}catch(e){}lookButtons();themeChanged()});
+// The map look is fixed to Midnight for now; the other looks stay defined above for a future settings screen.
 const themeChanged=()=>{syncTheme();legend();if(MAP)MAP.setStyle(mapStyle());redraw()};
 matchMedia("(prefers-color-scheme: dark)").addEventListener("change",themeChanged);
 new MutationObserver(themeChanged).observe(document.documentElement,{attributes:true,attributeFilter:["data-theme"]});
@@ -708,7 +724,7 @@ $("play").onclick=()=>{if(!DATA)return;const on=!playT;$("play").setAttribute("a
   if(on)playT=setInterval(()=>setTime(TI>=DATA.times.length-1?NOWI:TI+1,true),380);else{clearInterval(playT);playT=0}};
 
 /* ---------- panel ---------- */
-const S={tab:"spots",sel:null,region:"all",step:1,sort:"best",look:"chart"};try{const l=localStorage.getItem("swellchart.look");if(l&&["chart","sat","night","paper"].includes(l))S.look=l}catch(e){}try{if(localStorage.getItem("swellchart.step")==="3")S.step=3}catch(e){}
+const S={tab:"spots",sel:null,region:"all",step:1,sort:"best",look:"night"};
 const REG={all:"All",sb:"Santa Barbara",vc:"Ventura",la:"Los Angeles",oc:"Orange County",sd:"San Diego"};
 const CHIPS={all:"All",fav:"\u2605 Favorites",sb:"Santa Barbara",vc:"Ventura",la:"Los Angeles",oc:"Orange County",sd:"San Diego"};
 // Favorites and list preferences are kept in this browser only.
@@ -718,6 +734,28 @@ const inFilter=s=>S.region==="all"||(S.region==="fav"?FAVS.has(s.n):s.r===S.regi
 function fitFilter(){if(!MAP||!DATA)return;const ss=DATA.spots.filter(inFilter);if(S.region==="all"||!ss.length){MAP.fitBounds(FIT,{padding:8,duration:REDUCED?0:700});return}
   let w=180,e=-180,so=90,n=-90;for(const s of ss){w=Math.min(w,s.lo);e=Math.max(e,s.lo);so=Math.min(so,s.la);n=Math.max(n,s.la)}
   MAP.fitBounds([[w,so],[e,n]],{padding:{top:70,bottom:50,left:40,right:60},maxZoom:12.5,duration:REDUCED?0:700})}
+// Well-known breaks shown first in the location picker, in this order.
+const POPULAR=["Rincon","Jalama","Leadbetter","Campus Point","Ventura Point","Silver Strand","County Line","Malibu First Point","El Porto","Venice Breakwater","Zuma","Topanga",
+  "HB Pier Southside","Lower Trestles","The Wedge","Salt Creek","Seal Beach Pier","Newport 56th St","San Onofre","Black's Beach","Swami's","Windansea","Oceanside Pier","Pacific Beach","Tourmaline"];
+const PIN='<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0c0 5.4-6.5 11-6.5 11z"/><circle cx="12" cy="10" r="2.3"/></svg>';
+const AREA={all:"All SoCal",fav:"Favorites",sb:"Santa Barbara",vc:"Ventura",la:"Los Angeles",oc:"Orange County",sd:"San Diego"};
+let LOCOPEN=false;
+function renderLoc(){const btn=$("locbtn"),pop=$("locpop");btn.innerHTML=`${PIN}<span>${AREA[S.region]}</span><svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M1.5 3.5 5 7l3.5-3.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+  btn.setAttribute("aria-expanded",LOCOPEN);pop.hidden=!LOCOPEN;if(!LOCOPEN)return;pop.style.maxHeight=Math.max(180,V.H-112)+"px";
+  let rows="",title="",n=0;
+  if(DATA){const inA=DATA.spots.filter(inFilter);n=inA.length;let pick;
+    if(S.region==="fav"){pick=inA;title="Your favorites"}
+    else{pick=POPULAR.map(nm=>inA.find(s=>s.n===nm)).filter(Boolean);if(S.region==="all")pick=pick.slice().sort((x,y)=>y.hr[TI].rate-x.hr[TI].rate).slice(0,8);title=S.region==="all"?"Popular spots, best right now":"Most popular"}
+    rows=pick.length?pick.map(s=>{const h=s.hr[TI];return`<button class="lrow" data-spot="${s.idx}"><i class="dot" style="background:${s.ok?rtCol(h.cls):"var(--line)"}"></i><span>${esc(s.n)}</span><b>${s.ok?faceText(h.face):""}</b></button>`}).join(""):`<p class="note" style="padding:6px 4px">${S.region==="fav"?"No favorites yet. Open a spot and tap the star.":"No spots here."}</p>`}
+  pop.innerHTML=`<div class="lareas">${Object.entries(AREA).map(([k,v])=>`<button data-reg="${k}" aria-pressed="${S.region===k}">${k==="fav"?"★ ":""}${v}</button>`).join("")}</div>
+    <p class="lab" style="margin:10px 4px 4px">${title}</p><div class="lrows">${rows}</div>${n?`<button class="lall" data-all="1">See all ${n} spots</button>`:""}`}
+$("locbtn").onclick=e=>{e.stopPropagation();LOCOPEN=!LOCOPEN;renderLoc()};
+$("locpop").addEventListener("click",e=>{e.stopPropagation();const t=e.target.closest("[data-reg],[data-spot],[data-all]");if(!t||!DATA)return;
+  if(t.dataset.reg){S.region=t.dataset.reg;S.sel=null;render();placeMarks();colorMarks();fitFilter()}
+  else if(t.dataset.spot!=null){const k=+t.dataset.spot,s=DATA.spots[k];LOCOPEN=false;select(k);goTo(s.lo,s.la,11.5)}
+  else{LOCOPEN=false;S.sel=null;S.tab="spots";render();colorMarks();if(matchMedia("(max-width:860px)").matches)document.querySelector(".panel").scrollIntoView({behavior:REDUCED?"auto":"smooth"})}
+  renderLoc()});
+document.addEventListener("click",()=>{if(LOCOPEN){LOCOPEN=false;renderLoc()}});
 function select(k){S.sel=k;S.tab="spots";render();$("body").scrollTop=0;colorMarks();placeMarks();
   if(k!=null&&window.matchMedia("(max-width:860px)").matches)document.querySelector(".panel").scrollIntoView({behavior:REDUCED?"auto":"smooth"})}
 for(const t of ["spots","buoys","how"])$("tab-"+t).onclick=()=>{S.tab=t;S.sel=null;render();colorMarks()};
@@ -860,7 +898,7 @@ let lastRender=0;
 function render(fromPlay){if(!DATA)return;const b=$("body"),keep=b.scrollTop;
   for(const t of ["spots","buoys","how"])$("tab-"+t).setAttribute("aria-selected",S.tab===t);
   b.innerHTML=S.tab==="buoys"?buoyView():S.tab==="how"?howView():S.sel!=null?detail(DATA.spots[S.sel]):listView();
-  b.scrollTop=keep;lastRender=Date.now();
+  b.scrollTop=keep;lastRender=Date.now();renderLoc();
   const ch=b.querySelector(".chips"),on=ch&&ch.querySelector('[aria-pressed="true"]');if(on)ch.scrollLeft=Math.max(0,on.offsetLeft-ch.offsetLeft-(ch.clientWidth-on.offsetWidth)/2)}
 $("body").addEventListener("click",e=>{const t=e.target.closest("[data-spot],[data-fav],[data-sort],[data-reg],[data-back],[data-time],[data-buoy],[data-step],#refresh,#fc,[data-chart]");if(!t||!DATA)return;
   if(t.dataset.spot!=null){const k=+t.dataset.spot,s=DATA.spots[k];select(k);goTo(s.lo,s.la,11.5)}
@@ -874,6 +912,6 @@ $("body").addEventListener("click",e=>{const t=e.target.closest("[data-spot],[da
   else if(t.id==="refresh"){load(true)}
   else if(t.dataset.chart){const r=t.querySelector("svg").getBoundingClientRect(),f=((e.clientX-r.left)/r.width-+t.dataset.x0)/(+t.dataset.x1-+t.dataset.x0);setTime(+t.dataset.i0+Math.floor(clamp(f,0,0.9999)*+t.dataset.n))}
   else if(t.id==="fc"){const r=t.querySelector("svg").getBoundingClientRect(),f=((e.clientX-r.left)/r.width-+t.dataset.x0)/(+t.dataset.x1-+t.dataset.x0);setTime(Math.floor(clamp(f,0,0.9999)*DATA.times.length))}});
-lookButtons();syncTheme();legend();if(initMap()){if(!REDUCED)tick();load(false)}
+syncTheme();legend();renderLoc();if(initMap()){if(!REDUCED)tick();load(false)}
 </script>
 </body></html>

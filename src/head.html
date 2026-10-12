@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
@@ -46,8 +46,21 @@ button{font:inherit;color:inherit;cursor:pointer}
 #mapgl{position:absolute;inset:0;font:inherit}
 .map>canvas{position:absolute;inset:0;width:100%;height:100%;display:block;pointer-events:none}
 #marks{position:absolute;inset:0;pointer-events:none;z-index:3;overflow:hidden}
-.maphead,.legend,.zoom,.msg,.looks{z-index:4}
-.looks{position:absolute;left:12px;top:54px}
+.maphead,.legend,.zoom,.msg{z-index:4}
+.loc{position:absolute;left:12px;top:54px;z-index:6;max-width:calc(100% - 68px)}
+#locbtn{display:flex;align-items:center;gap:7px;border:0;padding:9px 12px;font:500 13.5px/1 var(--f-ui);color:var(--ink)}
+#locbtn svg:last-child{color:var(--muted);transition:transform .15s}
+#locbtn[aria-expanded="true"] svg:last-child{transform:rotate(180deg)}
+#locpop{margin-top:6px;width:min(320px,calc(100vw - 80px));max-height:min(60vh,420px);overflow:auto;padding:10px;border-radius:16px;box-shadow:0 12px 32px rgba(0,0,0,.35)}
+.lareas{display:flex;flex-wrap:wrap;gap:5px}
+.lareas button{border:0;background:color-mix(in srgb,var(--ink) 8%,transparent);padding:7px 11px;font:500 13px/1 var(--f-ui);color:var(--ink);border-radius:999px}
+.lareas button[aria-pressed="true"]{background:var(--ink);color:var(--panel)}
+.lrows{display:flex;flex-direction:column}
+.lrow{display:grid;grid-template-columns:10px minmax(0,1fr) auto;gap:10px;align-items:center;text-align:left;border:0;background:none;padding:9px 6px;border-radius:10px;font-size:14.5px}
+.lrow:hover{background:color-mix(in srgb,var(--ink) 7%,transparent)}
+.lrow span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500}
+.lrow b{font-weight:600;white-space:nowrap}
+.lall{width:100%;margin-top:6px;border:0;background:color-mix(in srgb,var(--ink) 8%,transparent);padding:10px;border-radius:10px;font:500 13.5px/1 var(--f-ui);color:var(--ink)}
 .maplibregl-ctrl-attrib{font-size:10.5px}
 .mk{position:absolute;left:0;top:0;padding:0;border:0;background:none;pointer-events:auto;display:flex;align-items:center;gap:6px;white-space:nowrap}
 .mk i{display:block;width:10px;height:10px;border-radius:50%;border:1.5px solid var(--panel);margin:-5px 0 0 -5px;flex:none}
@@ -82,7 +95,11 @@ button{font:inherit;color:inherit;cursor:pointer}
 .btn{border:1px solid var(--line);background:none;padding:6px 11px;font:500 13px/1 var(--f-ui);border-radius:7px;color:var(--ink)}
 .btn:hover{background:var(--raise)}
 .track{position:relative;min-width:0}
-.track input{width:100%;margin:0;display:block;accent-color:var(--accent)}
+.track input{width:100%;margin:0;display:block;height:18px;background:none;-webkit-appearance:none;appearance:none}
+.track input::-webkit-slider-runnable-track{height:4px;border-radius:2px;background:color-mix(in srgb,var(--ink) 22%,transparent)}
+.track input::-moz-range-track{height:4px;border-radius:2px;background:color-mix(in srgb,var(--ink) 22%,transparent)}
+.track input::-webkit-slider-thumb{-webkit-appearance:none;width:18px;height:18px;margin-top:-7px;border-radius:50%;background:var(--ink);border:0;box-shadow:0 1px 4px rgba(0,0,0,.4)}
+.track input::-moz-range-thumb{width:18px;height:18px;border-radius:50%;background:var(--ink);border:0;box-shadow:0 1px 4px rgba(0,0,0,.4)}
 .days{display:flex;font:500 11px/1 var(--f-ui);color:var(--muted);margin-top:4px}
 .days i{font-style:normal}
 .days span{flex:1;overflow:hidden;white-space:nowrap}
@@ -223,7 +240,7 @@ td.num,th.num{text-align:right;padding-right:0}
           <button id="lyr-swell" aria-pressed="true">Swell</button><button id="lyr-period" aria-pressed="false">Period</button><button id="lyr-wind" aria-pressed="false">Wind</button>
         </div>
       </div>
-      <div class="seg glass looks" id="looks" role="group" aria-label="Map look"></div>
+      <div class="loc"><button class="glass" id="locbtn" aria-haspopup="true" aria-expanded="false"></button><div class="glass" id="locpop" hidden></div></div>
       <div class="legend glass" id="legend"></div>
       <div class="zoom glass"><button id="zin" aria-label="Zoom in">+</button><button id="zout" aria-label="Zoom out">&minus;</button><button id="zfit" aria-label="Show whole coast" title="Show whole coast">&#8962;</button></div>
       <div class="msg glass" id="msg"><b>Loading the forecast</b>Pulling swell, wind, tide and buoy data.</div>
