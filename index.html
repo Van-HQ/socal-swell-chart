@@ -466,13 +466,14 @@ const RT=[{k:"flat",n:"Flat",dk:0},{k:"poor",n:"Poor",dk:1},{k:"pf",n:"Poor to f
 const rtCol=c=>`var(--r-${RT[c].k})`;
 const chip=c=>`<span class="rt${RT[c].dk?" dk":""}" style="background:${rtCol(c)}">${RT[c].n}</span>`;
 const rlab=c=>`<span class="rl"><i class="dot" style="background:${rtCol(c)}"></i>${RT[c].n}</span>`;
-const K_BREAK=0.8;                       // calibration on the breaker-height estimate
+const K_BREAK=0.72;                      // calibration on the breaker-height estimate (tuned for peak period)
+const PEAK=1.3;                         // Open-Meteo gives mean period; buoys and Surfline quote peak period, about 1.3x longer
 const TIDE_RANGE={low:[-2,2.5],"low-mid":[0,3.5],mid:[1.5,4.5],"mid-high":[2.5,6],high:[4,8]};
 function dirFactor(s,dir){let o=180;for(const [a,b] of s.w){const span=(b-a+360)%360,off=(dir-a+360)%360;if(off<=span)return 1;o=Math.min(o,angDiff(dir,a),angDiff(dir,b))}
   return o>=40?0.12:0.12+0.88*(0.5+0.5*Math.cos(Math.PI*o/40))}
 // Komar-Gaughan breaker height from deep-water height (ft) and period (s)
 // Swell under 9 s is local wind chop: it stands up less and breaks weaker, so it is marked down.
-const chopFactor=T=>clamp((T-4)/5,0.3,1);
+const chopFactor=T=>clamp((T/PEAK-4)/5,0.3,1);
 function breaker(hft,T){if(!(hft>0)||!(T>=5))return 0;const H=hft*0.3048;return 0.39*Math.pow(9.81,0.2)*Math.pow(T*H*H,0.4)/0.3048*K_BREAK*chopFactor(T)}
 // Onshore wind sets a ceiling on the rating no matter how much swell there is.
 // e = wind speed (kn) scaled by how onshore it is: 0 at cross-offshore, full at 120 deg or more off offshore.
@@ -513,7 +514,7 @@ const dist2=(a,b)=>{const x=(a.lo-b.lo)*0.84,y=a.la-b.la;return x*x+y*y};
 
 /* ---------- data ---------- */
 let DATA=null,NOWI=0,TI=0;
-const CACHE_KEY="swellchart.v2",CACHE_MIN=60;
+const CACHE_KEY="swellchart.v3",CACHE_MIN=60;
 // Spots a few miles apart share one wave-model cell, so they share one forecast request.
 const FP=[];{const ix={};for(const s of SPOTS){const k=Math.round(s.la/0.05)+"_"+Math.round(s.lo/0.05);if(ix[k]==null){ix[k]=FP.length;FP.push({la:s.la,lo:s.lo})}s.fp=ix[k]}}
 async function getJSON(u){const r=await fetch(u);if(!r.ok)throw new Error(`${r.status} from ${new URL(u).host}`);return r.json()}
@@ -523,19 +524,29 @@ async function openMeteo(base,pts,vars,extra){const out=[];
     const j=await getJSON(u);out.push(...(Array.isArray(j)?j:[j]))}
   return out}
 const r1=a=>a.map(v=>v==null?null:Math.round(v*10)/10);
+const pk=a=>a?a.map(v=>v==null?null:Math.round(v*PEAK*10)/10):a;
 async function loadForecast(){
   const MAR="https://marine-api.open-meteo.com/v1/marine",WX="https://api.open-meteo.com/v1/forecast";
   const sp=FP.concat([REF]);
-  const [sm,sw,gm,gw]=await Promise.all([
+  const WM=["ncep_hrrr_conus","ncep_nbm_conus","icon_seamless","gem_seamless"];
+  const [sm,sw,gm,gw,sn]=await Promise.all([
     openMeteo(MAR,sp,"wave_height,swell_wave_height,swell_wave_direction,swell_wave_period,secondary_swell_wave_height,secondary_swell_wave_period,secondary_swell_wave_direction,wind_wave_height,wind_wave_direction,wind_wave_period,sea_surface_temperature","&length_unit=imperial&cell_selection=sea"),
     openMeteo(WX,FP,"wind_speed_10m,wind_direction_10m,wind_gusts_10m,is_day,temperature_2m,cloud_cover,precipitation_probability,uv_index,relative_humidity_2m","&wind_speed_unit=kn&temperature_unit=fahrenheit&daily=sunrise,sunset"),
     openMeteo(MAR,G.pts,"swell_wave_height,swell_wave_direction,swell_wave_period","&length_unit=imperial&cell_selection=sea"),
-    openMeteo(WX,G.pts,"wind_speed_10m,wind_direction_10m","&wind_speed_unit=kn")]);
-  const pack=h=>({wh:r1(h.wave_height),sh:r1(h.swell_wave_height),sd:h.swell_wave_direction,sp:r1(h.swell_wave_period),s2h:r1(h.secondary_swell_wave_height),s2p:r1(h.secondary_swell_wave_period),s2d:h.secondary_swell_wave_direction,wwh:r1(h.wind_wave_height),wwd:h.wind_wave_direction,wwp:r1(h.wind_wave_period),sst:r1(h.sea_surface_temperature)});
+    openMeteo(WX,G.pts,"wind_speed_10m,wind_direction_10m","&wind_speed_unit=kn"),
+    openMeteo(WX,FP,"wind_speed_10m,wind_direction_10m,wind_gusts_10m","&wind_speed_unit=kn&models="+WM.join(",")).catch(()=>null)]);
+  // Wind: median across several weather models. HRRR alone misses afternoon sea breezes.
+  const med=a=>{a=a.filter(v=>v!=null).sort((x,y)=>x-y);const n=a.length;return n?(n%2?a[(n-1)/2]:(a[n/2-1]+a[n/2])/2):null};
+  const blend=(h,i)=>{const sp=[],gu=[],u=[],v=[];for(const m of WM){const S=h["wind_speed_10m_"+m],D=h["wind_direction_10m_"+m],G=h["wind_gusts_10m_"+m];if(!S||S[i]==null||D[i]==null)continue;sp.push(S[i]);u.push(S[i]*Math.sin(D[i]*Math.PI/180));v.push(S[i]*Math.cos(D[i]*Math.PI/180));if(G&&G[i]!=null)gu.push(G[i])}
+    if(!sp.length)return null;const mu=u.reduce((a,b)=>a+b,0)/u.length,mv=v.reduce((a,b)=>a+b,0)/v.length;return{s:med(sp),g:med(gu),d:(Math.atan2(mu,mv)*180/Math.PI+360)%360}};
+  if(sn)sw.forEach((x,k)=>{const h=sn[k]&&sn[k].hourly;if(!h)return;const n=x.hourly.wind_speed_10m.length,S=[],D=[],G=[];
+    for(let i=0;i<n;i++){const b=blend(h,i);S.push(b?b.s:x.hourly.wind_speed_10m[i]);D.push(b?b.d:x.hourly.wind_direction_10m[i]);G.push(b&&b.g!=null?Math.max(b.g,b.s):x.hourly.wind_gusts_10m[i])}
+    x.hourly.wind_speed_10m=S;x.hourly.wind_direction_10m=D;x.hourly.wind_gusts_10m=G});
+  const pack=h=>({wh:r1(h.wave_height),sh:r1(h.swell_wave_height),sd:h.swell_wave_direction,sp:pk(h.swell_wave_period),s2h:r1(h.secondary_swell_wave_height),s2p:pk(h.secondary_swell_wave_period),s2d:h.secondary_swell_wave_direction,wwh:r1(h.wind_wave_height),wwd:h.wind_wave_direction,wwp:pk(h.wind_wave_period),sst:r1(h.sea_surface_temperature)});
   return{at:Date.now(),times:sm[0].hourly.time,
     m:sm.map(x=>pack(x.hourly)),
     wx:sw.map(x=>({ws:r1(x.hourly.wind_speed_10m),wd:x.hourly.wind_direction_10m,wg:r1(x.hourly.wind_gusts_10m),day:x.hourly.is_day,tp:r1(x.hourly.temperature_2m),cc:x.hourly.cloud_cover,pp:x.hourly.precipitation_probability,uv:r1(x.hourly.uv_index),rh:x.hourly.relative_humidity_2m,sun:x.daily?{d:x.daily.time,r:x.daily.sunrise,s:x.daily.sunset}:null})),
-    gm:gm.map(x=>({h:r1(x.hourly.swell_wave_height),d:x.hourly.swell_wave_direction,p:r1(x.hourly.swell_wave_period)})),
+    gm:gm.map(x=>({h:r1(x.hourly.swell_wave_height),d:x.hourly.swell_wave_direction,p:pk(x.hourly.swell_wave_period)})),
     gw:gw.map(x=>({s:r1(x.hourly.wind_speed_10m),d:x.hourly.wind_direction_10m}))}}
 /* NWS alerts that matter to a surfer. One request per region, using the middle of that region's spots. */
 const ALERT_RE=/surf|beach hazard|rip current|coastal flood|tsunami|tropical|hurricane|storm warning/i;
