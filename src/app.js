@@ -42,11 +42,14 @@ function windScore(s,ws,wd){if(ws==null||wd==null)return{q:1,word:"No wind data"
   const d=angDiff(wd,(s.f+180)%360),c=Math.cos(d*Math.PI/180),k=c>=0?14+26*c:14+5*c,q=1-0.9*clamp((ws-4)/k,0,1);
   const word=ws<4?"Light":d<35?"Offshore":d<70?"Cross-offshore":d<110?"Cross-shore":d<145?"Cross-onshore":"Onshore";return{q,word,d}}
 function tideScore(td,ft){const r=TIDE_RANGE[td];if(!r||ft==null)return 1;const o=ft<r[0]?r[0]-ft:ft>r[1]?ft-r[1]:0;return 1-Math.min(0.3,0.1*o)}
-function sizeScore(f,lo,hi){if(f<1)return 0;if(f<lo)return 0.2+0.4*(f-1)/Math.max(0.5,lo-1);if(f<=hi)return 0.6+0.4*(f-lo)/(hi-lo);return Math.max(0.45,1-0.55*(f-hi)/hi)}
+function sizeScore(f,lo,hi){if(f<1)return 0;if(f<lo)return 0.2+0.5*(f-1)/Math.max(0.5,lo-1);if(f<=hi)return 0.7+0.3*(f-lo)/(hi-lo);return Math.max(0.5,1-0.5*(f-hi)/hi)}
 // Energy of one wave per metre of crest, in kJ (deep water), scaled to sit near Surfline's figures.
 const waveKJ=(hft,T)=>{if(!(hft>0)||!(T>0))return 0;const H=hft*0.3048;return 0.9*1025*9.81*9.81*H*H*T*T/(16*Math.PI)/1000};
 const spotKJ=h=>h.cs.reduce((t,c)=>t+(c.p>=5?waveKJ(c.h,c.p)*c.df*c.df:0),0);
 const CCOL=["#e07a4f","#e3b23c","#4fb3d9"];
+/* The label bands are decided on the raw score (SC_RAW). The number shown to the person is stretched so each label reads as its own band on the 0-10 scale (SC_SHOW). */
+const SC_RAW=[0,2,3.5,5,6.5,8.8,10],SC_SHOW=[0,2,4,6,7.5,9,10];
+const shown=r=>{if(!(r>0))return 0;for(let i=1;i<SC_RAW.length;i++)if(r<=SC_RAW[i])return lerp(SC_SHOW[i-1],SC_SHOW[i],(r-SC_RAW[i-1])/(SC_RAW[i]-SC_RAW[i-1]));return 10};
 const clsOf=(face,rate)=>face<1?0:rate<2?1:rate<3.5?2:rate<5?3:rate<6.5?4:rate<8.8?5:6;
 function rateHour(s,i){const cs=comps(s,i);let e=0,dom=null;for(const c of cs){e+=c.face*c.face;if(!dom||c.face>dom.face)dom=c}
   const face=Math.sqrt(e),w=windScore(s,s.wx.ws[i],s.wx.wd[i]),tide=s.tide?s.tide[i]:null;
@@ -473,7 +476,7 @@ function hourly(s){const T=DATA.times,cur=T[TI].slice(0,10),day=dayIdx().find(x=
     const h0=hourOf(k),h1=h0+n,label=step===1?h12(h0):`${h0%12||12}–${h1%12||12} ${h1<12?"AM":"PM"}`;
     const tide=step===1?(hm.tide==null?"\u2013":hm.tide.toFixed(1)):(s.hr[k].tide==null?"\u2013":`${s.hr[k].tide.toFixed(1)}\u2192${s.hr[grp[n-1]].tide.toFixed(1)}`);
     return`<button class="hrow${step===3?" w3":""}${grp.includes(TI)?" on":""}${grp.some(j=>s.wx.day[j])?"":" night"}" data-time="${grp.includes(TI)?TI:mid}" title="${RT[cls].n}"><span>${label}</span><span class="hs"><i class="dot" style="background:${rtCol(cls)}"></i>${faceText(face)}</span>
-    <span>${hm.dom?`${hm.dom.h.toFixed(1)} ft ${Math.round(hm.dom.p)} s ${comp(hm.dom.d)}`:"\u2013"}</span><span>${ws==null?"\u2013":`${Math.round(ws)} kn ${arrow(wd)}<small>${hm.w.word}</small>`}</span><span class="num">${tide}</span><span class="num"><b>${rate.toFixed(1)}</b></span></button>`}).join("")}</div>`}
+    <span>${hm.dom?`${hm.dom.h.toFixed(1)} ft ${Math.round(hm.dom.p)} s ${comp(hm.dom.d)}`:"\u2013"}</span><span>${ws==null?"\u2013":`${Math.round(ws)} kn ${arrow(wd)}<small>${hm.w.word}</small>`}</span><span class="num">${tide}</span><span class="num"><b>${shown(rate).toFixed(1)}</b></span></button>`}).join("")}</div>`}
 function dayChart(s){const T=DATA.times,cur=T[TI].slice(0,10),ks=dayIdx().find(x=>x.d===cur).idx,n=ks.length,W=372,H=306,x0=4,bw=(W-8)/n,x=h=>x0+h*bw,xc=h=>x0+(h+0.5)*bw;
   const kj=ks.map(k=>spotKJ(s.hr[k])),mx=Math.max(20,...kj),top=10,base=74;let g="";
   ks.forEach((k,i)=>{if(s.wx.day[k]===0)g+=`<rect x="${x(i).toFixed(1)}" y="2" width="${(bw+.05).toFixed(2)}" height="${H-22}" fill="var(--night)"/>`});
@@ -583,30 +586,30 @@ function whyScore(s){if(!s.ok)return"";const i=TI,h=s.hr[i],hd=`<p class="lab" s
   if(h.face<1)return`<div>${hd}<p class="note">Under 1 ft at the face, so it rates as Flat and there is no score to explain.</p></div>`;
   const w=h.w,ws=s.wx.ws[i],wd=s.wx.wd[i],tide=h.tide,dom=h.dom,lo=s.sz[0],hi=s.sz[1];
   const per=dom?clamp((dom.p-6)/8,0,1)*0.8+0.2:0.2,fs=sizeScore(h.face,lo,hi),fw=0.25+0.75*w.q,fp=0.55+0.45*per,ft=tideScore(s.td,tide);
-  const raw=10*fs*fw*fp*ft,cap=windCap(ws,w.d),rate=Math.min(cap,raw),fc=Math.min(1,cap/raw);
-  const F=[{k:"size",f:fs},{k:"period",f:fp},{k:"wind",f:fw},{k:"tide",f:ft},{k:"cap",f:fc}],L=F.map(x=>-Math.log(Math.max(x.f,0.001))),sum=L.reduce((a,b)=>a+b,0),loss=10-rate;
+  const raw=10*fs*fw*fp*ft,cap=windCap(ws,w.d),rate=Math.min(cap,raw),fc=Math.min(1,cap/raw),sh=shown(rate),loss=10-rate;
+  const F=[{k:"size",f:fs},{k:"period",f:fp},{k:"wind",f:fw},{k:"tide",f:ft},{k:"cap",f:fc}],L=F.map(x=>-Math.log(Math.max(x.f,0.001))),sum=L.reduce((a,b)=>a+b,0);
   F.forEach((x,j)=>{x.loss=sum>0?loss*L[j]/sum:0;x.wo=x.k==="cap"?raw:Math.min(cap,raw/Math.max(x.f,0.001))});
-  const FR=F.filter(x=>x.k!=="cap"||x.f<0.995),tl=FR.reduce((a,x)=>a+x.loss,0);FR.forEach(x=>{x.cr=tl>0.0001?rate*(tl-x.loss)/((FR.length-1)*tl):rate/FR.length});
+  const FR=F.filter(x=>x.k!=="cap"||x.f<0.995),tl=FR.reduce((a,x)=>a+x.loss,0);FR.forEach(x=>{x.cr=(tl>0.0001?rate*(tl-x.loss)/((FR.length-1)*tl):rate/FR.length)*(rate>0?sh/rate:1)});
   const big=F.reduce((a,b)=>b.loss>a.loss?b:a),NM={size:"Size",period:"Period",wind:"Wind",tide:"Tide",cap:"Cap"};
   const e=ws==null||w.d==null?0:ws*clamp((w.d-70)/50,0,1),tr=TIDE_RANGE[s.td],off=tide==null||!tr?0:tide<tr[0]?tr[0]-tide:tide>tr[1]?tide-tr[1]:0;
   const D={
    size:{inp:`${h.face.toFixed(1)} ft face · ideal ${lo}–${hi} ft`,src:"forecast model",
-     fm:h.face<lo?`Below the ideal range, so 0.2 + 0.4 × (${h.face.toFixed(1)} − 1) ÷ (${lo} − 1)`:h.face<=hi?`Inside the ideal range, so 0.6 + 0.4 × (${h.face.toFixed(1)} − ${lo}) ÷ (${hi} − ${lo})`:`Above the ideal range, so 1 − 0.55 × (${h.face.toFixed(1)} − ${hi}) ÷ ${hi}, never below 0.45`},
+     fm:h.face<lo?`Below the ideal range, so 0.2 + 0.5 × (${h.face.toFixed(1)} − 1) ÷ (${lo} − 1)`:h.face<=hi?`Inside the ideal range, so 0.7 + 0.3 × (${h.face.toFixed(1)} − ${lo}) ÷ (${hi} − ${lo})`:`Above the ideal range, so 1 − 0.5 × (${h.face.toFixed(1)} − ${hi}) ÷ ${hi}, never below 0.5`},
    period:{inp:dom?`${Math.round(dom.p)} s peak period`:"no swell",src:"forecast model",fm:`0.55 + 0.45 × period score ${per.toFixed(2)}. Period score is (period − 6) ÷ 8 kept between 0 and 1, times 0.8, plus 0.2.`},
    wind:{inp:ws==null?"no wind data":`${Math.round(ws)} kn ${w.word.toLowerCase()}`,src:"4 wind models: highest on daytime onshore, else median",fm:ws==null?"No wind data, so wind is not applied.":`0.25 + 0.75 × wind quality ${w.q.toFixed(2)}. Quality drops from 1 as wind passes 4 kn, faster when it is onshore.`},
    tide:{inp:tide==null?"no tide data":`${tide.toFixed(1)} ft · likes ${s.td}`,src:"NOAA tide predictions",fm:tide==null||!tr?"No tide data, so tide is not applied.":off===0?`Inside this spot's best band (${tr[0]} to ${tr[1]} ft), so no penalty.`:`${off.toFixed(1)} ft outside the best band (${tr[0]} to ${tr[1]} ft), so 1 − 0.1 × ${off.toFixed(1)}, never below 0.7.`},
-   cap:{inp:cap>=10?"No cap, not blown out":`Capped at ${cap.toFixed(1)}`,src:"4 wind models: highest on daytime onshore, else median",fm:ws==null?"No wind data.":`Effective onshore wind is ${e.toFixed(1)} kn (speed × how onshore). Up to 5 kn there is no cap; at 8 kn the score cannot pass 5; at 10 kn, 3.6; at 12 kn, 2.8; at 15 kn, 2; above that it keeps falling toward 1.`}};
+   cap:{inp:cap>=10?"No cap, not blown out":`Capped at ${shown(cap).toFixed(1)}`,src:"4 wind models: highest on daytime onshore, else median",fm:ws==null?"No wind data.":`Effective onshore wind is ${e.toFixed(1)} kn (speed × how onshore). Up to 5 kn there is no cap. ${[[8,5],[10,3.6],[12,2.8],[15,2]].map(([k,c])=>`At ${k} kn the score cannot pass ${shown(c).toFixed(1)}`).join(". ")}. Above that it keeps falling toward 1.`}};
   const fmtF=x=>Math.round(x.f*100)+"%";
   const rows=FR.map(x=>{const d=D[x.k],on=WHY.has(x.k),bad=x.loss>=0.3,drag=x===big&&x.loss>=0.3;
     return`<details class="wy${bad?" bad":""}${drag?" drag":""}" data-why="${x.k}"${on?" open":""}><summary><span class="nm">${NM[x.k]}</span><span class="in">${d.inp}</span><span class="f">${fmtF(x)}</span><span class="pts">+${x.cr.toFixed(1)}</span></summary>
     <div class="bar"><i style="width:${Math.round(clamp(x.f,0,1)*100)}%;background:${bad?"var(--warn)":"var(--earn)"}"></i></div>
-    <div class="wx"><b>${x.k==="cap"?"Ceiling":NM[x.k]+" factor"} ${x.f>=0.995&&x.k==="cap"?"none":x.f.toFixed(2)}</b><br>${d.fm}<br><b>Without this:</b> ${x.wo.toFixed(1)} instead of ${rate.toFixed(1)}${x.wo-rate<0.05?" (no change)":" (+"+(x.wo-rate).toFixed(1)+")"}<br><span class="tag">${d.src}</span></div></details>`}).join("");
+    <div class="wx"><b>${x.k==="cap"?"Ceiling":NM[x.k]+" factor"} ${x.f>=0.995&&x.k==="cap"?"none":x.f.toFixed(2)}</b><br>${d.fm}<br><b>Without this:</b> ${shown(x.wo).toFixed(1)} instead of ${sh.toFixed(1)}${shown(x.wo)-sh<0.05?" (no change)":" (+"+(shown(x.wo)-sh).toFixed(1)+")"}<br><span class="tag">${d.src}</span></div></details>`}).join("");
   const nb=BUOYS.map((b,k)=>({b,d:DATA.buoys[k]})).filter(o=>o.d.ok).sort((a,c)=>dist2(a.b,s)-dist2(c.b,s))[0];
   const cl=h.cs.length?h.cs.map(c=>`<b>${c.k}</b> ${c.h.toFixed(1)} ft · ${Math.round(c.p)} s · ${comp(c.d)} ${Math.round(c.d)}°<br>→ direction ×${c.df.toFixed(2)} · spot gain ×${s.g}${c.p/PEAK<9?` · short-period chop ×${chopFactor(c.p).toFixed(2)}`:""} · ${c.face.toFixed(1)} ft face`).join("<br>"):"No swell reaching this spot.";
-  return`<div>${hd}<div class="why"><div class="wtop"><span class="wsc">${rate.toFixed(1)}<small> / 10</small></span><span class="wbg">${big.loss>=0.3?`Biggest drag: <b>${big.k==="cap"?"wind cap":NM[big.k].toLowerCase()}</b>`:"Nothing is holding it back"}</span></div>
+  return`<div>${hd}<div class="why"><div class="wtop"><span class="wsc">${sh.toFixed(1)}<small> / 10</small></span><span class="wbg">${big.loss>=0.3?`Biggest drag: <b>${big.k==="cap"?"wind cap":NM[big.k].toLowerCase()}</b>`:"Nothing is holding it back"}</span></div>
   <p class="wsub">Built up from 0. Each factor earns part of the score, and weaker factors earn less. Tap a row for its formula.</p><div class="wmeter">${FR.map(x=>`<i style="width:${(x.cr*10).toFixed(2)}%"></i>`).join("")}</div><div class="wticks"><span>0</span><span>5</span><span>10</span></div>${rows}
-  <div class="wtot"><span>Score</span><span>${rate.toFixed(1)}</span></div>
-  ${loss>=0.05?`<p class="wlost">Left on the table: <b>${loss.toFixed(1)}</b>${big.loss>=0.3?`, mostly from ${big.k==="cap"?"the wind cap":NM[big.k].toLowerCase()}`:""}. Each row\u2019s percentage is how much of its share it kept; 100% means no penalty.</p>`:""}
+  <div class="wtot"><span>Score</span><span>${sh.toFixed(1)}</span></div>
+  ${10-sh>=0.05?`<p class="wlost">Left on the table: <b>${(10-sh).toFixed(1)}</b>${big.loss>=0.3?`, mostly from ${big.k==="cap"?"the wind cap":NM[big.k].toLowerCase()}`:""}. Each row\u2019s percentage is how much of its share it kept; 100% means no penalty.</p>`:""}
   <p class="lab" style="margin:16px 0 6px">Where the size comes from</p><div class="wx" style="margin:0">${cl}<br><br>Spot window ${s.w.map(([a,b])=>`${a}–${b}°`).join(" and ")}. Combined as the square root of the sum of squares, giving a <b>${h.face.toFixed(1)} ft</b> face.<br><span class="tag">forecast model</span>${nb?` <span class="tag">buoy check: ${esc(nb.b.n)} ${nb.d.hs[nb.d.hs.length-1].toFixed(1)} ft · ${Math.round(nb.d.tp[nb.d.tp.length-1])} s</span>`:""}</div></div></div>`}
 /* ---------- Wind check: live station observations vs each forecast model ---------- */
 const WMODELS=[["ncep_hrrr_conus","HRRR"],["ncep_nbm_conus","NBM"],["icon_seamless","ICON"],["gem_seamless","GEM"]];
@@ -750,7 +753,7 @@ function howView(){return`<div class="det"><h2>How spots are rated</h2>
   <div><dt>Wind</dt><dd><small>Under 5 kn is glassy. Offshore costs little, onshore costs a lot. Onshore also caps the rating: about 8 kn limits a spot to Fair, 12 kn to Poor to fair, 15 kn to Poor.</small></dd></div>
   <div><dt>Period</dt><dd><small>Longer is better, from 6 s (weak) to 14 s and up (full marks).</small></dd></div>
   <div><dt>Tide</dt><dd><small>A small penalty outside the tide the spot likes.</small></dd></div></dl>
-  <div class="wins">${RT.map((r,c)=>`<div class="win" style="grid-template-columns:130px 1fr">${rlab(c)}<span class="m">${["Faces under 1 ft","Score below 2","2 to 3.5","3.5 to 5","5 to 6.5","6.5 to 8.8","Above 8.8"][c]}</span></div>`).join("")}</div>
+  <div class="wins">${RT.map((r,c)=>`<div class="win" style="grid-template-columns:130px 1fr">${rlab(c)}<span class="m">${["Faces under 1 ft","Score below 2","2 to 4","4 to 6","6 to 7.5","7.5 to 9","Above 9"][c]}</span></div>`).join("")}</div>
   <p class="note">Model estimates, not cam reports. Sandbars, kelp and local shadowing are invisible to it. Spot windows and gains are starting values to tune.</p>
   <p class="note">Data: Open-Meteo, Scripps CDIP, NOAA CO-OPS, NWS. Map: OpenFreeMap, © OpenMapTiles, data from OpenStreetMap; terrain from Mapzen, USGS and NOAA; satellite imagery © Esri, Maxar, Earthstar Geographics.</p></div>`}
 let lastRender=0;
