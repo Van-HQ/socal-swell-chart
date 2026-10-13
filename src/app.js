@@ -462,13 +462,13 @@ function dayCards(s){const T=DATA.times,cur=T[TI].slice(0,10),today=laNow().date
     const go=idx.find(k=>hourOf(k)===hNow)??idx[Math.min(idx.length-1,12)];
     return`<button class="dcard" data-time="${go}" aria-pressed="${d===cur}"><span class="dn">${d===today?"Today":DOW[p.dow]+" "+p.d}</span><span class="dh">${rangeText(use.map(k=>s.hr[k].face))}</span><span class="dseg">${seg}</span></button>`}).join("")}</div>`}
 function hourly(s){const T=DATA.times,cur=T[TI].slice(0,10),day=dayIdx().find(x=>x.d===cur),step=S.step,ks=day.idx.filter(k=>hourOf(k)>=5&&hourOf(k)<=20&&(step===1||((hourOf(k)-5)%3===0&&hourOf(k)<20)));
-  const head=`<div class="hrow hhead${step===3?" w3":""}"><span>Time</span><span>Surf</span><span>Swell</span><span>Wind</span><span class="num">Tide</span></div>`;
+  const head=`<div class="hrow hhead${step===3?" w3":""}"><span>Time</span><span>Surf</span><span>Swell</span><span>Wind</span><span class="num">Tide</span><span class="num">Score</span></div>`;
   return`<div class="hours">${head}${ks.map(k=>{const grp=step===1?[k]:day.idx.filter(j=>j>=k&&j<k+3&&hourOf(j)<=20),n=grp.length,mid=grp[Math.min(1,n-1)],hm=s.hr[mid];
     const face=grp.reduce((t,j)=>t+s.hr[j].face,0)/n,rate=grp.reduce((t,j)=>t+s.hr[j].rate,0)/n,cls=clsOf(face,rate),wsv=grp.map(j=>s.wx.ws[j]).filter(v=>v!=null),ws=wsv.length?wsv.reduce((t,v)=>t+v,0)/wsv.length:null,wd=s.wx.wd[mid];
     const h0=hourOf(k),h1=h0+n,label=step===1?h12(h0):`${h0%12||12}–${h1%12||12} ${h1<12?"AM":"PM"}`;
     const tide=step===1?(hm.tide==null?"\u2013":hm.tide.toFixed(1)):(s.hr[k].tide==null?"\u2013":`${s.hr[k].tide.toFixed(1)}\u2192${s.hr[grp[n-1]].tide.toFixed(1)}`);
     return`<button class="hrow${step===3?" w3":""}${grp.includes(TI)?" on":""}${grp.some(j=>s.wx.day[j])?"":" night"}" data-time="${grp.includes(TI)?TI:mid}" title="${RT[cls].n}"><span>${label}</span><span class="hs"><i class="dot" style="background:${rtCol(cls)}"></i>${faceText(face)}</span>
-    <span>${hm.dom?`${hm.dom.h.toFixed(1)} ft ${Math.round(hm.dom.p)} s ${comp(hm.dom.d)}`:"\u2013"}</span><span>${ws==null?"\u2013":`${Math.round(ws)} kn ${arrow(wd)}<small>${hm.w.word}</small>`}</span><span class="num">${tide}</span></button>`}).join("")}</div>`}
+    <span>${hm.dom?`${hm.dom.h.toFixed(1)} ft ${Math.round(hm.dom.p)} s ${comp(hm.dom.d)}`:"\u2013"}</span><span>${ws==null?"\u2013":`${Math.round(ws)} kn ${arrow(wd)}<small>${hm.w.word}</small>`}</span><span class="num">${tide}</span><span class="num"><b>${rate.toFixed(1)}</b></span></button>`}).join("")}</div>`}
 function dayChart(s){const T=DATA.times,cur=T[TI].slice(0,10),ks=dayIdx().find(x=>x.d===cur).idx,n=ks.length,W=372,H=306,x0=4,bw=(W-8)/n,x=h=>x0+h*bw,xc=h=>x0+(h+0.5)*bw;
   const kj=ks.map(k=>spotKJ(s.hr[k])),mx=Math.max(20,...kj),top=10,base=74;let g="";
   ks.forEach((k,i)=>{if(s.wx.day[k]===0)g+=`<rect x="${x(i).toFixed(1)}" y="2" width="${(bw+.05).toFixed(2)}" height="${H-22}" fill="var(--night)"/>`});
@@ -571,10 +571,6 @@ function weatherCard(s){const w=s.wx;if(!w||!w.tp||w.tp[TI]==null)return"";
    <div class="sub">${[ml,pp!=null?`Rain ${pp}%`:""].filter(Boolean).join(" \u00b7 ")}</div>
    <div class="row">${cols.map(k=>{const q=skyOf(w,k),h=hourOf(k),r=w.pp[k]||0;return`<button data-time="${k}" class="${k===on?"on":""}"><span>${h12s(h)}${ampm(h)}</span>${q.i}<b>${Math.round(w.tp[k])}\u00b0</b><em>${r>=20?r+"%":""}</em></button>`}).join("")}</div>
    <div class="mini"><div><span>Sunrise</span><b>${clk(rise)}</b></div><div><span>Sunset</span><b>${clk(set)}</b></div><div><span>UV</span><b>${Math.round(uvm)} \u00b7 ${uvn}</b></div></div></div></div>`}
-function hourTable(s){const T=DATA.times,d0=T[TI].slice(0,10),rows=[];
-  for(let i=0;i<T.length;i++){if(T[i].slice(0,10)!==d0)continue;const hh=tparts(T[i]).h;if(hh<6||hh>19)continue;const h=s.hr[i];
-    rows.push(`<tr class="${i===NOWI?"now":i>NOWI?"fut":""}" data-time="${i}"><td>${h12(hh)}</td><td><i style="background:${rtCol(h.cls)}"></i><b>${h.rate.toFixed(1)}</b></td><td>${h.face<1?"Flat":faceText(h.face)}</td><td>${h.dom?Math.round(h.dom.p)+" s":"-"}</td><td>${h.w.d==null?"-":Math.round(s.wx.ws[i])+" kn "+comp(s.wx.wd[i])}</td></tr>`)}
-  return`<table class="hrt"><thead><tr><th>Hour</th><th>Score</th><th>Size</th><th>Period</th><th>Wind</th></tr></thead><tbody>${rows.join("")}</tbody></table><p class="note" style="font-size:12px">Score is the model's 0 to 10 rating. Greyed rows are still ahead of now.</p>`}
 function detail(s){const h=s.hr[TI];
   if(!s.ok)return`<div class="det"><button class="back" data-back="1">← All spots</button><h2>${esc(s.n)}</h2><p class="note">No wave data close enough to rate this spot.</p></div>`;
   const tide=h.tide,nx=s.tide&&s.tide[Math.min(TI+1,s.tide.length-1)],trend=tide==null||nx==null?"":nx>tide+0.05?"rising":nx<tide-0.05?"falling":"slack";
@@ -593,7 +589,6 @@ function detail(s){const h=s.hr[TI];
    <div class="tile"><span class="tk">${ICON.buoy}Buoy</span><b>${nb?`${nb.d.hs[nb.d.hs.length-1].toFixed(1)} ft · ${Math.round(nb.d.tp[nb.d.tp.length-1])} s`:"n/a"}</b><small>${nb?`${esc(nb.b.n)} · ${ageText(nb.d)}`:""}</small></div>
   </div>
   ${alertBanner(s.r)}
-  <div><p class="lab" style="margin-bottom:8px">Score by hour \u00b7 ${fmt(TI).split(" ")[0]}</p>${hourTable(s)}</div>
   ${weatherCard(s)}
   <div><p class="lab" style="margin-bottom:8px">By day</p>${dayCards(s)}</div>
   <div><p class="lab" style="margin-bottom:8px">Outlook · ${fmt(TI).split(" ")[0]}</p>${dayChart(s)}<div class="steprow"><div class="seg2" role="group" aria-label="Table interval"><button data-step="3" aria-pressed="${S.step===3}">3-hour</button><button data-step="1" aria-pressed="${S.step===1}">Hourly</button></div></div>${hourly(s)}</div>
