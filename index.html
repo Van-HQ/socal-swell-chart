@@ -237,6 +237,13 @@ td.num,th.num{text-align:right;padding-right:0}
 .favb{flex:none;white-space:nowrap}
 .favb[aria-pressed="true"]{background:var(--raise)}
 .fv{color:var(--r-fair);font-size:12px}
+.hrt{width:100%;border-collapse:collapse;font-size:13.5px}
+.hrt th{text-align:left;font-weight:500;font-size:12px;color:var(--muted);padding:4px 6px 6px 0}
+.hrt td{padding:7px 6px 7px 0;border-top:1px solid var(--line);white-space:nowrap}
+.hrt td i{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:7px}
+.hrt td b{font-weight:600}
+.hrt tr.fut td{opacity:.5}
+.hrt tr.now td{font-weight:600;background:color-mix(in srgb,var(--ink) 7%,transparent)}
 .seg2{display:flex;padding:2px;gap:2px;border:1px solid var(--line);border-radius:8px}
 .seg2 button{border:0;background:none;padding:5px 10px;font:500 12.5px/1 var(--f-ui);color:var(--muted);border-radius:6px}
 .seg2 button[aria-pressed="true"]{background:var(--ink);color:var(--panel)}
@@ -1031,6 +1038,10 @@ function weatherCard(s){const w=s.wx;if(!w||!w.tp||w.tp[TI]==null)return"";
    <div class="sub">${[ml,pp!=null?`Rain ${pp}%`:""].filter(Boolean).join(" \u00b7 ")}</div>
    <div class="row">${cols.map(k=>{const q=skyOf(w,k),h=hourOf(k),r=w.pp[k]||0;return`<button data-time="${k}" class="${k===on?"on":""}"><span>${h12s(h)}${ampm(h)}</span>${q.i}<b>${Math.round(w.tp[k])}\u00b0</b><em>${r>=20?r+"%":""}</em></button>`}).join("")}</div>
    <div class="mini"><div><span>Sunrise</span><b>${clk(rise)}</b></div><div><span>Sunset</span><b>${clk(set)}</b></div><div><span>UV</span><b>${Math.round(uvm)} \u00b7 ${uvn}</b></div></div></div></div>`}
+function hourTable(s){const T=DATA.times,d0=T[TI].slice(0,10),rows=[];
+  for(let i=0;i<T.length;i++){if(T[i].slice(0,10)!==d0)continue;const hh=tparts(T[i]).h;if(hh<6||hh>19)continue;const h=s.hr[i];
+    rows.push(`<tr class="${i===NOWI?"now":i>NOWI?"fut":""}" data-time="${i}"><td>${h12(hh)}</td><td><i style="background:${rtCol(h.cls)}"></i><b>${h.rate.toFixed(1)}</b></td><td>${h.face<1?"Flat":faceText(h.face)}</td><td>${h.dom?Math.round(h.dom.p)+" s":"-"}</td><td>${h.w.d==null?"-":Math.round(s.wx.ws[i])+" kn "+comp(s.wx.wd[i])}</td></tr>`)}
+  return`<table class="hrt"><thead><tr><th>Hour</th><th>Score</th><th>Size</th><th>Period</th><th>Wind</th></tr></thead><tbody>${rows.join("")}</tbody></table><p class="note" style="font-size:12px">Score is the model's 0 to 10 rating. Greyed rows are still ahead of now.</p>`}
 function detail(s){const h=s.hr[TI];
   if(!s.ok)return`<div class="det"><button class="back" data-back="1">← All spots</button><h2>${esc(s.n)}</h2><p class="note">No wave data close enough to rate this spot.</p></div>`;
   const tide=h.tide,nx=s.tide&&s.tide[Math.min(TI+1,s.tide.length-1)],trend=tide==null||nx==null?"":nx>tide+0.05?"rising":nx<tide-0.05?"falling":"slack";
@@ -1049,6 +1060,7 @@ function detail(s){const h=s.hr[TI];
    <div class="tile"><span class="tk">${ICON.buoy}Buoy</span><b>${nb?`${nb.d.hs[nb.d.hs.length-1].toFixed(1)} ft · ${Math.round(nb.d.tp[nb.d.tp.length-1])} s`:"n/a"}</b><small>${nb?`${esc(nb.b.n)} · ${ageText(nb.d)}`:""}</small></div>
   </div>
   ${alertBanner(s.r)}
+  <div><p class="lab" style="margin-bottom:8px">Score by hour \u00b7 ${fmt(TI).split(" ")[0]}</p>${hourTable(s)}</div>
   ${weatherCard(s)}
   <div><p class="lab" style="margin-bottom:8px">By day</p>${dayCards(s)}</div>
   <div><p class="lab" style="margin-bottom:8px">Outlook · ${fmt(TI).split(" ")[0]}</p>${dayChart(s)}<div class="steprow"><div class="seg2" role="group" aria-label="Table interval"><button data-step="3" aria-pressed="${S.step===3}">3-hour</button><button data-step="1" aria-pressed="${S.step===1}">Hourly</button></div></div>${hourly(s)}</div>
