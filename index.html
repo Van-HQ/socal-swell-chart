@@ -351,7 +351,7 @@ button.tile:disabled{cursor:default;opacity:.6}
       <div class="maphead">
         <div class="brand glass"><h1>Swell</h1></div>
         <div class="seg glass" role="group" aria-label="Map layer">
-          <button id="lyr-swell" aria-pressed="true">Swell</button><button id="lyr-period" aria-pressed="false">Period</button><button id="lyr-wind" aria-pressed="false">Wind</button>
+          <button id="lyr-swell" aria-pressed="true">Swell</button><button id="lyr-period" aria-pressed="false">Period</button><button id="lyr-wind" aria-pressed="false">Wind</button><button id="lyr-score" aria-pressed="false">Score</button>
         </div>
       </div>
       <div class="legend glass" id="legend"></div>
@@ -768,18 +768,28 @@ const RAMP={
     l:[[6,[240,244,232]],[9,[207,227,176]],[12,[143,207,154]],[15,[63,174,158]],[18,[42,127,176]],[21,[74,74,166]]],
     d:[[6,[11,27,37]],[9,[30,64,44]],[12,[36,112,82]],[15,[32,150,150]],[18,[58,140,214]],[21,[150,110,224]]],
     v:[[6,[28,38,80]],[9,[40,110,190]],[12,[50,180,170]],[15,[150,205,80]],[18,[240,190,60]],[21,[235,90,70]]]},
+  score:{u:"0 to 10",t:"Surf score",ticks:["Poor","P-F","Fair","F-G","Good","Epic"],min:0,max:10,get l(){return scoreStops()},get d(){return scoreStops()},get v(){return scoreStops()}},
   wind:{u:"kn",t:"Wind speed",ticks:[0,5,10,15,20,30],max:30,
     l:[[0,[244,246,240]],[5,[220,235,208]],[10,[241,221,140]],[15,[240,176,96]],[20,[227,122,74]],[30,[184,64,90]]],
     d:[[0,[11,27,37]],[5,[22,62,58]],[10,[88,104,36]],[15,[154,106,30]],[20,[184,80,42]],[30,[196,58,96]]],
     v:[[0,[28,38,80]],[5,[50,120,190]],[10,[60,185,150]],[15,[220,210,70]],[20,[240,140,60]],[30,[220,60,90]]]}};
+/* Score layer: the same band colours the spots use, blended between band centres. */
+function hexRGB(h){h=(h||"").replace("#","");if(h.length===3)h=h.replace(/./g,"$&$&");const n=parseInt(h,16);return[n>>16&255,n>>8&255,n&255]}
+function scoreStops(){const c=k=>hexRGB(css("--r-"+k));return[[0,c("flat")],[1,c("poor")],[3,c("pf")],[5,c("fair")],[6.75,c("fg")],[8.25,c("good")],[9.5,c("epic")],[10,c("epic")]]}
+/* A typical SoCal beach break (faces south-southwest, ideal 2 to 6 ft, any tide) receiving this swell and wind. Swell direction and tide are not judged here, because they depend on the spot. */
+const OCN={f:215,sz:[2,6]};
+function oceanRate(H,P,ws,wd){const face=breaker(H,P);if(!(face>=1))return{face,r:0,s:0};
+  const w=windScore(OCN,ws,wd),per=clamp((P-6)/8,0,1)*0.8+0.2,r=Math.min(windCap(ws,w.d),10*sizeScore(face,OCN.sz[0],OCN.sz[1])*(0.25+0.75*w.q)*(0.55+0.45*per));return{face,r,s:shown(r)}}
+function oceanAt(lo,la){const F=DATA.F,u=sample(F.WU[TI],lo,la),v=sample(F.WV[TI],lo,la),wd=(Math.atan2(-u,-v)*180/Math.PI+360)%360;
+  return oceanRate(sample(F.H[TI],lo,la),sample(F.P[TI],lo,la),sample(F.WS[TI],lo,la),wd)}
 function rampCol(stops,v){if(v<=stops[0][0])return stops[0][1];for(let i=1;i<stops.length;i++)if(v<=stops[i][0]){const a=stops[i-1],b=stops[i],t=(v-a[0])/(b[0]-a[0]);return[lerp(a[1][0],b[1][0],t),lerp(a[1][1],b[1][1],t),lerp(a[1][2],b[1][2],t)]}return stops[stops.length-1][1]}
 const layerArr=()=>LAYER==="swell"?DATA.F.H[TI]:LAYER==="period"?DATA.F.P[TI]:DATA.F.WS[TI];
 const fS=document.createElement("canvas");
 function drawField(){const W=Math.round(V.W*V.dpr),H=Math.round(V.H*V.dpr);if(cF.width!==W||cF.height!==H){cF.width=W;cF.height=H}
   const ctx=cF.getContext("2d");ctx.setTransform(1,0,0,1,0,0);ctx.clearRect(0,0,W,H);if(!DATA||!MAP)return;
-  const w=Math.max(2,Math.round(V.W/5)),h=Math.max(2,Math.round(V.H/5));fS.width=w;fS.height=h;const sc=fS.getContext("2d"),img=sc.createImageData(w,h),st=RAMP[LAYER][look().ramp],arr=layerArr();
+  const w=Math.max(2,Math.round(V.W/5)),h=Math.max(2,Math.round(V.H/5));fS.width=w;fS.height=h;const sc=fS.getContext("2d"),img=sc.createImageData(w,h),st=RAMP[LAYER][look().ramp],arr=LAYER==="score"?null:layerArr();
   const lons=new Float64Array(w);for(let x=0;x<w;x++)lons[x]=LON((x+0.5)*5);let k=0;
-  for(let y=0;y<h;y++){const lat=LAT((y+0.5)*5);for(let x=0;x<w;x++){const c=rampCol(st,sample(arr,lons[x],lat));img.data[k++]=c[0];img.data[k++]=c[1];img.data[k++]=c[2];img.data[k++]=255}}
+  for(let y=0;y<h;y++){const lat=LAT((y+0.5)*5);for(let x=0;x<w;x++){const c=rampCol(st,arr?sample(arr,lons[x],lat):oceanAt(lons[x],lat).s);img.data[k++]=c[0];img.data[k++]=c[1];img.data[k++]=c[2];img.data[k++]=255}}
   sc.putImageData(img,0,0);ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality="high";ctx.globalAlpha=look().alpha;ctx.drawImage(fS,0,0,W,H);ctx.globalAlpha=1;
   drawDepth(ctx);
   ctx.globalCompositeOperation="destination-in";ctx.drawImage(mask,0,0);ctx.globalCompositeOperation="source-over"}
@@ -800,8 +810,8 @@ function spawn(p){for(let k=0;k<8;k++){const x=Math.random()*V.W,y=Math.random()
 function resetParticles(){cP.width=Math.round(V.W*V.dpr);cP.height=Math.round(V.H*V.dpr);const n=clamp(Math.round(V.W*V.H/1500),160,900);PART=Array.from({length:n},()=>{const p=spawn({});p.age=Math.random()*p.life;return p})}
 function clearParticles(){const c=cP.getContext("2d");c.setTransform(1,0,0,1,0,0);c.clearRect(0,0,cP.width,cP.height)}
 function tick(){raf=requestAnimationFrame(tick);if(!DATA||!MAP||document.hidden)return;const c=cP.getContext("2d");c.setTransform(V.dpr,0,0,V.dpr,0,0);
-  c.globalCompositeOperation="destination-out";c.fillStyle=LAYER==="wind"?"rgba(0,0,0,.09)":"rgba(0,0,0,.3)";c.fillRect(0,0,V.W,V.H);c.globalCompositeOperation="source-over";
-  const wind=LAYER==="wind",F=DATA.F,U=wind?F.WU[TI]:F.U[TI],Vv=wind?F.WV[TI]:F.V[TI],M=wind?F.WS[TI]:F.H[TI],P=F.P[TI],rgb=PCOL;
+  c.globalCompositeOperation="destination-out";c.fillStyle=LAYER!=="swell"&&LAYER!=="period"?"rgba(0,0,0,.09)":"rgba(0,0,0,.3)";c.fillRect(0,0,V.W,V.H);c.globalCompositeOperation="source-over";
+  const wind=LAYER==="wind"||LAYER==="score",F=DATA.F,U=wind?F.WU[TI]:F.U[TI],Vv=wind?F.WV[TI]:F.V[TI],M=wind?F.WS[TI]:F.H[TI],P=F.P[TI],rgb=PCOL;
   c.lineCap="round";
   for(const p of PART){if(++p.age>p.life){spawn(p);continue}
     let u=sample(U,p.lo,p.la),v=sample(Vv,p.lo,p.la);const n=Math.hypot(u,v)||1;u/=n;v/=n;const m=sample(M,p.lo,p.la);
@@ -814,7 +824,7 @@ function tick(){raf=requestAnimationFrame(tick);if(!DATA||!MAP||document.hidden)
     else{const L=clamp(3.5+m*1.5,4,13);c.lineWidth=1.2;c.moveTo(x1+v*L,y1+u*L);c.lineTo(x1-v*L,y1-u*L)}
     c.stroke()}
   c.setTransform(1,0,0,1,0,0);c.globalCompositeOperation="destination-in";c.drawImage(mask,0,0);c.globalCompositeOperation="source-over"}
-function drawStatic(){const c=cP.getContext("2d");c.setTransform(V.dpr,0,0,V.dpr,0,0);c.clearRect(0,0,V.W,V.H);if(!DATA)return;const wind=LAYER==="wind",F=DATA.F;
+function drawStatic(){const c=cP.getContext("2d");c.setTransform(V.dpr,0,0,V.dpr,0,0);c.clearRect(0,0,V.W,V.H);if(!DATA)return;const wind=LAYER==="wind"||LAYER==="score",F=DATA.F;
   c.strokeStyle=c.fillStyle=`rgba(${PCOL},.6)`;c.lineWidth=1.2;
   for(let y=30;y<V.H;y+=46)for(let x=30;x<V.W;x+=46){if(!isWater(x,y))continue;const lo=LON(x),la=LAT(y),u=sample(wind?F.WU[TI]:F.U[TI],lo,la),v=sample(wind?F.WV[TI]:F.V[TI],lo,la),n=Math.hypot(u,v)||1,ux=u/n,uy=-v/n;
     c.beginPath();c.moveTo(x-ux*9,y-uy*9);c.lineTo(x+ux*9,y+uy*9);c.stroke();c.beginPath();c.moveTo(x+ux*11,y+uy*11);c.lineTo(x+ux*5-uy*4,y+uy*5+ux*4);c.lineTo(x+ux*5+uy*4,y+uy*5-ux*4);c.fill()}}
@@ -831,8 +841,9 @@ function placeMarks(){if(!MAP)return;const z=MAP.getZoom(),lab=z>=10.6,used=[];
   for(const m of MK){m.x=X(m.lo);m.y=Y(m.la);m.el.style.transform=`translate(${m.x.toFixed(1)}px,${m.y.toFixed(1)}px)`;m.el.hidden=m.x<-40||m.y<-40||m.x>V.W+40||m.y>V.H+40||(m.spot!=null&&m.spot!==S.sel&&!inFilter(DATA.spots[m.spot]))}
   for(const m of order){let show=false;if(lab&&!m.el.hidden){const r=[m.x+8,m.y-22,m.x+8+m.w,m.y+4];show=!used.some(u=>r[0]<u[2]&&r[2]>u[0]&&r[1]<u[3]&&r[3]>u[1]);if(show)used.push(r)}m.el.classList.toggle("lab",show)}}
 function colorMarks(){if(!DATA)return;for(const m of MK)if(m.spot!=null){const s=DATA.spots[m.spot];m.el.firstChild.style.background=s.ok?rtCol(s.hr[TI].cls):"var(--muted)";m.el.classList.toggle("sel",S.sel===m.spot)}}
-function legend(){const R=RAMP[LAYER],st=R[look().ramp],lo=R.min||0,g=st.map(([v,c])=>`rgb(${c.map(Math.round).join(",")}) ${((v-lo)/(R.max-lo)*100).toFixed(0)}%`).join(",");
-  $("legend").innerHTML=`<b>${R.t}, ${R.u}</b><div class="bar" style="background:linear-gradient(90deg,${g})"></div><div class="tk">${R.ticks.map(t=>`<span>${t}${t===R.max?"+":""}</span>`).join("")}</div><div class="probe" id="probe"></div>`}
+function legend(){const R=RAMP[LAYER],st=R[look().ramp],lo=R.min||0,sc=LAYER==="score",
+  g=sc?st.slice(1,7).map(([v,c],i)=>`rgb(${c.map(Math.round).join(",")}) ${(i/5*100).toFixed(0)}%`).join(","):st.map(([v,c])=>`rgb(${c.map(Math.round).join(",")}) ${((v-lo)/(R.max-lo)*100).toFixed(0)}%`).join(",");
+  $("legend").innerHTML=`<b>${R.t}, ${R.u}</b><div class="bar" style="background:linear-gradient(90deg,${g})"></div><div class="tk">${R.ticks.map(t=>`<span>${t}${t===R.max&&!sc?"+":""}</span>`).join("")}</div><div class="probe" id="probe"></div>`}
 let pend=false,maskT=0;
 function redraw(){if(pend||!MAP)return;pend=true;requestAnimationFrame(()=>{pend=false;syncProj();buildMask();drawField();if(DATA){placeMarks();colorMarks()}
   clearTimeout(maskT);maskT=setTimeout(()=>{readMask();if(REDUCED)drawStatic()},160)})}
@@ -840,7 +851,9 @@ function viewChanged(){clearParticles();redraw()}
 function resize(){const r=mapEl.getBoundingClientRect();if(!r.width)return;V.W=r.width;V.H=r.height;V.dpr=Math.min(2,window.devicePixelRatio||1);if(MAP)MAP.resize();resetParticles();redraw()}
 function probe(x,y){const el=$("probe");if(!el||!DATA)return;if(!isWater(x,y)){el.textContent="";return}
   const lo=LON(x),la=LAT(y),F=DATA.F,pos=`${la.toFixed(2)}°N ${(-lo).toFixed(2)}°W`;
-  if(LAYER==="wind"){const d=(Math.atan2(-sample(F.WU[TI],lo,la),-sample(F.WV[TI],lo,la))*180/Math.PI+360)%360;el.textContent=`${pos} · ${sample(F.WS[TI],lo,la).toFixed(0)} kn from ${comp(d)}`}
+  if(LAYER==="score"){const o=oceanAt(lo,la),d=(Math.atan2(-sample(F.WU[TI],lo,la),-sample(F.WV[TI],lo,la))*180/Math.PI+360)%360,ws=sample(F.WS[TI],lo,la);
+    el.textContent=`${pos} · ${o.face<1?"Flat":RT[clsOf(o.face,o.r)].n+" "+o.s.toFixed(1)} · wind ${ws.toFixed(0)} kn from ${comp(d)}`}
+  else if(LAYER==="wind"){const d=(Math.atan2(-sample(F.WU[TI],lo,la),-sample(F.WV[TI],lo,la))*180/Math.PI+360)%360;el.textContent=`${pos} · ${sample(F.WS[TI],lo,la).toFixed(0)} kn from ${comp(d)}`}
   else{const d=(Math.atan2(-sample(F.U[TI],lo,la),-sample(F.V[TI],lo,la))*180/Math.PI+360)%360;el.textContent=`${pos} · ${sample(F.H[TI],lo,la).toFixed(1)} ft @ ${sample(F.P[TI],lo,la).toFixed(0)} s from ${comp(d)} ${Math.round(d)}°`}}
 function initMap(){
   if(!window.maplibregl){$("msg").hidden=false;$("msg").innerHTML="<b>Map unavailable</b>Check your connection and reload.";return false}
@@ -854,7 +867,7 @@ function initMap(){
   new ResizeObserver(resize).observe(mapEl);resize();return true}
 const inView=(lo,la)=>{const x=X(lo),y=Y(la);return x>24&&x<V.W-24&&y>64&&y<V.H-24};
 function goTo(lo,la,minZoom){if(!MAP)return;const z=MAP.getZoom(),pb=phone()?SH.px[SH.snap]:0;if(z>=minZoom&&inView(lo,la)&&Y(la)<V.H-pb-30)return;MAP.easeTo({center:[lo,la],zoom:Math.max(z,minZoom),offset:[0,-pb/2],duration:REDUCED?0:700})}
-for(const l of ["swell","period","wind"])$("lyr-"+l).onclick=()=>{LAYER=l;for(const m of ["swell","period","wind"])$("lyr-"+m).setAttribute("aria-pressed",m===l);legend();clearParticles();redraw()};
+for(const l of ["swell","period","wind","score"])$("lyr-"+l).onclick=()=>{LAYER=l;for(const m of ["swell","period","wind","score"])$("lyr-"+m).setAttribute("aria-pressed",m===l);legend();clearParticles();redraw()};
 // The map look is fixed to Midnight for now; the other looks stay defined above for a future settings screen.
 const themeChanged=()=>{syncTheme();legend();if(MAP)MAP.setStyle(mapStyle());redraw()};
 matchMedia("(prefers-color-scheme: dark)").addEventListener("change",themeChanged);
