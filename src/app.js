@@ -32,7 +32,7 @@ const chopFactor=T=>clamp((T/PEAK-4)/5,0.3,1);
 function breaker(hft,T){if(!(hft>0)||!(T>=5))return 0;const H=hft*0.3048;return 0.39*Math.pow(9.81,0.2)*Math.pow(T*H*H,0.4)/0.3048*K_BREAK*chopFactor(T)}
 // Onshore wind sets a ceiling on the rating no matter how much swell there is.
 // e = wind speed (kn) scaled by how onshore it is: 0 at cross-offshore, full at 120 deg or more off offshore.
-const WIND_CAP=[[4,10],[6,4],[8,2.8],[10,1.9],[30,1]];
+const WIND_CAP=[[5,10],[8,5],[10,3.6],[12,2.8],[15,2],[20,1.4],[30,1]];
 function windCap(ws,d){if(ws==null||d==null)return 10;const e=ws*clamp((d-70)/50,0,1);if(e<=WIND_CAP[0][0])return 10;
   for(let i=1;i<WIND_CAP.length;i++)if(e<=WIND_CAP[i][0]){const a=WIND_CAP[i-1],b=WIND_CAP[i];return lerp(a[1],b[1],(e-a[0])/(b[0]-a[0]))}return 1}
 function comps(s,i){const m=s.m,out=[];
@@ -595,7 +595,7 @@ function whyScore(s){if(!s.ok)return"";const i=TI,h=s.hr[i],hd=`<p class="lab" s
    period:{inp:dom?`${Math.round(dom.p)} s peak period`:"no swell",src:"forecast model",fm:`0.55 + 0.45 × period score ${per.toFixed(2)}. Period score is (period − 6) ÷ 8 kept between 0 and 1, times 0.8, plus 0.2.`},
    wind:{inp:ws==null?"no wind data":`${Math.round(ws)} kn ${w.word.toLowerCase()}`,src:"4 wind models: highest on daytime onshore, else median",fm:ws==null?"No wind data, so wind is not applied.":`0.25 + 0.75 × wind quality ${w.q.toFixed(2)}. Quality drops from 1 as wind passes 4 kn, faster when it is onshore.`},
    tide:{inp:tide==null?"no tide data":`${tide.toFixed(1)} ft · likes ${s.td}`,src:"NOAA tide predictions",fm:tide==null||!tr?"No tide data, so tide is not applied.":off===0?`Inside this spot's best band (${tr[0]} to ${tr[1]} ft), so no penalty.`:`${off.toFixed(1)} ft outside the best band (${tr[0]} to ${tr[1]} ft), so 1 − 0.1 × ${off.toFixed(1)}, never below 0.7.`},
-   cap:{inp:cap>=10?"No cap, not blown out":`Capped at ${cap.toFixed(1)}`,src:"4 wind models: highest on daytime onshore, else median",fm:ws==null?"No wind data.":`Effective onshore wind is ${e.toFixed(1)} kn (speed × how onshore). Up to 4 kn there is no cap; at 6 kn the score cannot pass 4; at 8 kn, 2.8; at 10 kn, 1.9; above that, 1.`}};
+   cap:{inp:cap>=10?"No cap, not blown out":`Capped at ${cap.toFixed(1)}`,src:"4 wind models: highest on daytime onshore, else median",fm:ws==null?"No wind data.":`Effective onshore wind is ${e.toFixed(1)} kn (speed × how onshore). Up to 5 kn there is no cap; at 8 kn the score cannot pass 5; at 10 kn, 3.6; at 12 kn, 2.8; at 15 kn, 2; above that it keeps falling toward 1.`}};
   const fmtF=x=>Math.round(x.f*100)+"%";
   const rows=FR.map(x=>{const d=D[x.k],on=WHY.has(x.k),bad=x.loss>=0.3,drag=x===big&&x.loss>=0.3;
     return`<details class="wy${bad?" bad":""}${drag?" drag":""}" data-why="${x.k}"${on?" open":""}><summary><span class="nm">${NM[x.k]}</span><span class="in">${d.inp}</span><span class="f">${fmtF(x)}</span><span class="pts">+${x.cr.toFixed(1)}</span></summary>
@@ -747,7 +747,7 @@ function howView(){return`<div class="det"><h2>How spots are rated</h2>
   <p class="note" style="color:var(--ink)">Every hour, each spot is scored on four things. They multiply, so flat water never rates well.</p>
   <dl class="kv" style="grid-template-columns:1fr">
   <div><dt>Size</dt><dd><small>Breaking height from each swell's height and period. Short chop under 9 s is marked down, swell outside the spot's window is cut, and a local gain adjusts for spots that focus or shelter swell.</small></dd></div>
-  <div><dt>Wind</dt><dd><small>Under 4 kn is glassy. Offshore costs little, onshore costs a lot. Onshore also caps the rating: about 6 kn limits a spot to Fair, 10 kn to Poor.</small></dd></div>
+  <div><dt>Wind</dt><dd><small>Under 5 kn is glassy. Offshore costs little, onshore costs a lot. Onshore also caps the rating: about 8 kn limits a spot to Fair, 12 kn to Poor to fair, 15 kn to Poor.</small></dd></div>
   <div><dt>Period</dt><dd><small>Longer is better, from 6 s (weak) to 14 s and up (full marks).</small></dd></div>
   <div><dt>Tide</dt><dd><small>A small penalty outside the tide the spot likes.</small></dd></div></dl>
   <div class="wins">${RT.map((r,c)=>`<div class="win" style="grid-template-columns:130px 1fr">${rlab(c)}<span class="m">${["Faces under 1 ft","Score below 2","2 to 3.5","3.5 to 5","5 to 6.5","6.5 to 8.8","Above 8.8"][c]}</span></div>`).join("")}</div>
