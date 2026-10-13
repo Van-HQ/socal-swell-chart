@@ -355,7 +355,7 @@ $("play").onclick=()=>{if(!DATA)return;const on=!playT;$("play").setAttribute("a
 /* ---------- panel ---------- */
 const S={tab:"spots",sel:null,region:"best",step:3,look:"night",loc:null,locWait:false};
 const REG={all:"All",sb:"Santa Barbara",vc:"Ventura",la:"Los Angeles",oc:"Orange County",sd:"San Diego"};
-const CHIPS={fav:"\u2605 Favs",best:"Best",local:"Local"};
+const CHIPS={fav:"\u2605 Favs",best:"Best",local:"Local",all:"All"};
 // Favorites and list preferences are kept in this browser only.
 const FAVS=new Set();try{for(const n of JSON.parse(localStorage.getItem("swellchart.favs")||"[]"))FAVS.add(n)}catch(e){}
 const saveFavs=()=>{try{localStorage.setItem("swellchart.favs",JSON.stringify([...FAVS]))}catch(e){}};
@@ -367,10 +367,10 @@ function computeLocal(){LOCSET=new Map();if(!DATA||!S.loc)return;
   let arr=DATA.spots.map(s=>[s,miles(S.loc.la,S.loc.lo,s.la,s.lo)]).sort((x,y)=>x[1]-y[1]);
   if(S.loc.gps&&arr[0][1]>150){S.loc={...HOME,gps:false,far:true};arr=DATA.spots.map(s=>[s,miles(HOME.la,HOME.lo,s.la,s.lo)]).sort((x,y)=>x[1]-y[1])}
   for(const [s,d] of arr.slice(0,15))LOCSET.set(s.n,d)}
-const inFilter=s=>S.region==="best"||(S.region==="fav"?FAVS.has(s.n):LOCSET.has(s.n));
+const inFilter=s=>S.region==="best"||S.region==="all"||(S.region==="fav"?FAVS.has(s.n):LOCSET.has(s.n));
 const phone=()=>matchMedia("(max-width:860px)").matches;
 const camPad=()=>phone()?{top:70,bottom:SH.px[SH.snap]+14,left:12,right:12}:{top:70,bottom:50,left:40,right:60};
-function fitFilter(){if(!MAP||!DATA)return;const ss=DATA.spots.filter(inFilter);if(S.region==="best"||!ss.length){MAP.fitBounds(FIT,{padding:camPad(),duration:REDUCED?0:700});return}
+function fitFilter(){if(!MAP||!DATA)return;const ss=DATA.spots.filter(inFilter);if(S.region==="best"||S.region==="all"||!ss.length){MAP.fitBounds(FIT,{padding:camPad(),duration:REDUCED?0:700});return}
   let w=180,e=-180,so=90,n=-90;for(const s of ss){w=Math.min(w,s.lo);e=Math.max(e,s.lo);so=Math.min(so,s.la);n=Math.max(n,s.la)}
   MAP.fitBounds([[w,so],[e,n]],{padding:camPad(),maxZoom:12.5,duration:REDUCED?0:700})}
 function setRegion(r){S.region=r;S.sel=null;S.tab="spots";const done=()=>{S.locWait=false;computeLocal();render();placeMarks();colorMarks();fitFilter()};
@@ -429,9 +429,9 @@ function outlook(){const r=DATA.ref,T=DATA.times;if(!r||!r.sh.some(v=>v!=null))r
   <text x="2" y="${y(mx)+4}" font-size="10" fill="var(--muted)">${Math.round(mx)} ft</text>
   <path d="${path(r.s2h)}" fill="none" stroke="var(--muted)" stroke-width="1.2" stroke-dasharray="3 3"/><path d="${path(r.sh)}" fill="none" stroke="var(--ink)" stroke-width="1.8"/>
   <line x1="${x(TI)}" y1="8" x2="${x(TI)}" y2="${H-22}" stroke="var(--ink)" stroke-width="1" opacity=".55"/><circle cx="${x(TI)}" cy="6" r="2.5" fill="var(--ink)"/></svg></div>`}
-function listView(){const rows=DATA.spots.filter(inFilter);if(S.region==="local")rows.sort((a,b)=>LOCSET.get(a.n)-LOCSET.get(b.n));else rows.sort((a,b)=>b.hr[TI].rate-a.hr[TI].rate);
+function listView(){const rows=DATA.spots.filter(inFilter);if(S.region==="local")rows.sort((a,b)=>LOCSET.get(a.n)-LOCSET.get(b.n));else if(S.region==="all")rows.sort((a,b)=>a.idx-b.idx);else rows.sort((a,b)=>b.hr[TI].rate-a.hr[TI].rate);
   const lm=s=>S.region==="local"&&LOCSET.has(s.n)?`${LOCSET.get(s.n).toFixed(LOCSET.get(s.n)<10?1:0)} mi \u00b7 `:"";
-  const info=S.region==="local"?(S.locWait?"Finding your location\u2026":S.loc&&S.loc.gps?"15 nearest to you":`15 nearest to ${HOME.n}${S.loc&&S.loc.far?" (you are far from SoCal)":" (location off)"}`):S.region==="fav"?`${rows.length} favorite${rows.length===1?"":"s"}`:`${rows.length} spots, best first`;
+  const info=S.region==="local"?(S.locWait?"Finding your location\u2026":S.loc&&S.loc.gps?"15 nearest to you":`15 nearest to ${HOME.n}${S.loc&&S.loc.far?" (you are far from SoCal)":" (location off)"}`):S.region==="fav"?`${rows.length} favorite${rows.length===1?"":"s"}`:S.region==="all"?`${rows.length} spots, north to south`:`${rows.length} spots, best first`;
   return`<div style="display:flex;flex-direction:column;gap:8px"><div class="chips three" role="group" aria-label="Spot list">${Object.entries(CHIPS).map(([k,n])=>`<button data-reg="${k}" aria-pressed="${S.region===k}">${n}</button>`).join("")}</div>
   <div class="steprow" style="margin-top:2px"><span class="lab">${info}</span></div>
   ${alertBanner(null)}
