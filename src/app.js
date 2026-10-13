@@ -383,25 +383,29 @@ function setRegion(r){S.region=r;S.sel=null;S.tab="spots";const done=()=>{S.locW
 const SH={snap:"peek",px:{peek:196,half:420,full:700},drag:null};
 const PANEL=$("panel");
 function sheetCalc(){const g=PANEL.querySelector(".grab"),t=document.querySelector(".time"),pk=$("peek"),pad=parseFloat(getComputedStyle(PANEL).paddingBottom)||0,st=Math.max(0,(parseFloat(getComputedStyle(document.querySelector(".maphead")).top)||23)-23);
-  const base=g.offsetHeight+t.offsetHeight+(pk.hidden?56:pk.offsetHeight)+pad+2;
+  const pm=pk.hidden?0:(parseFloat(getComputedStyle(pk).marginBottom)||0)+(parseFloat(getComputedStyle(pk).marginTop)||0);
+  const base=g.offsetHeight+t.offsetHeight+(pk.hidden?64:pk.offsetHeight+pm)+pad+4;
   SH.px={peek:Math.max(150,Math.round(base)),half:Math.round(innerHeight*.55),full:Math.round(innerHeight-64-st)}}
 function setSnap(n,instant){SH.snap=n;sheetCalc();const r=document.documentElement;PANEL.dataset.snap=n;r.dataset.snap=n;
   if(instant)PANEL.classList.add("drag");r.style.setProperty("--sheet-h",SH.px[n]+"px");if(instant)requestAnimationFrame(()=>requestAnimationFrame(()=>PANEL.classList.remove("drag")))}
 function placeSheet(){const t=document.querySelector(".time");
   if(phone()){if(t.parentNode!==PANEL)PANEL.insertBefore(t,$("peek"));setSnap(SH.snap,true)}
   else{if(t.parentNode!==document.querySelector(".chart"))document.querySelector(".chart").appendChild(t);document.documentElement.style.removeProperty("--sheet-h");delete PANEL.dataset.snap;delete document.documentElement.dataset.snap}}
-function dragStart(e){if(!phone()||(e.pointerType==="mouse"&&e.button))return;sheetCalc();SH.drag={y:e.clientY,h:PANEL.getBoundingClientRect().height,t:performance.now(),moved:false,last:e.clientY,lt:performance.now(),v:0,el:e.currentTarget};SH.pid=e.pointerId;if(e.currentTarget.id==="grab"){try{e.currentTarget.setPointerCapture(e.pointerId)}catch(_){}}}
-function dragMove(e){const d=SH.drag;if(!d)return;const dy=d.y-e.clientY;if(!d.moved&&Math.abs(dy)<6)return;if(!d.moved){d.moved=true;PANEL.classList.add("drag");try{d.el.setPointerCapture(SH.pid)}catch(_){}}const now=performance.now();d.v=(d.last-e.clientY)/Math.max(1,now-d.lt);d.last=e.clientY;d.lt=now;
+function dragStart(e){if(!phone()||(e.pointerType==="mouse"&&e.button)||e.target.closest("input,.btn"))return;sheetCalc();SH.drag={y:e.clientY,h:PANEL.getBoundingClientRect().height,t:performance.now(),moved:false,last:e.clientY,lt:performance.now(),v:0,el:e.currentTarget};SH.pid=e.pointerId;if(e.currentTarget.id==="grab"){try{e.currentTarget.setPointerCapture(e.pointerId)}catch(_){}}}
+function dragMove(e){const d=SH.drag;if(!d)return;const dy=d.y-e.clientY;if(!d.moved&&Math.abs(dy)<6)return;if(!d.moved){d.moved=true;PANEL.classList.add("drag");document.documentElement.classList.add("dragging");try{d.el.setPointerCapture(SH.pid)}catch(_){}}const now=performance.now();d.v=(d.last-e.clientY)/Math.max(1,now-d.lt);d.last=e.clientY;d.lt=now;
   const h=Math.max(SH.px.peek,Math.min(SH.px.full,d.h+dy));document.documentElement.style.setProperty("--sheet-h",h+"px")}
-function dragEnd(e){const d=SH.drag;if(!d)return;SH.drag=null;PANEL.classList.remove("drag");
+function dragEnd(e){const d=SH.drag;if(!d)return;SH.drag=null;PANEL.classList.remove("drag");document.documentElement.classList.remove("dragging");
   if(!d.moved){if(d.el.id==="grab")setSnap(SH.snap==="peek"?"half":SH.snap==="half"?"full":"peek");else setSnap(SH.snap);return}
   d.el._dragged=true;setTimeout(()=>d.el._dragged=false,0);
   const h=PANEL.getBoundingClientRect().height+d.v*160;let best="peek",bd=1e9;for(const k of ["peek","half","full"]){const x=Math.abs(SH.px[k]-h);if(x<bd){bd=x;best=k}}
   setSnap(best)}
-for(const el of [$("grab"),$("peek"),document.querySelector(".tabs")]){el.addEventListener("pointerdown",dragStart);el.addEventListener("pointermove",dragMove);el.addEventListener("pointerup",dragEnd);el.addEventListener("pointercancel",dragEnd)}
+for(const el of [$("grab"),$("peek"),document.querySelector(".tabs"),document.querySelector(".time")]){el.addEventListener("pointerdown",dragStart);el.addEventListener("pointermove",dragMove);el.addEventListener("pointerup",dragEnd);el.addEventListener("pointercancel",dragEnd)}
 $("peek").addEventListener("click",e=>{if($("peek")._dragged){e.stopImmediatePropagation();e.preventDefault();return}},true);
 $("peek").addEventListener("click",()=>{const k=SH.pk;if(k!=null){const s=DATA.spots[k];select(k);goTo(s.lo,s.la,11.5)}});
 addEventListener("resize",()=>{if(phone())setSnap(SH.snap,true)});
+const refit=()=>{if(phone()&&!SH.drag){const b=SH.px[SH.snap];sheetCalc();if(SH.px[SH.snap]!==b)setSnap(SH.snap,true)}};
+if(window.ResizeObserver){const ro=new ResizeObserver(refit);for(const el of [document.querySelector(".time"),$("peek"),$("grab")])ro.observe(el)}
+if(document.fonts&&document.fonts.ready)document.fonts.ready.then(refit);
 matchMedia("(max-width:860px)").addEventListener("change",placeSheet);
 function peekRender(){const pk=$("peek");if(!DATA){pk.hidden=true;return}
   let s,lab;if(S.sel!=null){s=DATA.spots[S.sel];lab="Selected"}else{lab="Best right now";for(const x of DATA.spots)if(x.ok&&(!s||x.hr[TI].rate>s.hr[TI].rate))s=x}
