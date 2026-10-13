@@ -279,16 +279,10 @@ button.tile:disabled{cursor:default;opacity:.6}
 @keyframes pflip{from{opacity:0;transform:perspective(700px) rotateX(-14deg)}to{opacity:1;transform:none}}
 .pseg{margin-bottom:10px}.pseg button{flex:1}
 .pnote{margin:0 0 8px;font-size:12px;color:var(--muted)}
-.prows{display:flex;flex-direction:column}
-.prow{display:grid;grid-template-columns:42px 52px minmax(0,1fr) 56px 82px;gap:8px;align-items:center;border:0;border-radius:10px;background:none;color:var(--ink);font:inherit;font-size:13px;padding:7px 8px;text-align:left}
-.prow.tide{grid-template-columns:46px 18px minmax(0,1fr) 62px 56px}
-.prow.on{background:color-mix(in srgb,var(--ink) 10%,transparent)}
-.prow.now .pt::after{content:"";display:inline-block;width:5px;height:5px;border-radius:3px;background:var(--accent);margin-left:4px;vertical-align:middle}
-.prow .pt{color:var(--muted)}.prow .pd{display:flex;align-items:center;gap:4px;white-space:nowrap}
-.pbar{height:6px;border-radius:3px;background:var(--raise);overflow:hidden}.pbar i{display:block;height:100%;border-radius:3px}
-.prow .pv{text-align:right;white-space:nowrap}.prow .pv small{color:var(--muted);font-size:11.5px}
-.prow .pw{color:var(--muted);font-size:11.5px;text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.phl{display:flex;flex-wrap:wrap;gap:6px 14px;margin-bottom:8px;font-size:13px}.phl small{color:var(--muted)}
+.pscroll{overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain;border:1px solid var(--line);border-radius:12px;background:color-mix(in srgb,var(--ink) 3%,transparent)}
+.pscroll svg{display:block;cursor:pointer}
+.prd{display:flex;flex-wrap:wrap;align-items:center;gap:4px 12px;margin:0 0 10px;font-size:13px}.prd span{color:var(--muted)}.prd b{font:600 17px/1 var(--f-ui);color:var(--ink)}
+.prd .arr{vertical-align:-2px}
 #pop .wx{margin-top:0}
 .tag{display:inline-block;font-size:11px;border:1px solid var(--line);border-radius:6px;padding:1px 6px;margin-top:4px;color:var(--muted)}
 .seg2{display:flex;padding:2px;gap:2px;border:1px solid var(--line);border-radius:8px}

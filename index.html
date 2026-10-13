@@ -279,16 +279,10 @@ button.tile:disabled{cursor:default;opacity:.6}
 @keyframes pflip{from{opacity:0;transform:perspective(700px) rotateX(-14deg)}to{opacity:1;transform:none}}
 .pseg{margin-bottom:10px}.pseg button{flex:1}
 .pnote{margin:0 0 8px;font-size:12px;color:var(--muted)}
-.prows{display:flex;flex-direction:column}
-.prow{display:grid;grid-template-columns:42px 52px minmax(0,1fr) 56px 82px;gap:8px;align-items:center;border:0;border-radius:10px;background:none;color:var(--ink);font:inherit;font-size:13px;padding:7px 8px;text-align:left}
-.prow.tide{grid-template-columns:46px 18px minmax(0,1fr) 62px 56px}
-.prow.on{background:color-mix(in srgb,var(--ink) 10%,transparent)}
-.prow.now .pt::after{content:"";display:inline-block;width:5px;height:5px;border-radius:3px;background:var(--accent);margin-left:4px;vertical-align:middle}
-.prow .pt{color:var(--muted)}.prow .pd{display:flex;align-items:center;gap:4px;white-space:nowrap}
-.pbar{height:6px;border-radius:3px;background:var(--raise);overflow:hidden}.pbar i{display:block;height:100%;border-radius:3px}
-.prow .pv{text-align:right;white-space:nowrap}.prow .pv small{color:var(--muted);font-size:11.5px}
-.prow .pw{color:var(--muted);font-size:11.5px;text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.phl{display:flex;flex-wrap:wrap;gap:6px 14px;margin-bottom:8px;font-size:13px}.phl small{color:var(--muted)}
+.pscroll{overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain;border:1px solid var(--line);border-radius:12px;background:color-mix(in srgb,var(--ink) 3%,transparent)}
+.pscroll svg{display:block;cursor:pointer}
+.prd{display:flex;flex-wrap:wrap;align-items:center;gap:4px 12px;margin:0 0 10px;font-size:13px}.prd span{color:var(--muted)}.prd b{font:600 17px/1 var(--f-ui);color:var(--ink)}
+.prd .arr{vertical-align:-2px}
 #pop .wx{margin-top:0}
 .tag{display:inline-block;font-size:11px;border:1px solid var(--line);border-radius:6px;padding:1px 6px;margin-top:4px;color:var(--muted)}
 .seg2{display:flex;padding:2px;gap:2px;border:1px solid var(--line);border-radius:8px}
@@ -1170,33 +1164,58 @@ function popEnsure(){if(popEl)return popEl;popEl=document.createElement("div");p
   popEl.innerHTML='<div class="popc" role="dialog" aria-modal="true"><div class="poph"><b id="popt"></b><button class="popx" aria-label="Close" data-popx="1">×</button></div><div id="popseg"></div><div class="popb" id="popb"></div></div>';
   document.body.appendChild(popEl);
   popEl.addEventListener("click",e=>{if(e.target===popEl||e.target.closest("[data-popx]"))return popClose();
+    const c=e.target.closest("[data-pchart]");if(c){const r=c.getBoundingClientRect();return setTime(clamp(Math.floor((e.clientX-r.left)/PW),0,DATA.times.length-1))}
     const t=e.target.closest("[data-time],[data-flip]");if(!t)return;
     if(t.dataset.flip!=null){POP.flip=t.dataset.flip==="1";popRender(true)}else setTime(+t.dataset.time)});
   document.addEventListener("keydown",e=>{if(e.key==="Escape"&&POP.k)popClose()});return popEl}
 function popOpen(k){POP.k=k;POP.flip=false;popEnsure().hidden=false;popRender(true)}
 function popClose(){POP.k=null;if(popEl)popEl.hidden=true}
-function windRows(s,hrs){const mx=Math.max(14,...hrs.map(k=>s.wx.wg[k]||s.wx.ws[k]||0));
-  return hrs.map(k=>{const h=s.hr[k],ws=s.wx.ws[k],g=s.wx.wg[k],wd=s.wx.wd[k];if(ws==null)return"";const q=h.w.q,hr=hourOf(k);
-    return`<button class="prow${k===TI?" on":""}${k===NOWI?" now":""}" data-time="${k}"><span class="pt">${h12s(hr)}${ampm(hr)}</span><span class="pd">${arrow(wd)} ${comp(wd)}</span>
-    <span class="pbar"><i style="width:${Math.round(ws/mx*100)}%;background:${q<0.6?"var(--warn)":"var(--accent)"}"></i></span>
-    <span class="pv"><b>${Math.round(ws)}</b>${g!=null&&g>ws+1?`<small> g${Math.round(g)}</small>`:""}</span><span class="pw">${h.w.word}</span></button>`}).join("")}
-function tideRows(s,hrs){const v=hrs.map(k=>s.tide[k]).filter(x=>x!=null),lo=Math.min(...v),hi=Math.max(...v),sp=(hi-lo)||1;
-  return hrs.map(k=>{const t=s.tide[k];if(t==null)return"";const nx=s.tide[Math.min(k+1,s.tide.length-1)],tr=nx==null?"":nx>t+0.05?"↑":nx<t-0.05?"↓":"",hr=hourOf(k),tr_=TIDE_RANGE[s.td],liked=tr_&&t>=tr_[0]&&t<=tr_[1];
-    return`<button class="prow tide${k===TI?" on":""}${k===NOWI?" now":""}" data-time="${k}"><span class="pt">${h12s(hr)}${ampm(hr)}</span><span class="pd">${tr}</span>
-    <span class="pbar"><i style="width:${Math.round(8+(t-lo)/sp*92)}%;background:${liked?"var(--accent)":"var(--muted)"}"></i></span>
-    <span class="pv"><b>${t.toFixed(1)}</b><small> ft</small></span><span class="pw">${liked?"in band":""}</span></button>`}).join("")}
+/* Scrollable week charts for the Wind and Tide pop-ups. One column per hour, PW px wide, so the two line up. */
+const PW=34;
+const msOf=t=>Date.UTC(+t.slice(0,4),+t.slice(5,7)-1,+t.slice(8,10),+t.slice(11,13),+t.slice(14,16)||0);
+function popBack(s,n,H){let g="";for(let k=0;k<n;k++)if(s.wx.day[k]===0)g+=`<rect x="${k*PW}" y="2" width="${PW}" height="${H-22}" fill="var(--night)"/>`;
+  g+=`<rect x="${TI*PW}" y="2" width="${PW}" height="${H-22}" rx="3" fill="var(--ink)" opacity=".1"/>`;
+  g+=`<line x1="${(NOWI+.5)*PW}" x2="${(NOWI+.5)*PW}" y1="2" y2="${H-20}" stroke="var(--accent)" stroke-width="1" stroke-dasharray="2 3"/>`;return g}
+function popAxis(n,H){const T=DATA.times;let g="";
+  for(let k=0;k<n;k++){const hr=hourOf(k);
+    if(hr===0||k===0){const p=tparts(T[k]);g+=`<line x1="${k*PW}" x2="${k*PW}" y1="2" y2="${H-20}" stroke="var(--line)"/><text x="${k*PW+6}" y="14" font-size="11" font-weight="600" fill="var(--ink)">${DOW[p.dow]} ${MON[p.m-1]} ${p.d}</text>`}
+    g+=`<text x="${(k+.5)*PW}" y="${H-5}" font-size="10" text-anchor="middle" fill="var(--muted)">${h12(hr).replace(" ","").toLowerCase()}</text>`}
+  return g}
+function windChartSvg(s){const n=DATA.times.length,W=n*PW,H=222,base=192,ah=88,wm=Math.max(15,...s.wx.wg.map(v=>v||0),...s.wx.ws.map(v=>v||0));
+  let ar="",a=`M0 ${base}`,gl="";
+  for(let k=0;k<n;k++){const ws=s.wx.ws[k];if(ws==null)continue;const xc=(k+.5)*PW,wd=s.wx.wd[k],wg=Math.max(s.wx.wg[k]||ws,ws),bad=s.hr[k].w.q<0.6;
+    a+=`L${xc.toFixed(1)} ${(base-ws/wm*ah).toFixed(1)}`;gl+=`${gl?"L":"M"}${xc.toFixed(1)} ${(base-wg/wm*ah).toFixed(1)}`;
+    ar+=`<g transform="translate(${xc.toFixed(1)},42) rotate(${Math.round(wd+180)})"><path d="M0 -5.5 L3.8 4 L0 2 L-3.8 4 Z" fill="${bad?"var(--warn)":"var(--ink)"}"/></g><text x="${xc.toFixed(1)}" y="68" font-size="12" font-weight="600" text-anchor="middle" fill="${bad?"var(--warn)":"var(--ink)"}">${Math.round(ws)}</text><text x="${xc.toFixed(1)}" y="83" font-size="10" text-anchor="middle" fill="var(--muted)">${Math.round(wg)}</text>`}
+  a+=`L${W} ${base}Z`;
+  return`<svg id="pchart" data-pchart="1" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img" aria-label="Hourly wind and gusts for the week">${popBack(s,n,H)}<path d="${a}" fill="var(--map-ink)" opacity=".13"/><path d="${gl}" fill="none" stroke="var(--map-ink)" stroke-width="1.2" stroke-dasharray="3 3" opacity=".55"/>${popAxis(n,H)}${ar}</svg>`}
+function tideChartSvg(s){const T=DATA.times,n=T.length,W=n*PW,H=214,t0=72,t1=164,vals=s.tide.filter(v=>v!=null),ex=s.hilo;
+  const lo=Math.min(...vals,...ex.map(e=>e.v)),hi=Math.max(...vals,...ex.map(e=>e.v)),ty=v=>t1-(v-lo)/(hi-lo||1)*(t1-t0);let g=popBack(s,n,H),d="",pen=false;
+  const tr=TIDE_RANGE[s.td];if(tr){const y1=ty(clamp(tr[1],lo,hi)),y2=ty(clamp(tr[0],lo,hi));if(y2>y1)g+=`<rect x="0" y="${y1.toFixed(1)}" width="${W}" height="${(y2-y1).toFixed(1)}" fill="var(--accent)" opacity=".09"/>`}
+  g+=popAxis(n,H);
+  for(let k=0;k<n;k++){const v=s.tide[k];if(v==null){pen=false;continue}d+=`${pen?"L":"M"}${((k+.5)*PW).toFixed(1)} ${ty(v).toFixed(1)}`;pen=true}
+  g+=`<path d="${d}" fill="none" stroke="var(--map-ink)" stroke-width="1.8"/>`;
+  const m0=msOf(T[0]);
+  for(const e of ex){const f=(msOf(e.t)-m0)/36e5;if(f<0||f>n)continue;const px=(f+.5)*PW,py=ty(e.v),tx=clamp(px,26,W-26);
+    g+=`<line x1="${px.toFixed(1)}" x2="${px.toFixed(1)}" y1="${py.toFixed(1)}" y2="${t1+10}" stroke="var(--map-ink)" stroke-width=".8" opacity=".6"/><text x="${tx.toFixed(1)}" y="${(py-15).toFixed(1)}" font-size="10.5" font-weight="600" text-anchor="middle" fill="var(--ink)">${e.t.slice(11,16)}</text><text x="${tx.toFixed(1)}" y="${(py-4).toFixed(1)}" font-size="10" text-anchor="middle" fill="var(--muted)">${e.v.toFixed(1)} ft</text>`}
+  const tv=s.tide[TI];if(tv!=null)g+=`<circle cx="${((TI+.5)*PW).toFixed(1)}" cy="${ty(tv).toFixed(1)}" r="4.5" fill="var(--accent)" stroke="var(--panel)" stroke-width="1.5"/>`;
+  return`<svg id="pchart" data-pchart="1" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img" aria-label="Tide for the week">${g}</svg>`}
 function popRender(center){const s=S.sel!=null&&DATA?DATA.spots[S.sel]:null;if(!s||!s.ok||!POP.k)return popClose();
-  const b=$("popb"),sc=b.scrollTop,cd=DATA.times[TI].slice(0,10),day=dayIdx().find(x=>x.d===cd);if(!day)return popClose();
-  const p=tparts(DATA.times[TI]),dl=`${DOW[p.dow]} ${MON[p.m-1]} ${p.d}`,hrs=day.idx.filter(k=>hourOf(k)>=5&&hourOf(k)<=21);let html="",tt="",seg="";
-  if(POP.k==="wind"){tt=`Wind · ${dl}`;
+  const b=$("popb"),sc=b.scrollTop,old=b.querySelector(".pscroll"),sx=old?old.scrollLeft:0,cd=DATA.times[TI].slice(0,10);
+  const p=tparts(DATA.times[TI]),dl=`${DOW[p.dow]} ${MON[p.m-1]} ${p.d}`;let html="",tt="",seg="";
+  if(POP.k==="wind"){tt="Wind";
     seg=`<div class="seg2 pseg" role="group" aria-label="Wind view"><button data-flip="0" aria-pressed="${!POP.flip}">By hour</button><button data-flip="1" aria-pressed="${POP.flip}">Check</button></div>`;
-    html=(POP.flip?windCheck(s):`<p class="pnote">Knots, with gusts. Bar colour turns orange when the wind is hurting the surface. Tap an hour to jump to it.</p><div class="prows">${windRows(s,hrs)}</div>`)}
-  else if(POP.k==="tide"){tt=`Tide · ${dl}`;const ex=s.hilo.filter(e=>e.t.slice(0,10)===cd);
-    html=(s.tide?`${ex.length?`<div class="phl">${ex.map(e=>`<span><b>${e.hi?"High":"Low"}</b> ${e.v.toFixed(1)} ft<small> ${clk(e.t.replace(" ","T"))}</small></span>`).join("")}</div>`:""}<p class="pnote">${esc(s.tideSt)} predictions, in feet. Green bars are inside the band this spot likes (${TIDE_RANGE[s.td]?TIDE_RANGE[s.td][0]+" to "+TIDE_RANGE[s.td][1]+" ft":"any"}).</p><div class="prows">${tideRows(s,hrs)}</div>`:`<p class="pnote">No tide data for this spot.</p>`)}
+    const ws=s.wx.ws[TI],wd=s.wx.wd[TI],h=s.hr[TI];
+    html=POP.flip?windCheck(s):`<div class="prd"><span>${fmt(TI)}</span>${ws==null?"<b>n/a</b>":`<b>${Math.round(ws)} kn</b> ${arrow(wd)} ${comp(wd)}<span>gusts ${Math.round(s.wx.wg[TI]||ws)}</span><span>${h.w.word}</span>`}</div>
+      <div class="pscroll">${windChartSvg(s)}</div><p class="pnote">Wind in knots over gusts. Orange means the wind is hurting the surface. Swipe sideways for the week, tap an hour to jump to it.</p>`}
+  else if(POP.k==="tide"){tt="Tide";
+    if(!s.tide)html=`<p class="pnote">No tide data for this spot.</p>`;
+    else{const t=s.tide[TI],nx=s.tide[Math.min(TI+1,s.tide.length-1)],tr=t==null||nx==null?"":nx>t+0.05?"rising":nx<t-0.05?"falling":"slack",m=msOf(DATA.times[TI]),nxe=s.hilo.find(e=>msOf(e.t)>m);
+      html=`<div class="prd"><span>${fmt(TI)}</span>${t==null?"<b>n/a</b>":`<b>${t.toFixed(1)} ft</b><span>${tr}</span>`}${nxe?`<span>next ${nxe.hi?"high":"low"} ${clk(nxe.t.replace(" ","T"))} · ${nxe.v.toFixed(1)} ft</span>`:""}</div>
+      <div class="pscroll">${tideChartSvg(s)}</div><p class="pnote">${esc(s.tideSt)} predictions. The shaded band is the tide this spot likes${TIDE_RANGE[s.td]?` (${TIDE_RANGE[s.td][0]} to ${TIDE_RANGE[s.td][1]} ft)`:""}. Swipe sideways for the week, tap an hour to jump to it.</p>`}}
   else if(POP.k==="wx"){tt=`Weather · ${dl}`;html=weatherCard(s)}
-  $("popt").textContent=tt;$("popseg").innerHTML=seg;b.innerHTML=html;b.classList.remove("flip");void b.offsetWidth;b.classList.add("flip");
-  if(POP.k==="wind"&&POP.flip)b.scrollTop=0;
-  else if(center){const on=b.querySelector(".prow.on");b.scrollTop=on?Math.max(0,on.offsetTop-b.clientHeight/2+on.offsetHeight):0}else b.scrollTop=sc}
+  $("popt").textContent=tt;$("popseg").innerHTML=seg;b.innerHTML=html;b.classList.remove("flip");if(center){void b.offsetWidth;b.classList.add("flip")}
+  const ps=b.querySelector(".pscroll");if(ps)ps.scrollLeft=center?Math.max(0,(TI+.5)*PW-ps.clientWidth/2):sx;
+  b.scrollTop=center?0:sc}
 function detail(s){const h=s.hr[TI];
   if(!s.ok)return`<div class="det"><button class="back" data-back="1">← All spots</button><h2>${esc(s.n)}</h2><p class="note">No wave data close enough to rate this spot.</p></div>`;
   const tide=h.tide,nx=s.tide&&s.tide[Math.min(TI+1,s.tide.length-1)],trend=tide==null||nx==null?"":nx>tide+0.05?"rising":nx<tide-0.05?"falling":"slack";
