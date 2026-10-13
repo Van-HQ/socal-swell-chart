@@ -571,6 +571,36 @@ function weatherCard(s){const w=s.wx;if(!w||!w.tp||w.tp[TI]==null)return"";
    <div class="sub">${[ml,pp!=null?`Rain ${pp}%`:""].filter(Boolean).join(" \u00b7 ")}</div>
    <div class="row">${cols.map(k=>{const q=skyOf(w,k),h=hourOf(k),r=w.pp[k]||0;return`<button data-time="${k}" class="${k===on?"on":""}"><span>${h12s(h)}${ampm(h)}</span>${q.i}<b>${Math.round(w.tp[k])}\u00b0</b><em>${r>=20?r+"%":""}</em></button>`}).join("")}</div>
    <div class="mini"><div><span>Sunrise</span><b>${clk(rise)}</b></div><div><span>Sunset</span><b>${clk(set)}</b></div><div><span>UV</span><b>${Math.round(uvm)} \u00b7 ${uvn}</b></div></div></div></div>`}
+/* "Why this score": splits the 10 - score gap between the factors in rateHour. The factors multiply, so each one's share of the loss
+   is its log-share of the total (rows add up exactly and order does not matter). "Without" = score if that one factor were perfect. */
+const WHY=new Set();
+function whyScore(s){if(!s.ok)return"";const i=TI,h=s.hr[i],hd=`<p class="lab" style="margin-bottom:8px">Why this score · ${fmt(TI)}</p>`;
+  if(h.face<1)return`<div>${hd}<p class="note">Under 1 ft at the face, so it rates as Flat and there is no score to explain.</p></div>`;
+  const w=h.w,ws=s.wx.ws[i],wd=s.wx.wd[i],tide=h.tide,dom=h.dom,lo=s.sz[0],hi=s.sz[1];
+  const per=dom?clamp((dom.p-6)/8,0,1)*0.8+0.2:0.2,fs=sizeScore(h.face,lo,hi),fw=0.25+0.75*w.q,fp=0.55+0.45*per,ft=tideScore(s.td,tide);
+  const raw=10*fs*fw*fp*ft,cap=windCap(ws,w.d),rate=Math.min(cap,raw),fc=Math.min(1,cap/raw);
+  const F=[{k:"size",f:fs},{k:"period",f:fp},{k:"wind",f:fw},{k:"tide",f:ft},{k:"cap",f:fc}],L=F.map(x=>-Math.log(Math.max(x.f,0.001))),sum=L.reduce((a,b)=>a+b,0),loss=10-rate;
+  F.forEach((x,j)=>{x.loss=sum>0?loss*L[j]/sum:0;x.wo=x.k==="cap"?raw:Math.min(cap,raw/Math.max(x.f,0.001))});
+  const big=F.reduce((a,b)=>b.loss>a.loss?b:a),NM={size:"Size",period:"Period",wind:"Wind",tide:"Tide",cap:"Cap"};
+  const e=ws==null||w.d==null?0:ws*clamp((w.d-70)/50,0,1),tr=TIDE_RANGE[s.td],off=tide==null||!tr?0:tide<tr[0]?tr[0]-tide:tide>tr[1]?tide-tr[1]:0;
+  const D={
+   size:{inp:`${h.face.toFixed(1)} ft face · ideal ${lo}–${hi} ft`,src:"forecast model",
+     fm:h.face<lo?`Below the ideal range, so 0.2 + 0.4 × (${h.face.toFixed(1)} − 1) ÷ (${lo} − 1)`:h.face<=hi?`Inside the ideal range, so 0.6 + 0.4 × (${h.face.toFixed(1)} − ${lo}) ÷ (${hi} − ${lo})`:`Above the ideal range, so 1 − 0.55 × (${h.face.toFixed(1)} − ${hi}) ÷ ${hi}, never below 0.45`},
+   period:{inp:dom?`${Math.round(dom.p)} s peak period`:"no swell",src:"forecast model",fm:`0.55 + 0.45 × period score ${per.toFixed(2)}. Period score is (period − 6) ÷ 8 kept between 0 and 1, times 0.8, plus 0.2.`},
+   wind:{inp:ws==null?"no wind data":`${Math.round(ws)} kn ${w.word.toLowerCase()}`,src:"median of 4 wind models",fm:ws==null?"No wind data, so wind is not applied.":`0.25 + 0.75 × wind quality ${w.q.toFixed(2)}. Quality drops from 1 as wind passes 4 kn, faster when it is onshore.`},
+   tide:{inp:tide==null?"no tide data":`${tide.toFixed(1)} ft · likes ${s.td}`,src:"NOAA tide predictions",fm:tide==null||!tr?"No tide data, so tide is not applied.":off===0?`Inside this spot's best band (${tr[0]} to ${tr[1]} ft), so no penalty.`:`${off.toFixed(1)} ft outside the best band (${tr[0]} to ${tr[1]} ft), so 1 − 0.1 × ${off.toFixed(1)}, never below 0.7.`},
+   cap:{inp:cap>=10?"No cap, not blown out":`Capped at ${cap.toFixed(1)}`,src:"median of 4 wind models",fm:ws==null?"No wind data.":`Effective onshore wind is ${e.toFixed(1)} kn (speed × how onshore). Up to 4 kn there is no cap; at 6 kn the score cannot pass 4; at 8 kn, 2.8; at 10 kn, 1.9; above that, 1.`}};
+  const fmtF=x=>x.k==="cap"?(x.f>=0.995?"–":"×"+x.f.toFixed(2)):"×"+x.f.toFixed(2);
+  const rows=F.map(x=>{const d=D[x.k],on=WHY.has(x.k),bad=x.loss>=0.3,drag=x===big&&x.loss>=0.3;
+    return`<details class="wy${bad?" bad":""}${drag?" drag":""}" data-why="${x.k}"${on?" open":""}><summary><span class="nm">${NM[x.k]}</span><span class="in">${d.inp}</span><span class="f">${fmtF(x)}</span><span class="pts">${x.loss<0.05?"−0.0":"−"+x.loss.toFixed(1)}</span></summary>
+    <div class="bar"><i style="width:${Math.round(clamp(x.f,0,1)*100)}%;background:${bad?"var(--warn)":"var(--accent)"}"></i></div>
+    <div class="wx"><b>${x.k==="cap"?"Ceiling":NM[x.k]+" factor"} ${x.f>=0.995&&x.k==="cap"?"none":x.f.toFixed(2)}</b><br>${d.fm}<br><b>Without this:</b> ${x.wo.toFixed(1)} instead of ${rate.toFixed(1)}${x.wo-rate<0.05?" (no change)":" (+"+(x.wo-rate).toFixed(1)+")"}<br><span class="tag">${d.src}</span></div></details>`}).join("");
+  const nb=BUOYS.map((b,k)=>({b,d:DATA.buoys[k]})).filter(o=>o.d.ok).sort((a,c)=>dist2(a.b,s)-dist2(c.b,s))[0];
+  const cl=h.cs.length?h.cs.map(c=>`<b>${c.k}</b> ${c.h.toFixed(1)} ft · ${Math.round(c.p)} s · ${comp(c.d)} ${Math.round(c.d)}°<br>→ direction ×${c.df.toFixed(2)} · spot gain ×${s.g}${c.p/PEAK<9?` · short-period chop ×${chopFactor(c.p).toFixed(2)}`:""} · ${c.face.toFixed(1)} ft face`).join("<br>"):"No swell reaching this spot.";
+  return`<div>${hd}<div class="why"><div class="wtop"><span class="wsc">${rate.toFixed(1)}<small> / 10</small></span><span class="wbg">${big.loss>=0.3?`Biggest drag: <b>${big.k==="cap"?"wind cap":NM[big.k].toLowerCase()}</b>`:"Nothing is holding it back"}</span></div>
+  <p class="wsub">Starts at a perfect 10. Each factor takes its share of the points lost. Tap a row for its formula.</p>${rows}
+  <div class="wtot"><span>Score</span><span>${rate.toFixed(1)}</span></div>
+  <p class="lab" style="margin:16px 0 6px">Where the size comes from</p><div class="wx" style="margin:0">${cl}<br><br>Spot window ${s.w.map(([a,b])=>`${a}–${b}°`).join(" and ")}. Combined as the square root of the sum of squares, giving a <b>${h.face.toFixed(1)} ft</b> face.<br><span class="tag">forecast model</span>${nb?` <span class="tag">buoy check: ${esc(nb.b.n)} ${nb.d.hs[nb.d.hs.length-1].toFixed(1)} ft · ${Math.round(nb.d.tp[nb.d.tp.length-1])} s</span>`:""}</div></div></div>`}
 function detail(s){const h=s.hr[TI];
   if(!s.ok)return`<div class="det"><button class="back" data-back="1">← All spots</button><h2>${esc(s.n)}</h2><p class="note">No wave data close enough to rate this spot.</p></div>`;
   const tide=h.tide,nx=s.tide&&s.tide[Math.min(TI+1,s.tide.length-1)],trend=tide==null||nx==null?"":nx>tide+0.05?"rising":nx<tide-0.05?"falling":"slack";
@@ -595,6 +625,7 @@ function detail(s){const h=s.hr[TI];
   <div><p class="lab" style="margin-bottom:8px">Swell Breakdown · ${fmt(TI)}</p>${spectra(s)}</div>
   <div><p class="lab" style="margin-bottom:8px">7 Day Forecast</p>${fcChart(s)}</div>
   ${bestWindowsView(s)}
+  ${whyScore(s)}
   <p class="note">${esc(s.note)} Faces ${comp(s.f)}. Accepts swell from ${s.w.map(([a,b])=>`${comp(a)} to ${comp(b)}`).join(" and ")}; ideal faces ${s.sz[0]}–${s.sz[1]} ft.</p></div>`}
 const buoyAge=d=>(Date.now()/1000-d.t[d.t.length-1])/60;
 function ageText(d){const m=Math.round(buoyAge(d));return m<90?`${m} min ago`:`${Math.round(m/60)} h ago`}
@@ -621,6 +652,7 @@ function render(fromPlay){if(!DATA)return;const b=$("body"),keep=b.scrollTop;
   b.innerHTML=S.tab==="buoys"?buoyView():S.tab==="how"?howView():S.sel!=null?detail(DATA.spots[S.sel]):listView();
   b.scrollTop=keep;lastRender=Date.now();peekRender();
   const ch=b.querySelector(".chips"),on=ch&&ch.querySelector('[aria-pressed="true"]');if(on)ch.scrollLeft=Math.max(0,on.offsetLeft-ch.offsetLeft-(ch.clientWidth-on.offsetWidth)/2)}
+$("body").addEventListener("toggle",e=>{const k=e.target&&e.target.dataset&&e.target.dataset.why;if(!k)return;if(e.target.open)WHY.add(k);else WHY.delete(k)},true);
 $("body").addEventListener("click",e=>{const t=e.target.closest("[data-spot],[data-fav],[data-sort],[data-reg],[data-back],[data-time],[data-buoy],[data-step],#refresh,#fc,[data-chart]");if(!t||!DATA)return;
   if(t.dataset.spot!=null){const k=+t.dataset.spot,s=DATA.spots[k];select(k);goTo(s.lo,s.la,11.5)}
   else if(t.dataset.step){S.step=+t.dataset.step;try{localStorage.setItem("swellchart.step",String(S.step))}catch(e){}render()}
