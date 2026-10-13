@@ -586,6 +586,7 @@ function whyScore(s){if(!s.ok)return"";const i=TI,h=s.hr[i],hd=`<p class="lab" s
   const raw=10*fs*fw*fp*ft,cap=windCap(ws,w.d),rate=Math.min(cap,raw),fc=Math.min(1,cap/raw);
   const F=[{k:"size",f:fs},{k:"period",f:fp},{k:"wind",f:fw},{k:"tide",f:ft},{k:"cap",f:fc}],L=F.map(x=>-Math.log(Math.max(x.f,0.001))),sum=L.reduce((a,b)=>a+b,0),loss=10-rate;
   F.forEach((x,j)=>{x.loss=sum>0?loss*L[j]/sum:0;x.wo=x.k==="cap"?raw:Math.min(cap,raw/Math.max(x.f,0.001))});
+  const FR=F.filter(x=>x.k!=="cap"||x.f<0.995),tl=FR.reduce((a,x)=>a+x.loss,0);FR.forEach(x=>{x.cr=tl>0.0001?rate*(tl-x.loss)/((FR.length-1)*tl):rate/FR.length});
   const big=F.reduce((a,b)=>b.loss>a.loss?b:a),NM={size:"Size",period:"Period",wind:"Wind",tide:"Tide",cap:"Cap"};
   const e=ws==null||w.d==null?0:ws*clamp((w.d-70)/50,0,1),tr=TIDE_RANGE[s.td],off=tide==null||!tr?0:tide<tr[0]?tr[0]-tide:tide>tr[1]?tide-tr[1]:0;
   const D={
@@ -595,16 +596,17 @@ function whyScore(s){if(!s.ok)return"";const i=TI,h=s.hr[i],hd=`<p class="lab" s
    wind:{inp:ws==null?"no wind data":`${Math.round(ws)} kn ${w.word.toLowerCase()}`,src:"4 wind models: highest on daytime onshore, else median",fm:ws==null?"No wind data, so wind is not applied.":`0.25 + 0.75 × wind quality ${w.q.toFixed(2)}. Quality drops from 1 as wind passes 4 kn, faster when it is onshore.`},
    tide:{inp:tide==null?"no tide data":`${tide.toFixed(1)} ft · likes ${s.td}`,src:"NOAA tide predictions",fm:tide==null||!tr?"No tide data, so tide is not applied.":off===0?`Inside this spot's best band (${tr[0]} to ${tr[1]} ft), so no penalty.`:`${off.toFixed(1)} ft outside the best band (${tr[0]} to ${tr[1]} ft), so 1 − 0.1 × ${off.toFixed(1)}, never below 0.7.`},
    cap:{inp:cap>=10?"No cap, not blown out":`Capped at ${cap.toFixed(1)}`,src:"4 wind models: highest on daytime onshore, else median",fm:ws==null?"No wind data.":`Effective onshore wind is ${e.toFixed(1)} kn (speed × how onshore). Up to 4 kn there is no cap; at 6 kn the score cannot pass 4; at 8 kn, 2.8; at 10 kn, 1.9; above that, 1.`}};
-  const fmtF=x=>x.k==="cap"?(x.f>=0.995?"–":"×"+x.f.toFixed(2)):"×"+x.f.toFixed(2);
-  const rows=F.map(x=>{const d=D[x.k],on=WHY.has(x.k),bad=x.loss>=0.3,drag=x===big&&x.loss>=0.3;
-    return`<details class="wy${bad?" bad":""}${drag?" drag":""}" data-why="${x.k}"${on?" open":""}><summary><span class="nm">${NM[x.k]}</span><span class="in">${d.inp}</span><span class="f">${fmtF(x)}</span><span class="pts">${x.loss<0.05?"−0.0":"−"+x.loss.toFixed(1)}</span></summary>
-    <div class="bar"><i style="width:${Math.round(clamp(x.f,0,1)*100)}%;background:${bad?"var(--warn)":"var(--accent)"}"></i></div>
+  const fmtF=x=>Math.round(x.f*100)+"%";
+  const rows=FR.map(x=>{const d=D[x.k],on=WHY.has(x.k),bad=x.loss>=0.3,drag=x===big&&x.loss>=0.3;
+    return`<details class="wy${bad?" bad":""}${drag?" drag":""}" data-why="${x.k}"${on?" open":""}><summary><span class="nm">${NM[x.k]}</span><span class="in">${d.inp}</span><span class="f">${fmtF(x)}</span><span class="pts">+${x.cr.toFixed(1)}</span></summary>
+    <div class="bar"><i style="width:${Math.round(clamp(x.f,0,1)*100)}%;background:${bad?"var(--warn)":"var(--earn)"}"></i></div>
     <div class="wx"><b>${x.k==="cap"?"Ceiling":NM[x.k]+" factor"} ${x.f>=0.995&&x.k==="cap"?"none":x.f.toFixed(2)}</b><br>${d.fm}<br><b>Without this:</b> ${x.wo.toFixed(1)} instead of ${rate.toFixed(1)}${x.wo-rate<0.05?" (no change)":" (+"+(x.wo-rate).toFixed(1)+")"}<br><span class="tag">${d.src}</span></div></details>`}).join("");
   const nb=BUOYS.map((b,k)=>({b,d:DATA.buoys[k]})).filter(o=>o.d.ok).sort((a,c)=>dist2(a.b,s)-dist2(c.b,s))[0];
   const cl=h.cs.length?h.cs.map(c=>`<b>${c.k}</b> ${c.h.toFixed(1)} ft · ${Math.round(c.p)} s · ${comp(c.d)} ${Math.round(c.d)}°<br>→ direction ×${c.df.toFixed(2)} · spot gain ×${s.g}${c.p/PEAK<9?` · short-period chop ×${chopFactor(c.p).toFixed(2)}`:""} · ${c.face.toFixed(1)} ft face`).join("<br>"):"No swell reaching this spot.";
   return`<div>${hd}<div class="why"><div class="wtop"><span class="wsc">${rate.toFixed(1)}<small> / 10</small></span><span class="wbg">${big.loss>=0.3?`Biggest drag: <b>${big.k==="cap"?"wind cap":NM[big.k].toLowerCase()}</b>`:"Nothing is holding it back"}</span></div>
-  <p class="wsub">Starts at a perfect 10. Each factor takes its share of the points lost. Tap a row for its formula.</p>${rows}
+  <p class="wsub">Built up from 0. Each factor earns part of the score, and weaker factors earn less. Tap a row for its formula.</p><div class="wmeter">${FR.map(x=>`<i style="width:${(x.cr*10).toFixed(2)}%"></i>`).join("")}</div><div class="wticks"><span>0</span><span>5</span><span>10</span></div>${rows}
   <div class="wtot"><span>Score</span><span>${rate.toFixed(1)}</span></div>
+  ${loss>=0.05?`<p class="wlost">Left on the table: <b>${loss.toFixed(1)}</b>${big.loss>=0.3?`, mostly from ${big.k==="cap"?"the wind cap":NM[big.k].toLowerCase()}`:""}. Each row\u2019s percentage is how much of its share it kept; 100% means no penalty.</p>`:""}
   <p class="lab" style="margin:16px 0 6px">Where the size comes from</p><div class="wx" style="margin:0">${cl}<br><br>Spot window ${s.w.map(([a,b])=>`${a}–${b}°`).join(" and ")}. Combined as the square root of the sum of squares, giving a <b>${h.face.toFixed(1)} ft</b> face.<br><span class="tag">forecast model</span>${nb?` <span class="tag">buoy check: ${esc(nb.b.n)} ${nb.d.hs[nb.d.hs.length-1].toFixed(1)} ft · ${Math.round(nb.d.tp[nb.d.tp.length-1])} s</span>`:""}</div></div></div>`}
 /* ---------- Wind check: live station observations vs each forecast model ---------- */
 const WMODELS=[["ncep_hrrr_conus","HRRR"],["ncep_nbm_conus","NBM"],["icon_seamless","ICON"],["gem_seamless","GEM"]];
