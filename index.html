@@ -266,10 +266,10 @@ td.num,th.num{text-align:right;padding-right:0}
   .time input{touch-action:pan-x}
   .grab{display:flex;justify-content:center;align-items:center;height:30px;flex:none;touch-action:none;cursor:grab}
   .grab i{width:38px;height:4px;border-radius:2px;background:var(--line);filter:brightness(1.6)}
-  .panel .time{border-top:0;padding:2px 16px 8px;grid-template-columns:minmax(0,1fr) auto;flex:none}
+  .panel .time{border-top:0;padding:2px 16px 14px;grid-template-columns:minmax(0,1fr) auto;flex:none}
   .track{grid-column:1/-1;grid-row:2}
   .days i{display:none}
-  .peek{display:flex;align-items:center;gap:12px;flex:none;width:calc(100% - 24px);margin:0 12px 10px;padding:10px 12px;text-align:left;border:1px solid var(--line);border-radius:12px;background:var(--raise);touch-action:none}
+  .peek{display:none!important;align-items:center;gap:12px;flex:none;width:calc(100% - 24px);margin:0 12px 10px;padding:10px 12px;text-align:left;border:1px solid var(--line);border-radius:12px;background:var(--raise);touch-action:none}
   .peek[hidden]{display:none}
   .peek .dot{width:10px;height:10px;border-radius:50%;flex:none}
   .peek .pn{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
@@ -843,8 +843,8 @@ function setRegion(r){S.region=r;S.sel=null;S.tab="spots";const done=()=>{S.locW
 const SH={snap:"peek",px:{peek:196,half:420,full:700},drag:null};
 const PANEL=$("panel");
 function sheetCalc(){const g=PANEL.querySelector(".grab"),t=document.querySelector(".time"),pk=$("peek"),pad=parseFloat(getComputedStyle(PANEL).paddingBottom)||0,st=Math.max(0,(parseFloat(getComputedStyle(document.querySelector(".maphead")).top)||23)-23);
-  const pm=pk.hidden?0:(parseFloat(getComputedStyle(pk).marginBottom)||0)+(parseFloat(getComputedStyle(pk).marginTop)||0);
-  const base=g.offsetHeight+t.offsetHeight+(pk.hidden?64:pk.offsetHeight+pm)+pad+4;
+  const gone=pk.hidden||getComputedStyle(pk).display==="none";const pm=gone?0:(parseFloat(getComputedStyle(pk).marginBottom)||0)+(parseFloat(getComputedStyle(pk).marginTop)||0);
+  const base=g.offsetHeight+t.offsetHeight+(gone?0:pk.offsetHeight+pm)+pad+4;
   SH.px={peek:Math.max(150,Math.round(base)),half:Math.round(innerHeight*.55),full:Math.round(innerHeight-64-st)}}
 function setSnap(n,instant){SH.snap=n;sheetCalc();const r=document.documentElement;PANEL.dataset.snap=n;r.dataset.snap=n;
   if(instant)PANEL.classList.add("drag");r.style.setProperty("--sheet-h",SH.px[n]+"px");if(instant)requestAnimationFrame(()=>requestAnimationFrame(()=>PANEL.classList.remove("drag")))}

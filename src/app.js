@@ -383,8 +383,8 @@ function setRegion(r){S.region=r;S.sel=null;S.tab="spots";const done=()=>{S.locW
 const SH={snap:"peek",px:{peek:196,half:420,full:700},drag:null};
 const PANEL=$("panel");
 function sheetCalc(){const g=PANEL.querySelector(".grab"),t=document.querySelector(".time"),pk=$("peek"),pad=parseFloat(getComputedStyle(PANEL).paddingBottom)||0,st=Math.max(0,(parseFloat(getComputedStyle(document.querySelector(".maphead")).top)||23)-23);
-  const pm=pk.hidden?0:(parseFloat(getComputedStyle(pk).marginBottom)||0)+(parseFloat(getComputedStyle(pk).marginTop)||0);
-  const base=g.offsetHeight+t.offsetHeight+(pk.hidden?64:pk.offsetHeight+pm)+pad+4;
+  const gone=pk.hidden||getComputedStyle(pk).display==="none";const pm=gone?0:(parseFloat(getComputedStyle(pk).marginBottom)||0)+(parseFloat(getComputedStyle(pk).marginTop)||0);
+  const base=g.offsetHeight+t.offsetHeight+(gone?0:pk.offsetHeight+pm)+pad+4;
   SH.px={peek:Math.max(150,Math.round(base)),half:Math.round(innerHeight*.55),full:Math.round(innerHeight-64-st)}}
 function setSnap(n,instant){SH.snap=n;sheetCalc();const r=document.documentElement;PANEL.dataset.snap=n;r.dataset.snap=n;
   if(instant)PANEL.classList.add("drag");r.style.setProperty("--sheet-h",SH.px[n]+"px");if(instant)requestAnimationFrame(()=>requestAnimationFrame(()=>PANEL.classList.remove("drag")))}
