@@ -325,15 +325,15 @@ function initMap(){
   if(!window.maplibregl){$("msg").hidden=false;$("msg").innerHTML="<b>Map unavailable</b>Check your connection and reload.";return false}
   setupTerrain();
   const touch=matchMedia("(pointer: coarse)").matches&&matchMedia("(max-width:860px)").matches;
-  MAP=new maplibregl.Map({container:"mapgl",style:mapStyle(),bounds:FIT,fitBoundsOptions:{padding:8},minZoom:6.5,maxZoom:15.5,maxBounds:[[-125,30],[-113.5,37]],dragRotate:false,pitchWithRotate:false,attributionControl:false,cooperativeGestures:touch});
+  MAP=new maplibregl.Map({container:"mapgl",style:mapStyle(),bounds:FIT,fitBoundsOptions:{padding:camPad()},minZoom:6.5,maxZoom:15.5,maxBounds:[[-125,30],[-113.5,37]],dragRotate:false,pitchWithRotate:false,attributionControl:false,cooperativeGestures:touch});
   MAP.touchZoomRotate.disableRotation();MAP.keyboard.disableRotation();
   MAP.addControl(new maplibregl.AttributionControl({compact:true}),"bottom-right");
   MAP.on("move",viewChanged);MAP.on("idle",()=>{depthDirty=true;redraw()});MAP.on("sourcedata",e=>{if(e.sourceId==="depths")depthDirty=true;if((e.sourceId==="omt"||e.sourceId==="depths")&&e.tile)redraw()});
   MAP.on("mousemove",e=>probe(e.point.x,e.point.y));MAP.on("mouseout",()=>{const el=$("probe");if(el)el.textContent=""});
-  $("zin").onclick=()=>MAP.zoomIn();$("zout").onclick=()=>MAP.zoomOut();$("zfit").onclick=()=>MAP.fitBounds(FIT,{padding:8});
+  $("zin").onclick=()=>MAP.zoomIn();$("zout").onclick=()=>MAP.zoomOut();$("zfit").onclick=()=>MAP.fitBounds(FIT,{padding:camPad()});
   new ResizeObserver(resize).observe(mapEl);resize();return true}
 const inView=(lo,la)=>{const x=X(lo),y=Y(la);return x>24&&x<V.W-24&&y>64&&y<V.H-24};
-function goTo(lo,la,minZoom){if(!MAP)return;const z=MAP.getZoom();if(z>=minZoom&&inView(lo,la))return;MAP.easeTo({center:[lo,la],zoom:Math.max(z,minZoom),duration:REDUCED?0:700})}
+function goTo(lo,la,minZoom){if(!MAP)return;const z=MAP.getZoom(),pb=phone()?SH.px[SH.snap]:0;if(z>=minZoom&&inView(lo,la)&&Y(la)<V.H-pb-30)return;MAP.easeTo({center:[lo,la],zoom:Math.max(z,minZoom),offset:[0,-pb/2],duration:REDUCED?0:700})}
 for(const l of ["swell","period","wind"])$("lyr-"+l).onclick=()=>{LAYER=l;for(const m of ["swell","period","wind"])$("lyr-"+m).setAttribute("aria-pressed",m===l);legend();clearParticles();redraw()};
 // The map look is fixed to Midnight for now; the other looks stay defined above for a future settings screen.
 const themeChanged=()=>{syncTheme();legend();if(MAP)MAP.setStyle(mapStyle());redraw()};
@@ -353,41 +353,63 @@ $("play").onclick=()=>{if(!DATA)return;const on=!playT;$("play").setAttribute("a
   if(on)playT=setInterval(()=>setTime(TI>=DATA.times.length-1?NOWI:TI+1,true),900);else{clearInterval(playT);playT=0}};
 
 /* ---------- panel ---------- */
-const S={tab:"spots",sel:null,region:"all",step:3,sort:"best",look:"night"};
+const S={tab:"spots",sel:null,region:"best",step:3,look:"night",loc:null,locWait:false};
 const REG={all:"All",sb:"Santa Barbara",vc:"Ventura",la:"Los Angeles",oc:"Orange County",sd:"San Diego"};
-const CHIPS={all:"All",fav:"\u2605 Favorites",sb:"Santa Barbara",vc:"Ventura",la:"Los Angeles",oc:"Orange County",sd:"San Diego"};
+const CHIPS={fav:"\u2605 Favs",best:"Best",local:"Local"};
 // Favorites and list preferences are kept in this browser only.
-const FAVS=new Set();try{for(const n of JSON.parse(localStorage.getItem("swellchart.favs")||"[]"))FAVS.add(n);if(localStorage.getItem("swellchart.sort")==="ns")S.sort="ns"}catch(e){}
+const FAVS=new Set();try{for(const n of JSON.parse(localStorage.getItem("swellchart.favs")||"[]"))FAVS.add(n)}catch(e){}
 const saveFavs=()=>{try{localStorage.setItem("swellchart.favs",JSON.stringify([...FAVS]))}catch(e){}};
-const inFilter=s=>S.region==="all"||(S.region==="fav"?FAVS.has(s.n):s.r===S.region);
-function fitFilter(){if(!MAP||!DATA)return;const ss=DATA.spots.filter(inFilter);if(S.region==="all"||!ss.length){MAP.fitBounds(FIT,{padding:8,duration:REDUCED?0:700});return}
+// Local: the 15 spots nearest the user (GPS on tap). Falls back to Seal Beach when location is off or far from SoCal.
+const HOME={la:33.744,lo:-118.115,n:"Seal Beach"};
+let LOCSET=new Map();
+const miles=(la1,lo1,la2,lo2)=>{const r=Math.PI/180,a=Math.sin((la2-la1)*r/2)**2+Math.cos(la1*r)*Math.cos(la2*r)*Math.sin((lo2-lo1)*r/2)**2;return 3958.8*2*Math.asin(Math.sqrt(a))};
+function computeLocal(){LOCSET=new Map();if(!DATA||!S.loc)return;
+  let arr=DATA.spots.map(s=>[s,miles(S.loc.la,S.loc.lo,s.la,s.lo)]).sort((x,y)=>x[1]-y[1]);
+  if(S.loc.gps&&arr[0][1]>150){S.loc={...HOME,gps:false,far:true};arr=DATA.spots.map(s=>[s,miles(HOME.la,HOME.lo,s.la,s.lo)]).sort((x,y)=>x[1]-y[1])}
+  for(const [s,d] of arr.slice(0,15))LOCSET.set(s.n,d)}
+const inFilter=s=>S.region==="best"||(S.region==="fav"?FAVS.has(s.n):LOCSET.has(s.n));
+const phone=()=>matchMedia("(max-width:860px)").matches;
+const camPad=()=>phone()?{top:70,bottom:SH.px[SH.snap]+14,left:12,right:12}:{top:70,bottom:50,left:40,right:60};
+function fitFilter(){if(!MAP||!DATA)return;const ss=DATA.spots.filter(inFilter);if(S.region==="best"||!ss.length){MAP.fitBounds(FIT,{padding:camPad(),duration:REDUCED?0:700});return}
   let w=180,e=-180,so=90,n=-90;for(const s of ss){w=Math.min(w,s.lo);e=Math.max(e,s.lo);so=Math.min(so,s.la);n=Math.max(n,s.la)}
-  MAP.fitBounds([[w,so],[e,n]],{padding:{top:70,bottom:50,left:40,right:60},maxZoom:12.5,duration:REDUCED?0:700})}
-// Well-known breaks shown first in the location picker, in this order.
-const POPULAR=["Rincon","Jalama","Leadbetter","Campus Point","Ventura Point","Silver Strand","County Line","Malibu First Point","El Porto","Venice Breakwater","Zuma","Topanga",
-  "HB Pier Southside","Lower Trestles","The Wedge","Salt Creek","Seal Beach Pier","Newport 56th St","San Onofre","Black's Beach","Swami's","Windansea","Oceanside Pier","Pacific Beach","Tourmaline"];
-const PIN='<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0c0 5.4-6.5 11-6.5 11z"/><circle cx="12" cy="10" r="2.3"/></svg>';
-const AREA={all:"All SoCal",fav:"Favorites",sb:"Santa Barbara",vc:"Ventura",la:"Los Angeles",oc:"Orange County",sd:"San Diego"};
-let LOCOPEN=false;
-function renderLoc(){const btn=$("locbtn"),pop=$("locpop");btn.innerHTML=`${PIN}<span>${AREA[S.region]}</span><svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M1.5 3.5 5 7l3.5-3.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
-  btn.setAttribute("aria-expanded",LOCOPEN);pop.hidden=!LOCOPEN;if(!LOCOPEN)return;pop.style.maxHeight=Math.max(180,V.H-112)+"px";
-  let rows="",title="",n=0;
-  if(DATA){const inA=DATA.spots.filter(inFilter);n=inA.length;let pick;
-    if(S.region==="fav"){pick=inA;title="Your favorites"}
-    else{pick=POPULAR.map(nm=>inA.find(s=>s.n===nm)).filter(Boolean);if(S.region==="all")pick=pick.slice().sort((x,y)=>y.hr[TI].rate-x.hr[TI].rate).slice(0,8);title=S.region==="all"?"Popular spots, best right now":"Most popular"}
-    rows=pick.length?pick.map(s=>{const h=s.hr[TI];return`<button class="lrow" data-spot="${s.idx}"><i class="dot" style="background:${s.ok?rtCol(h.cls):"var(--line)"}"></i><span>${esc(s.n)}</span><b>${s.ok?faceText(h.face):""}</b></button>`}).join(""):`<p class="note" style="padding:6px 4px">${S.region==="fav"?"No favorites yet. Open a spot and tap the star.":"No spots here."}</p>`}
-  pop.innerHTML=`<div class="lareas">${Object.entries(AREA).map(([k,v])=>`<button data-reg="${k}" aria-pressed="${S.region===k}">${k==="fav"?"★ ":""}${v}</button>`).join("")}</div>
-    <p class="lab" style="margin:10px 4px 4px">${title}</p><div class="lrows">${rows}</div>${n?`<button class="lall" data-all="1">See all ${n} spots</button>`:""}`}
-$("locbtn").onclick=e=>{e.stopPropagation();LOCOPEN=!LOCOPEN;renderLoc()};
-$("locpop").addEventListener("click",e=>{e.stopPropagation();const t=e.target.closest("[data-reg],[data-spot],[data-all]");if(!t||!DATA)return;
-  if(t.dataset.reg){S.region=t.dataset.reg;S.sel=null;render();placeMarks();colorMarks();fitFilter()}
-  else if(t.dataset.spot!=null){const k=+t.dataset.spot,s=DATA.spots[k];LOCOPEN=false;select(k);goTo(s.lo,s.la,11.5)}
-  else{LOCOPEN=false;S.sel=null;S.tab="spots";render();colorMarks();if(matchMedia("(max-width:860px)").matches)document.querySelector(".panel").scrollIntoView({behavior:REDUCED?"auto":"smooth"})}
-  renderLoc()});
-document.addEventListener("click",()=>{if(LOCOPEN){LOCOPEN=false;renderLoc()}});
-document.addEventListener("keydown",e=>{if(e.key==="Escape"&&LOCOPEN){LOCOPEN=false;renderLoc()}});
+  MAP.fitBounds([[w,so],[e,n]],{padding:camPad(),maxZoom:12.5,duration:REDUCED?0:700})}
+function setRegion(r){S.region=r;S.sel=null;S.tab="spots";const done=()=>{S.locWait=false;computeLocal();render();placeMarks();colorMarks();fitFilter()};
+  if(r!=="local"){render();placeMarks();colorMarks();fitFilter();return}
+  if(S.loc){done();return}
+  S.locWait=true;render();
+  if(!navigator.geolocation){S.loc={...HOME,gps:false};done();return}
+  navigator.geolocation.getCurrentPosition(p=>{S.loc={la:p.coords.latitude,lo:p.coords.longitude,gps:true};done()},()=>{S.loc={...HOME,gps:false};done()},{timeout:6000,maximumAge:6e5})}
+/* Bottom sheet (phones). Three snaps: peek (time scrubber + one summary row), half, full. */
+const SH={snap:"peek",px:{peek:196,half:420,full:700},drag:null};
+const PANEL=$("panel");
+function sheetCalc(){const g=PANEL.querySelector(".grab"),t=document.querySelector(".time"),pk=$("peek"),pad=parseFloat(getComputedStyle(PANEL).paddingBottom)||0,st=Math.max(0,(parseFloat(getComputedStyle(document.querySelector(".maphead")).top)||23)-23);
+  const base=g.offsetHeight+t.offsetHeight+(pk.hidden?56:pk.offsetHeight)+pad+2;
+  SH.px={peek:Math.max(150,Math.round(base)),half:Math.round(innerHeight*.55),full:Math.round(innerHeight-64-st)}}
+function setSnap(n,instant){SH.snap=n;sheetCalc();const r=document.documentElement;PANEL.dataset.snap=n;r.dataset.snap=n;
+  if(instant)PANEL.classList.add("drag");r.style.setProperty("--sheet-h",SH.px[n]+"px");if(instant)requestAnimationFrame(()=>requestAnimationFrame(()=>PANEL.classList.remove("drag")))}
+function placeSheet(){const t=document.querySelector(".time");
+  if(phone()){if(t.parentNode!==PANEL)PANEL.insertBefore(t,$("peek"));setSnap(SH.snap,true)}
+  else{if(t.parentNode!==document.querySelector(".chart"))document.querySelector(".chart").appendChild(t);document.documentElement.style.removeProperty("--sheet-h");delete PANEL.dataset.snap;delete document.documentElement.dataset.snap}}
+function dragStart(e){if(!phone()||(e.pointerType==="mouse"&&e.button))return;sheetCalc();SH.drag={y:e.clientY,h:PANEL.getBoundingClientRect().height,t:performance.now(),moved:false,last:e.clientY,lt:performance.now(),v:0,el:e.currentTarget};SH.pid=e.pointerId;if(e.currentTarget.id==="grab"){try{e.currentTarget.setPointerCapture(e.pointerId)}catch(_){}}}
+function dragMove(e){const d=SH.drag;if(!d)return;const dy=d.y-e.clientY;if(!d.moved&&Math.abs(dy)<6)return;if(!d.moved){d.moved=true;PANEL.classList.add("drag");try{d.el.setPointerCapture(SH.pid)}catch(_){}}const now=performance.now();d.v=(d.last-e.clientY)/Math.max(1,now-d.lt);d.last=e.clientY;d.lt=now;
+  const h=Math.max(SH.px.peek,Math.min(SH.px.full,d.h+dy));document.documentElement.style.setProperty("--sheet-h",h+"px")}
+function dragEnd(e){const d=SH.drag;if(!d)return;SH.drag=null;PANEL.classList.remove("drag");
+  if(!d.moved){if(d.el.id==="grab")setSnap(SH.snap==="peek"?"half":SH.snap==="half"?"full":"peek");else setSnap(SH.snap);return}
+  d.el._dragged=true;setTimeout(()=>d.el._dragged=false,0);
+  const h=PANEL.getBoundingClientRect().height+d.v*160;let best="peek",bd=1e9;for(const k of ["peek","half","full"]){const x=Math.abs(SH.px[k]-h);if(x<bd){bd=x;best=k}}
+  setSnap(best)}
+for(const el of [$("grab"),$("peek"),document.querySelector(".tabs")]){el.addEventListener("pointerdown",dragStart);el.addEventListener("pointermove",dragMove);el.addEventListener("pointerup",dragEnd);el.addEventListener("pointercancel",dragEnd)}
+$("peek").addEventListener("click",e=>{if($("peek")._dragged){e.stopImmediatePropagation();e.preventDefault();return}},true);
+$("peek").addEventListener("click",()=>{const k=SH.pk;if(k!=null){const s=DATA.spots[k];select(k);goTo(s.lo,s.la,11.5)}});
+addEventListener("resize",()=>{if(phone())setSnap(SH.snap,true)});
+matchMedia("(max-width:860px)").addEventListener("change",placeSheet);
+function peekRender(){const pk=$("peek");if(!DATA){pk.hidden=true;return}
+  let s,lab;if(S.sel!=null){s=DATA.spots[S.sel];lab="Selected"}else{lab="Best right now";for(const x of DATA.spots)if(x.ok&&(!s||x.hr[TI].rate>s.hr[TI].rate))s=x}
+  if(!s){pk.hidden=true;return}const h=s.hr[TI];SH.pk=s.idx;pk.hidden=false;
+  pk.innerHTML=`<i class="dot" style="background:${s.ok?rtCol(h.cls):"var(--line)"}"></i><span class="pn"><small>${lab}</small><b>${esc(s.n)}</b></span><span class="pf"><b>${s.ok?faceText(h.face):""}</b><small>${s.ok?RT[h.cls].n:""}</small></span>`;
+  if(phone()&&SH.snap==="peek"){const b=SH.px.peek;sheetCalc();if(SH.px.peek!==b)setSnap("peek",true)}}
 function select(k){S.sel=k;S.tab="spots";render();$("body").scrollTop=0;colorMarks();placeMarks();
-  if(k!=null&&window.matchMedia("(max-width:860px)").matches)document.querySelector(".panel").scrollIntoView({behavior:REDUCED?"auto":"smooth"})}
+  if(k!=null&&phone()&&SH.snap==="peek")setSnap("half")}
 for(const t of ["spots","buoys","how"])$("tab-"+t).onclick=()=>{S.tab=t;S.sel=null;render();colorMarks()};
 function swellLine(c){return c?`${c.h.toFixed(1)} ft @ ${Math.round(c.p)} s ${arrow(c.d)} ${comp(c.d)} ${Math.round(c.d)}°`:"No swell"}
 function outlook(){const r=DATA.ref,T=DATA.times;if(!r||!r.sh.some(v=>v!=null))return"";
@@ -403,13 +425,16 @@ function outlook(){const r=DATA.ref,T=DATA.times;if(!r||!r.sh.some(v=>v!=null))r
   <text x="2" y="${y(mx)+4}" font-size="10" fill="var(--muted)">${Math.round(mx)} ft</text>
   <path d="${path(r.s2h)}" fill="none" stroke="var(--muted)" stroke-width="1.2" stroke-dasharray="3 3"/><path d="${path(r.sh)}" fill="none" stroke="var(--ink)" stroke-width="1.8"/>
   <line x1="${x(TI)}" y1="8" x2="${x(TI)}" y2="${H-22}" stroke="var(--ink)" stroke-width="1" opacity=".55"/><circle cx="${x(TI)}" cy="6" r="2.5" fill="var(--ink)"/></svg></div>`}
-function listView(){const rows=DATA.spots.filter(inFilter);if(S.sort==="best")rows.sort((a,b)=>b.hr[TI].rate-a.hr[TI].rate);else rows.sort((a,b)=>a.idx-b.idx);
-  return alertBanner(S.region in ALERTS?S.region:null)+outlook()+`<div style="display:flex;flex-direction:column;gap:8px"><div class="chips" role="group" aria-label="Region">${Object.entries(CHIPS).map(([k,n])=>`<button data-reg="${k}" aria-pressed="${S.region===k}">${n}</button>`).join("")}</div>
-  <div class="steprow" style="margin-top:2px;justify-content:space-between;align-items:center"><span class="lab">${rows.length} spot${rows.length===1?"":"s"}</span><div class="seg2" role="group" aria-label="Sort order"><button data-sort="best" aria-pressed="${S.sort==="best"}">Best first</button><button data-sort="ns" aria-pressed="${S.sort==="ns"}">North to south</button></div></div>
-  ${rows.length?"":`<p class="note">${S.region==="fav"?"No favorites yet. Open a spot and tap the star.":"No spots here."}</p>`}<div class="rows">${rows.map(s=>{const h=s.hr[TI];
+function listView(){const rows=DATA.spots.filter(inFilter);if(S.region==="local")rows.sort((a,b)=>LOCSET.get(a.n)-LOCSET.get(b.n));else rows.sort((a,b)=>b.hr[TI].rate-a.hr[TI].rate);
+  const lm=s=>S.region==="local"&&LOCSET.has(s.n)?`${LOCSET.get(s.n).toFixed(LOCSET.get(s.n)<10?1:0)} mi \u00b7 `:"";
+  const info=S.region==="local"?(S.locWait?"Finding your location\u2026":S.loc&&S.loc.gps?"15 nearest to you":`15 nearest to ${HOME.n}${S.loc&&S.loc.far?" (you are far from SoCal)":" (location off)"}`):S.region==="fav"?`${rows.length} favorite${rows.length===1?"":"s"}`:`${rows.length} spots, best first`;
+  return`<div style="display:flex;flex-direction:column;gap:8px"><div class="chips three" role="group" aria-label="Spot list">${Object.entries(CHIPS).map(([k,n])=>`<button data-reg="${k}" aria-pressed="${S.region===k}">${n}</button>`).join("")}</div>
+  <div class="steprow" style="margin-top:2px"><span class="lab">${info}</span></div>
+  ${alertBanner(null)}
+  ${rows.length||S.locWait?"":`<p class="note">${S.region==="fav"?"No favorites yet. Open a spot and tap the star.":"No spots here."}</p>`}<div class="rows">${rows.map(s=>{const h=s.hr[TI];
     if(!s.ok)return`<button class="row" data-spot="${s.idx}"><i class="dot" style="background:var(--line)"></i><span class="nm">${esc(s.n)}</span><span class="ft"></span><span class="sub">No wave data near this spot</span></button>`;
     return`<button class="row" data-spot="${s.idx}"><i class="dot" style="background:${rtCol(h.cls)}"></i><span class="nm">${esc(s.n)}${FAVS.has(s.n)?' <span class="fv" aria-label="Favorite">★</span>':""}</span><span class="ft">${faceText(h.face)}</span>
-    <span class="sub"><b>${RT[h.cls].n}</b> · ${h.dom?`${comp(h.dom.d)} ${Math.round(h.dom.p)} s`:"no swell"} · ${h.w.d==null?"wind n/a":`${h.w.word.toLowerCase()} ${Math.round(s.wx.ws[TI])} kn`}</span></button>`}).join("")}</div></div>${foot()}`}
+    <span class="sub">${lm(s)}<b>${RT[h.cls].n}</b> · ${h.dom?`${comp(h.dom.d)} ${Math.round(h.dom.p)} s`:"no swell"} · ${h.w.d==null?"wind n/a":`${h.w.word.toLowerCase()} ${Math.round(s.wx.ws[TI])} kn`}</span></button>`}).join("")}</div></div>${outlook()}${foot()}`}
 function foot(){const mins=Math.round((Date.now()-DATA.at)/6e4),nb=DATA.buoys.filter(b=>b.ok).length;
   return`<div class="foot">Updated ${mins<1?"just now":mins+" min ago"} · ${nb} of ${BUOYS.length} buoys reporting${DATA.tidesOk?"":" · tides did not load, so ratings ignore tide"}.<button id="refresh">Refresh</button></div>`}
 function fcChart(s){const T=DATA.times,W=372,H=176,x0=24,bw=(W-x0-4)/T.length,x=i=>x0+i*bw,top=18,base=112,mx=Math.max(6,Math.ceil(Math.max(...s.hr.map(h=>h.face)))),y=v=>base-(v/mx)*(base-top);
@@ -590,13 +615,12 @@ let lastRender=0;
 function render(fromPlay){if(!DATA)return;const b=$("body"),keep=b.scrollTop;
   for(const t of ["spots","buoys","how"])$("tab-"+t).setAttribute("aria-selected",S.tab===t);
   b.innerHTML=S.tab==="buoys"?buoyView():S.tab==="how"?howView():S.sel!=null?detail(DATA.spots[S.sel]):listView();
-  b.scrollTop=keep;lastRender=Date.now();renderLoc();
+  b.scrollTop=keep;lastRender=Date.now();peekRender();
   const ch=b.querySelector(".chips"),on=ch&&ch.querySelector('[aria-pressed="true"]');if(on)ch.scrollLeft=Math.max(0,on.offsetLeft-ch.offsetLeft-(ch.clientWidth-on.offsetWidth)/2)}
 $("body").addEventListener("click",e=>{const t=e.target.closest("[data-spot],[data-fav],[data-sort],[data-reg],[data-back],[data-time],[data-buoy],[data-step],#refresh,#fc,[data-chart]");if(!t||!DATA)return;
   if(t.dataset.spot!=null){const k=+t.dataset.spot,s=DATA.spots[k];select(k);goTo(s.lo,s.la,11.5)}
   else if(t.dataset.step){S.step=+t.dataset.step;try{localStorage.setItem("swellchart.step",String(S.step))}catch(e){}render()}
-  else if(t.dataset.reg){S.region=t.dataset.reg;render();placeMarks();fitFilter()}
-  else if(t.dataset.sort){S.sort=t.dataset.sort;try{localStorage.setItem("swellchart.sort",S.sort)}catch(e){}render()}
+  else if(t.dataset.reg){setRegion(t.dataset.reg)}
   else if(t.dataset.fav!=null){const n=DATA.spots[+t.dataset.fav].n;if(FAVS.has(n))FAVS.delete(n);else FAVS.add(n);saveFavs();render();placeMarks()}
   else if(t.dataset.back){select(null)}
   else if(t.dataset.time){setTime(+t.dataset.time)}
@@ -614,4 +638,4 @@ $("body").addEventListener("pointerdown",e=>{if(!DATA||e.button>0)return;const t
   DRAG=t.id==="fc"?"fc":"chart";try{$("body").setPointerCapture(e.pointerId)}catch(_){}scrub(e)});
 $("body").addEventListener("pointermove",e=>{if(DRAG&&DATA)scrub(e)});
 for(const n of["pointerup","pointercancel"])$("body").addEventListener(n,()=>{DRAG=null});
-syncTheme();legend();renderLoc();if(initMap()){if(!REDUCED)tick();load(false)}
+syncTheme();legend();placeSheet();if(initMap()){if(!REDUCED)tick();load(false)}

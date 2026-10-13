@@ -57,19 +57,6 @@ button{font:inherit;color:inherit;cursor:pointer}
 .map>canvas{position:absolute;inset:0;width:100%;height:100%;display:block;pointer-events:none}
 #marks{position:absolute;inset:0;pointer-events:none;z-index:3;overflow:hidden}
 .maphead,.legend,.zoom,.msg{z-index:4}
-.loc{position:absolute;left:12px;top:calc(65px + env(safe-area-inset-top));z-index:6;max-width:calc(100% - 68px)}
-#locbtn{display:flex;align-items:center;gap:7px;border:0;padding:9px 12px;font:500 13.5px/1 var(--f-ui);color:var(--ink)}
-#locbtn svg:last-child{color:var(--muted);transition:transform .15s}
-#locbtn[aria-expanded="true"] svg:last-child{transform:rotate(180deg)}
-#locpop{margin-top:6px;width:min(320px,calc(100vw - 80px));max-height:min(60vh,420px);overflow:auto;padding:10px;border-radius:16px;box-shadow:0 12px 32px rgba(0,0,0,.35)}
-.lareas{display:flex;flex-wrap:wrap;gap:5px}
-.lareas button{border:0;background:color-mix(in srgb,var(--ink) 8%,transparent);padding:7px 11px;font:500 13px/1 var(--f-ui);color:var(--ink);border-radius:999px}
-.lareas button[aria-pressed="true"]{background:var(--ink);color:var(--panel)}
-.lrows{display:flex;flex-direction:column}
-.lrow{display:grid;grid-template-columns:10px minmax(0,1fr) auto;gap:10px;align-items:center;text-align:left;border:0;background:none;padding:9px 6px;border-radius:10px;font-size:14.5px}
-.lrow:hover{background:color-mix(in srgb,var(--ink) 7%,transparent)}
-.lrow span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500}
-.lrow b{font-weight:600;white-space:nowrap}
 .lall{width:100%;margin-top:6px;border:0;background:color-mix(in srgb,var(--ink) 8%,transparent);padding:10px;border-radius:10px;font:500 13.5px/1 var(--f-ui);color:var(--ink)}
 .maplibregl-ctrl-attrib{font-size:10.5px}
 .mk{position:absolute;left:0;top:0;padding:0;border:0;background:none;pointer-events:auto;display:flex;align-items:center;gap:6px;white-space:nowrap}
@@ -125,6 +112,11 @@ button{font:inherit;color:inherit;cursor:pointer}
 .outlook svg,.fc svg{display:block;width:100%;height:auto}
 .chips{display:flex;gap:4px;overflow-x:auto;scrollbar-width:none;margin:0 -18px;padding:0 18px}
 .chips::-webkit-scrollbar{display:none}
+.grab{display:none}
+.peek{display:none}
+.chips.three{margin:0;padding:0;gap:6px}
+.chips.three button{flex:1;text-align:center;padding:9px 6px;background:var(--raise);border:1px solid var(--line)}
+.chips.three button[aria-pressed="true"]{border-color:var(--ink)}
 .chips button{border:0;background:none;padding:6px 10px;font:500 13px/1 var(--f-ui);color:var(--muted);border-radius:999px;white-space:nowrap;flex:none}
 .chips button[aria-pressed="true"]{background:var(--ink);color:var(--panel)}
 .rows{display:flex;flex-direction:column}
@@ -261,16 +253,33 @@ td.num,th.num{text-align:right;padding-right:0}
 .brow .sub{grid-column:1/-1;font-size:12.5px;color:var(--muted)}
 .brow svg{grid-column:1/-1;display:block;width:100%;height:22px;margin-top:5px}
 @media (max-width:860px){
-  html,body{height:auto}
-  .app{display:block;height:auto}
-  .map{height:54vh;min-height:320px}
-  .panel{min-height:50vh;border-left:0}
-  .body{overflow:visible;padding-inline:16px}
-  .chips,.dcards{margin-inline:-16px;padding-inline:16px}
-  .tabs{padding:0 16px}
-  .time{grid-template-columns:minmax(0,1fr) auto;padding-inline:16px}
+  html,body{height:100%;overflow:hidden;overscroll-behavior:none}
+  .app{position:fixed;inset:0;display:block;height:auto}
+  .chart{display:block}
+  .map{position:fixed;inset:0;height:auto;min-height:0}
+  .panel{position:fixed;left:0;right:0;bottom:0;z-index:10;height:var(--sheet-h,200px);border-left:0;border-top:1px solid var(--line);border-radius:18px 18px 0 0;box-shadow:0 -10px 30px rgba(0,0,0,.28);overflow:hidden;padding-bottom:env(safe-area-inset-bottom);transition:height .26s cubic-bezier(.2,.8,.2,1)}
+  .panel.drag{transition:none}
+  .grab{display:flex;justify-content:center;align-items:center;height:24px;flex:none;touch-action:none;cursor:grab}
+  .grab i{width:38px;height:4px;border-radius:2px;background:var(--line);filter:brightness(1.6)}
+  .panel .time{border-top:0;padding:2px 16px 8px;grid-template-columns:minmax(0,1fr) auto;flex:none}
   .track{grid-column:1/-1;grid-row:2}
   .days i{display:none}
+  .peek{display:flex;align-items:center;gap:12px;flex:none;width:calc(100% - 24px);margin:0 12px 8px;padding:10px 12px;text-align:left;border:1px solid var(--line);border-radius:12px;background:var(--raise);touch-action:none}
+  .peek[hidden]{display:none}
+  .peek .dot{width:10px;height:10px;border-radius:50%;flex:none}
+  .peek .pn{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+  .peek small{font-size:11.5px;color:var(--muted);line-height:1.1}
+  .peek .pn b{font-weight:600;font-size:15px;line-height:1.15;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .peek .pf{display:flex;flex-direction:column;align-items:flex-end;gap:2px}
+  .peek .pf b{font-weight:600;font-size:15px;line-height:1.15;white-space:nowrap}
+  .tabs{padding:0 16px;touch-action:none;flex:none}
+  .panel[data-snap="peek"] .tabs,.panel[data-snap="peek"] .body{visibility:hidden}
+  .panel:not([data-snap="peek"]) .peek{display:none}
+  .body{overflow:hidden;padding:16px 16px 28px}
+  .panel[data-snap="half"] .body,.panel[data-snap="full"] .body{overflow-y:auto;overscroll-behavior:contain}
+  .legend{bottom:calc(var(--sheet-h,200px) + 10px);transition:bottom .26s cubic-bezier(.2,.8,.2,1),opacity .2s}
+  :root[data-snap="full"] .legend{opacity:0;pointer-events:none}
+  .dcards{margin-inline:-16px;padding-inline:16px}
   .legend .bar{width:140px}
 }
 @media (prefers-reduced-motion:reduce){*{scroll-behavior:auto}}
@@ -288,7 +297,6 @@ td.num,th.num{text-align:right;padding-right:0}
           <button id="lyr-swell" aria-pressed="true">Swell</button><button id="lyr-period" aria-pressed="false">Period</button><button id="lyr-wind" aria-pressed="false">Wind</button>
         </div>
       </div>
-      <div class="loc"><button class="glass" id="locbtn" aria-haspopup="true" aria-expanded="false"></button><div class="glass" id="locpop" hidden></div></div>
       <div class="legend glass" id="legend"></div>
       <div class="zoom glass"><button id="zin" aria-label="Zoom in">+</button><button id="zout" aria-label="Zoom out">&minus;</button><button id="zfit" aria-label="Show whole coast" title="Show whole coast">&#8962;</button></div>
       <div class="msg glass" id="msg"><b>Loading the forecast</b>Pulling swell, wind, tide and buoy data.</div>
@@ -299,7 +307,9 @@ td.num,th.num{text-align:right;padding-right:0}
       <div class="tbtn"><button class="btn" id="play" aria-pressed="false">Play</button><button class="btn" id="now">Now</button></div>
     </div>
   </section>
-  <aside class="panel">
+  <aside class="panel" id="panel">
+    <div class="grab" id="grab" role="button" aria-label="Resize panel"><i></i></div>
+    <button class="peek" id="peek" hidden></button>
     <div class="tabs" role="tablist">
       <button role="tab" id="tab-spots" aria-selected="true">Spots</button>
       <button role="tab" id="tab-buoys" aria-selected="false">Buoys</button>
