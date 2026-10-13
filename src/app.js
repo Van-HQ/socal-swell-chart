@@ -69,7 +69,7 @@ const dist2=(a,b)=>{const x=(a.lo-b.lo)*0.84,y=a.la-b.la;return x*x+y*y};
 
 /* ---------- data ---------- */
 let DATA=null,NOWI=0,TI=0;
-const CACHE_KEY="swellchart.v3",CACHE_MIN=60;
+const CACHE_KEY="swellchart.v4",CACHE_MIN=60;
 // Spots a few miles apart share one wave-model cell, so they share one forecast request.
 const FP=[];{const ix={};for(const s of SPOTS){const k=Math.round(s.la/0.05)+"_"+Math.round(s.lo/0.05);if(ix[k]==null){ix[k]=FP.length;FP.push({la:s.la,lo:s.lo})}s.fp=ix[k]}}
 async function getJSON(u){const r=await fetch(u);if(!r.ok)throw new Error(`${r.status} from ${new URL(u).host}`);return r.json()}
@@ -92,15 +92,21 @@ async function loadForecast(){
     openMeteo(WX,FP,"wind_speed_10m,wind_direction_10m,wind_gusts_10m","&wind_speed_unit=kn&models="+WM.join(",")).catch(()=>null)]);
   // Wind: median across several weather models. HRRR alone misses afternoon sea breezes.
   const med=a=>{a=a.filter(v=>v!=null).sort((x,y)=>x-y);const n=a.length;return n?(n%2?a[(n-1)/2]:(a[n/2-1]+a[n/2])/2):null};
-  const blend=(h,i)=>{const sp=[],gu=[],u=[],v=[];for(const m of WM){const S=h["wind_speed_10m_"+m],D=h["wind_direction_10m_"+m],G=h["wind_gusts_10m_"+m];if(!S||S[i]==null||D[i]==null)continue;sp.push(S[i]);u.push(S[i]*Math.sin(D[i]*Math.PI/180));v.push(S[i]*Math.cos(D[i]*Math.PI/180));if(G&&G[i]!=null)gu.push(G[i])}
-    if(!sp.length)return null;const mu=u.reduce((a,b)=>a+b,0)/u.length,mv=v.reduce((a,b)=>a+b,0)/v.length;return{s:med(sp),g:med(gu),d:(Math.atan2(mu,mv)*180/Math.PI+360)%360}};
-  if(sn)sw.forEach((x,k)=>{const h=sn[k]&&sn[k].hourly;if(!h)return;const n=x.hourly.wind_speed_10m.length,S=[],D=[],G=[];
-    for(let i=0;i<n;i++){const b=blend(h,i);S.push(b?b.s:x.hourly.wind_speed_10m[i]);D.push(b?b.d:x.hourly.wind_direction_10m[i]);G.push(b&&b.g!=null?Math.max(b.g,b.s):x.hourly.wind_gusts_10m[i])}
-    x.hourly.wind_speed_10m=S;x.hourly.wind_direction_10m=D;x.hourly.wind_gusts_10m=G});
+  /* Daytime onshore wind (westerly half) uses the HIGHEST model, because the median under-reads the coastal sea breeze.
+     Everything else uses the median. wmed keeps the plain median and wm keeps every model so the Wind check card can show them. */
+  const ONSHORE=d=>d>=180&&d<=330;
+  const blend=(h,i,day)=>{const sp=[],gu=[],u=[],v=[],per={};for(const m of WM){const S=h["wind_speed_10m_"+m],D=h["wind_direction_10m_"+m],G=h["wind_gusts_10m_"+m];if(!S||S[i]==null||D[i]==null)continue;sp.push(S[i]);u.push(S[i]*Math.sin(D[i]*Math.PI/180));v.push(S[i]*Math.cos(D[i]*Math.PI/180));if(G&&G[i]!=null)gu.push(G[i]);per[m]={s:S[i],d:D[i]}}
+    if(!sp.length)return null;const mu=u.reduce((a,b)=>a+b,0)/u.length,mv=v.reduce((a,b)=>a+b,0)/v.length,d=(Math.atan2(mu,mv)*180/Math.PI+360)%360,md=med(sp),hi=day&&ONSHORE(d);
+    return{s:hi?Math.max(...sp):md,md,g:med(gu),d,per,hi}};
+  sw.forEach(x=>{x.hourly.wmed=[];x.hourly.wm={}});
+  if(sn)sw.forEach((x,k)=>{const h=sn[k]&&sn[k].hourly;if(!h)return;const n=x.hourly.wind_speed_10m.length,S=[],D=[],G=[],M=[],P={};WM.forEach(m=>P[m]=[]);
+    for(let i=0;i<n;i++){const b=blend(h,i,x.hourly.is_day&&x.hourly.is_day[i]===1);S.push(b?b.s:x.hourly.wind_speed_10m[i]);M.push(b?b.md:x.hourly.wind_speed_10m[i]);D.push(b?b.d:x.hourly.wind_direction_10m[i]);G.push(b&&b.g!=null?Math.max(b.g,b.s):x.hourly.wind_gusts_10m[i]);
+      WM.forEach(m=>P[m].push(b&&b.per[m]?[Math.round(b.per[m].s*10)/10,Math.round(b.per[m].d)]:null))}
+    x.hourly.wind_speed_10m=S;x.hourly.wind_direction_10m=D;x.hourly.wind_gusts_10m=G;x.hourly.wmed=M;x.hourly.wm=P});
   const pack=h=>({wh:r1(h.wave_height),sh:r1(h.swell_wave_height),sd:h.swell_wave_direction,sp:pk(h.swell_wave_period),s2h:r1(h.secondary_swell_wave_height),s2p:pk(h.secondary_swell_wave_period),s2d:h.secondary_swell_wave_direction,wwh:r1(h.wind_wave_height),wwd:h.wind_wave_direction,wwp:pk(h.wind_wave_period),sst:r1(h.sea_surface_temperature)});
   return{at:Date.now(),times:sm[0].hourly.time,
     m:sm.map(x=>pack(x.hourly)),
-    wx:sw.map(x=>({ws:r1(x.hourly.wind_speed_10m),wd:x.hourly.wind_direction_10m,wg:r1(x.hourly.wind_gusts_10m),day:x.hourly.is_day,tp:r1(x.hourly.temperature_2m),cc:x.hourly.cloud_cover,pp:x.hourly.precipitation_probability,uv:r1(x.hourly.uv_index),rh:x.hourly.relative_humidity_2m,sun:x.daily?{d:x.daily.time,r:x.daily.sunrise,s:x.daily.sunset}:null})),
+    wx:sw.map(x=>({ws:r1(x.hourly.wind_speed_10m),wmed:r1(x.hourly.wmed),wm:x.hourly.wm,wd:x.hourly.wind_direction_10m,wg:r1(x.hourly.wind_gusts_10m),day:x.hourly.is_day,tp:r1(x.hourly.temperature_2m),cc:x.hourly.cloud_cover,pp:x.hourly.precipitation_probability,uv:r1(x.hourly.uv_index),rh:x.hourly.relative_humidity_2m,sun:x.daily?{d:x.daily.time,r:x.daily.sunrise,s:x.daily.sunset}:null})),
     gm:gm.map(x=>({h:r1(x.hourly.swell_wave_height),d:x.hourly.swell_wave_direction,p:pk(x.hourly.swell_wave_period)})),
     gw:gw.map(x=>({s:r1(x.hourly.wind_speed_10m),d:x.hourly.wind_direction_10m}))}}
 /* NWS alerts that matter to a surfer. One request per region, using the middle of that region's spots. */
@@ -157,7 +163,7 @@ async function load(force){
   $("msg").hidden=false;$("msg").innerHTML="<b>Loading forecast</b>Swell, wind, tide and buoys.";
   try{
     let fc=null;
-    if(!force)try{const c=JSON.parse(localStorage.getItem(CACHE_KEY)||"null");if(c&&Date.now()-c.at<CACHE_MIN*6e4&&c.times&&c.m&&c.m.length===FP.length+1&&c.wx&&c.wx[0]&&c.wx[0].tp&&c.times[0].slice(0,10)===laNow().date)fc=c}catch(e){}
+    if(!force)try{const c=JSON.parse(localStorage.getItem(CACHE_KEY)||"null");if(c&&Date.now()-c.at<CACHE_MIN*6e4&&c.times&&c.m&&c.m.length===FP.length+1&&c.wx&&c.wx[0]&&c.wx[0].tp&&c.wx[0].wm&&c.times[0].slice(0,10)===laNow().date)fc=c}catch(e){}
     const fresh=!fc;
     const [f2,tides,buoys]=await Promise.all([fc||loadForecast(),loadTides(laNow().date),loadBuoys()]);
     if(fresh)try{localStorage.setItem(CACHE_KEY,JSON.stringify(f2))}catch(e){}
@@ -587,9 +593,9 @@ function whyScore(s){if(!s.ok)return"";const i=TI,h=s.hr[i],hd=`<p class="lab" s
    size:{inp:`${h.face.toFixed(1)} ft face · ideal ${lo}–${hi} ft`,src:"forecast model",
      fm:h.face<lo?`Below the ideal range, so 0.2 + 0.4 × (${h.face.toFixed(1)} − 1) ÷ (${lo} − 1)`:h.face<=hi?`Inside the ideal range, so 0.6 + 0.4 × (${h.face.toFixed(1)} − ${lo}) ÷ (${hi} − ${lo})`:`Above the ideal range, so 1 − 0.55 × (${h.face.toFixed(1)} − ${hi}) ÷ ${hi}, never below 0.45`},
    period:{inp:dom?`${Math.round(dom.p)} s peak period`:"no swell",src:"forecast model",fm:`0.55 + 0.45 × period score ${per.toFixed(2)}. Period score is (period − 6) ÷ 8 kept between 0 and 1, times 0.8, plus 0.2.`},
-   wind:{inp:ws==null?"no wind data":`${Math.round(ws)} kn ${w.word.toLowerCase()}`,src:"median of 4 wind models",fm:ws==null?"No wind data, so wind is not applied.":`0.25 + 0.75 × wind quality ${w.q.toFixed(2)}. Quality drops from 1 as wind passes 4 kn, faster when it is onshore.`},
+   wind:{inp:ws==null?"no wind data":`${Math.round(ws)} kn ${w.word.toLowerCase()}`,src:"4 wind models: highest on daytime onshore, else median",fm:ws==null?"No wind data, so wind is not applied.":`0.25 + 0.75 × wind quality ${w.q.toFixed(2)}. Quality drops from 1 as wind passes 4 kn, faster when it is onshore.`},
    tide:{inp:tide==null?"no tide data":`${tide.toFixed(1)} ft · likes ${s.td}`,src:"NOAA tide predictions",fm:tide==null||!tr?"No tide data, so tide is not applied.":off===0?`Inside this spot's best band (${tr[0]} to ${tr[1]} ft), so no penalty.`:`${off.toFixed(1)} ft outside the best band (${tr[0]} to ${tr[1]} ft), so 1 − 0.1 × ${off.toFixed(1)}, never below 0.7.`},
-   cap:{inp:cap>=10?"No cap, not blown out":`Capped at ${cap.toFixed(1)}`,src:"median of 4 wind models",fm:ws==null?"No wind data.":`Effective onshore wind is ${e.toFixed(1)} kn (speed × how onshore). Up to 4 kn there is no cap; at 6 kn the score cannot pass 4; at 8 kn, 2.8; at 10 kn, 1.9; above that, 1.`}};
+   cap:{inp:cap>=10?"No cap, not blown out":`Capped at ${cap.toFixed(1)}`,src:"4 wind models: highest on daytime onshore, else median",fm:ws==null?"No wind data.":`Effective onshore wind is ${e.toFixed(1)} kn (speed × how onshore). Up to 4 kn there is no cap; at 6 kn the score cannot pass 4; at 8 kn, 2.8; at 10 kn, 1.9; above that, 1.`}};
   const fmtF=x=>x.k==="cap"?(x.f>=0.995?"–":"×"+x.f.toFixed(2)):"×"+x.f.toFixed(2);
   const rows=F.map(x=>{const d=D[x.k],on=WHY.has(x.k),bad=x.loss>=0.3,drag=x===big&&x.loss>=0.3;
     return`<details class="wy${bad?" bad":""}${drag?" drag":""}" data-why="${x.k}"${on?" open":""}><summary><span class="nm">${NM[x.k]}</span><span class="in">${d.inp}</span><span class="f">${fmtF(x)}</span><span class="pts">${x.loss<0.05?"−0.0":"−"+x.loss.toFixed(1)}</span></summary>
@@ -601,6 +607,49 @@ function whyScore(s){if(!s.ok)return"";const i=TI,h=s.hr[i],hd=`<p class="lab" s
   <p class="wsub">Starts at a perfect 10. Each factor takes its share of the points lost. Tap a row for its formula.</p>${rows}
   <div class="wtot"><span>Score</span><span>${rate.toFixed(1)}</span></div>
   <p class="lab" style="margin:16px 0 6px">Where the size comes from</p><div class="wx" style="margin:0">${cl}<br><br>Spot window ${s.w.map(([a,b])=>`${a}–${b}°`).join(" and ")}. Combined as the square root of the sum of squares, giving a <b>${h.face.toFixed(1)} ft</b> face.<br><span class="tag">forecast model</span>${nb?` <span class="tag">buoy check: ${esc(nb.b.n)} ${nb.d.hs[nb.d.hs.length-1].toFixed(1)} ft · ${Math.round(nb.d.tp[nb.d.tp.length-1])} s</span>`:""}</div></div></div>`}
+/* ---------- Wind check: live station observations vs each forecast model ---------- */
+const WMODELS=[["ncep_hrrr_conus","HRRR"],["ncep_nbm_conus","NBM"],["icon_seamless","ICON"],["gem_seamless","GEM"]];
+const OBS={};   // by forecast-point index: {at, st:[{id,n,mi,kn,dir,gust,age}], err}
+const KT=v=>v==null?null:v/1.852;
+async function loadObs(s){const k=s.fp,c=OBS[k];if(c&&Date.now()-c.at<6e5)return c;
+  if(c&&c.busy)return c.busy;
+  const job=(async()=>{const o={at:Date.now(),st:[]};
+    try{const p=await getJSON(`https://api.weather.gov/points/${s.la.toFixed(4)},${s.lo.toFixed(4)}`);
+      const l=await getJSON(p.properties.observationStations+"?limit=5");
+      const ids=(l.features||[]).slice(0,5).map(f=>({id:f.properties.stationIdentifier,n:f.properties.name,la:f.geometry.coordinates[1],lo:f.geometry.coordinates[0]}));
+      const rs=await Promise.all(ids.map(async t=>{try{const j=(await getJSON(`https://api.weather.gov/stations/${t.id}/observations/latest`)).properties;
+        const sp=j.windSpeed&&j.windSpeed.value!=null?j.windSpeed.value:null;if(sp==null)return null;
+        const age=Math.max(0,(Date.now()-new Date(j.timestamp).getTime())/6e4);if(!(age<180))return null;
+        const dx=(t.lo-s.lo)*0.84*69,dy=(t.la-s.la)*69;
+        return{id:t.id,n:t.n,mi:Math.sqrt(dx*dx+dy*dy),kn:KT(sp),dir:j.windDirection&&j.windDirection.value!=null?j.windDirection.value:null,gust:j.windGust&&j.windGust.value!=null?KT(j.windGust.value):null,age}}catch(e){return null}}));
+      o.st=rs.filter(Boolean).sort((a,b)=>a.mi-b.mi).slice(0,3);
+      if(!o.st.length)o.err="No station nearby reported wind in the last 3 hours."}
+    catch(e){o.err="Could not reach weather.gov ("+(e.message||e)+")."}
+    OBS[k]=o;return o})();
+  OBS[k]=Object.assign({st:[]},c||{at:0},{busy:job});const o=await job;return o}
+/* Compares the nearest station with the wind the app uses right now. Returns a short note, or "" when they agree or there is no data. */
+function windFlag(s){const o=OBS[s.fp];if(!o||!o.st||!o.st.length||Math.abs(TI-NOWI)>1)return"";
+  const ob=o.st[0],used=s.wx.ws[NOWI];if(used==null)return"";const d=ob.kn-used;
+  if(d>=3)return`Station ${ob.id} reads ${Math.round(ob.kn)} kn, ${Math.round(d)} kn above the ${Math.round(used)} kn used here. The forecast may be low.`;
+  if(d<=-3)return`Station ${ob.id} reads ${Math.round(ob.kn)} kn, ${Math.round(-d)} kn below the ${Math.round(used)} kn used here. The forecast may be high.`;return""}
+function windCheckBody(s){const i=TI,w=s.wx,o=OBS[s.fp],now=Math.abs(TI-NOWI)<=1;
+  const rows=WMODELS.map(([m,l])=>{const v=w.wm&&w.wm[m]&&w.wm[m][i];return v?`<div class="wcr"><span>${l}</span><span>${Math.round(v[0])} kn</span><span>${arrow(v[1])} ${comp(v[1])}</span></div>`:""}).join("");
+  const used=w.ws[i],med=w.wmed&&w.wmed[i];
+  let obRows="",note="";
+  if(!now)note="Move the timeline to Now to compare with live station readings.";
+  else if(!o||(o.busy&&!o.st.length))note="Checking nearby stations…";
+  else if(o.err)note=o.err;
+  else{obRows=o.st.map(t=>`<div class="wcr obs"><span>${esc(t.id)}<i>${t.mi.toFixed(1)} mi</i></span><span>${Math.round(t.kn)} kn${t.gust!=null&&t.gust>t.kn+1?` g${Math.round(t.gust)}`:""}</span><span>${t.dir==null?"–":arrow(t.dir)+" "+comp(t.dir)}</span></div>`).join("");
+    note=`Observed ${Math.round(o.st[0].age)} min ago, from weather.gov. Airport stations sit a little inland, so the beach itself is often a bit windier.`}
+  const fl=now?windFlag(s):"";
+  return`${fl?`<p class="wflag">${esc(fl)}</p>`:""}<div class="wcr hd"><span>Source</span><span>Speed</span><span>From</span></div>${obRows}${rows}
+  <div class="wcr used"><span>Median of 4</span><span>${med==null?"–":Math.round(med)+" kn"}</span><span></span></div>
+  <div class="wcr used"><span><b>Used by the app</b></span><span><b>${used==null?"–":Math.round(used)+" kn"}</b></span><span>${used!=null&&med!=null&&used>med+0.4?"highest":"median"}</span></div>
+  <p class="wcn">${esc(note)}</p>`}
+function windCheck(s){if(!s.ok||!s.wx.wm)return"";
+  const el=`<div class="wx wck" id="wxchk"><p class="lab" style="margin:0 0 8px">Wind check · ${fmt(TI)}</p><div id="wxchkb">${windCheckBody(s)}</div></div>`;
+  if(Math.abs(TI-NOWI)<=1&&(!OBS[s.fp]||Date.now()-OBS[s.fp].at>=6e5&&!OBS[s.fp].busy))loadObs(s).then(()=>{const b=document.getElementById("wxchkb");if(b&&TI!=null)b.innerHTML=windCheckBody(s)});
+  return`<div>${el}</div>`}
 function detail(s){const h=s.hr[TI];
   if(!s.ok)return`<div class="det"><button class="back" data-back="1">← All spots</button><h2>${esc(s.n)}</h2><p class="note">No wave data close enough to rate this spot.</p></div>`;
   const tide=h.tide,nx=s.tide&&s.tide[Math.min(TI+1,s.tide.length-1)],trend=tide==null||nx==null?"":nx>tide+0.05?"rising":nx<tide-0.05?"falling":"slack";
@@ -625,6 +674,7 @@ function detail(s){const h=s.hr[TI];
   <div><p class="lab" style="margin-bottom:8px">Swell Breakdown · ${fmt(TI)}</p>${spectra(s)}</div>
   <div><p class="lab" style="margin-bottom:8px">7 Day Forecast</p>${fcChart(s)}</div>
   ${bestWindowsView(s)}
+  ${windCheck(s)}
   ${whyScore(s)}
   <p class="note">${esc(s.note)} Faces ${comp(s.f)}. Accepts swell from ${s.w.map(([a,b])=>`${comp(a)} to ${comp(b)}`).join(" and ")}; ideal faces ${s.sz[0]}–${s.sz[1]} ft.</p></div>`}
 const buoyAge=d=>(Date.now()/1000-d.t[d.t.length-1])/60;
