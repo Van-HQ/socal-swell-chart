@@ -511,7 +511,7 @@ function windows(s){const T=DATA.times,out=[];let i=0;
     if(best)out.push(best);i=j}
   return out.map(b=>{const h=s.hr[b.j+1],p=tparts(T[b.j]);return`<button class="win" data-time="${b.j+1}"><span>${DOW[p.dow]} <span class="m">${h12(p.h)}–${h12(p.h+3)}</span></span>${rlab(h.cls)}<span>${faceText(h.face)}</span></button>`}).join("")}
 const svgI=d=>`<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
-const ICON={wind:svgI('<path d="M3 8h9a2.5 2.5 0 1 0-2.5-2.5M3 12h13a2.5 2.5 0 1 1-2.5 2.5M3 16h6"/>'),tide:svgI('<path d="M2 14c2.5 0 2.5-3 5-3s2.5 3 5 3 2.5-3 5-3 2.5 3 5 3M2 19c2.5 0 2.5-3 5-3s2.5 3 5 3 2.5-3 5-3 2.5 3 5 3M12 3v5m0-5-2 2m2-2 2 2"/>'),temp:svgI('<path d="M12 4a2 2 0 0 0-2 2v8.3a4 4 0 1 0 4 0V6a2 2 0 0 0-2-2z"/>'),buoy:svgI('<path d="M12 3v4m-4 0h8l2 9H6zM3 20c2 0 2-1.5 4.5-1.5S10 20 12 20s2-1.5 4.5-1.5S19 20 21 20"/>')};
+const ICON={wind:svgI('<path d="M3 8h9a2.5 2.5 0 1 0-2.5-2.5M3 12h13a2.5 2.5 0 1 1-2.5 2.5M3 16h6"/>'),tide:svgI('<path d="M2 14c2.5 0 2.5-3 5-3s2.5 3 5 3 2.5-3 5-3 2.5 3 5 3M2 19c2.5 0 2.5-3 5-3s2.5 3 5 3 2.5-3 5-3 2.5 3 5 3M12 3v5m0-5-2 2m2-2 2 2"/>'),sun:svgI('<circle cx="12" cy="12" r="4"/><path d="M12 3v2m0 14v2M3 12h2m14 0h2M5.6 5.6 7 7m10 10 1.4 1.4M18.4 5.6 17 7M7 17l-1.4 1.4"/>'),temp:svgI('<path d="M12 4a2 2 0 0 0-2 2v8.3a4 4 0 1 0 4 0V6a2 2 0 0 0-2-2z"/>'),buoy:svgI('<path d="M12 3v4m-4 0h8l2 9H6zM3 20c2 0 2-1.5 4.5-1.5S10 20 12 20s2-1.5 4.5-1.5S19 20 21 20"/>')};
 const DIRW={N:"north",NNE:"north",NE:"northeast",ENE:"east",E:"east",ESE:"east",SE:"southeast",SSE:"south",S:"south",SSW:"south",SW:"southwest",WSW:"west",W:"west",WNW:"west",NW:"northwest",NNW:"north"};
 function summary(s,h,tide,trend,sst){const out=[],ws=s.wx.ws[TI],wd=s.wx.wd[TI];
   if(ws!=null)out.push(ws<4?`Light ${DIRW[comp(wd)]} wind`:`${Math.round(ws)} kn ${h.w.word.toLowerCase()} wind`);
@@ -650,6 +650,39 @@ function windCheck(s){if(!s.ok||!s.wx.wm)return"";
   const el=`<div class="wx wck" id="wxchk"><p class="lab" style="margin:0 0 8px">Wind check · ${fmt(TI)}</p><div id="wxchkb">${windCheckBody(s)}</div></div>`;
   if(Math.abs(TI-NOWI)<=1&&(!OBS[s.fp]||Date.now()-OBS[s.fp].at>=6e5&&!OBS[s.fp].busy))loadObs(s).then(()=>{const b=document.getElementById("wxchkb");if(b&&TI!=null)b.innerHTML=windCheckBody(s)});
   return`<div>${el}</div>`}
+/* ---------- Tile pop-ups: wind (by hour / check), tide (by hour), weather ---------- */
+const POP={k:null,flip:false};let popEl=null;
+function popEnsure(){if(popEl)return popEl;popEl=document.createElement("div");popEl.id="pop";popEl.hidden=true;
+  popEl.innerHTML='<div class="popc" role="dialog" aria-modal="true"><div class="poph"><b id="popt"></b><button class="popx" aria-label="Close" data-popx="1">×</button></div><div id="popseg"></div><div class="popb" id="popb"></div></div>';
+  document.body.appendChild(popEl);
+  popEl.addEventListener("click",e=>{if(e.target===popEl||e.target.closest("[data-popx]"))return popClose();
+    const t=e.target.closest("[data-time],[data-flip]");if(!t)return;
+    if(t.dataset.flip!=null){POP.flip=t.dataset.flip==="1";popRender(true)}else setTime(+t.dataset.time)});
+  document.addEventListener("keydown",e=>{if(e.key==="Escape"&&POP.k)popClose()});return popEl}
+function popOpen(k){POP.k=k;POP.flip=false;popEnsure().hidden=false;popRender(true)}
+function popClose(){POP.k=null;if(popEl)popEl.hidden=true}
+function windRows(s,hrs){const mx=Math.max(14,...hrs.map(k=>s.wx.wg[k]||s.wx.ws[k]||0));
+  return hrs.map(k=>{const h=s.hr[k],ws=s.wx.ws[k],g=s.wx.wg[k],wd=s.wx.wd[k];if(ws==null)return"";const q=h.w.q,hr=hourOf(k);
+    return`<button class="prow${k===TI?" on":""}${k===NOWI?" now":""}" data-time="${k}"><span class="pt">${h12s(hr)}${ampm(hr)}</span><span class="pd">${arrow(wd)} ${comp(wd)}</span>
+    <span class="pbar"><i style="width:${Math.round(ws/mx*100)}%;background:${q<0.6?"var(--warn)":"var(--accent)"}"></i></span>
+    <span class="pv"><b>${Math.round(ws)}</b>${g!=null&&g>ws+1?`<small> g${Math.round(g)}</small>`:""}</span><span class="pw">${h.w.word}</span></button>`}).join("")}
+function tideRows(s,hrs){const v=hrs.map(k=>s.tide[k]).filter(x=>x!=null),lo=Math.min(...v),hi=Math.max(...v),sp=(hi-lo)||1;
+  return hrs.map(k=>{const t=s.tide[k];if(t==null)return"";const nx=s.tide[Math.min(k+1,s.tide.length-1)],tr=nx==null?"":nx>t+0.05?"↑":nx<t-0.05?"↓":"",hr=hourOf(k),tr_=TIDE_RANGE[s.td],liked=tr_&&t>=tr_[0]&&t<=tr_[1];
+    return`<button class="prow tide${k===TI?" on":""}${k===NOWI?" now":""}" data-time="${k}"><span class="pt">${h12s(hr)}${ampm(hr)}</span><span class="pd">${tr}</span>
+    <span class="pbar"><i style="width:${Math.round(8+(t-lo)/sp*92)}%;background:${liked?"var(--accent)":"var(--muted)"}"></i></span>
+    <span class="pv"><b>${t.toFixed(1)}</b><small> ft</small></span><span class="pw">${liked?"in band":""}</span></button>`}).join("")}
+function popRender(center){const s=S.sel!=null&&DATA?DATA.spots[S.sel]:null;if(!s||!s.ok||!POP.k)return popClose();
+  const b=$("popb"),sc=b.scrollTop,cd=DATA.times[TI].slice(0,10),day=dayIdx().find(x=>x.d===cd);if(!day)return popClose();
+  const p=tparts(DATA.times[TI]),dl=`${DOW[p.dow]} ${MON[p.m-1]} ${p.d}`,hrs=day.idx.filter(k=>hourOf(k)>=5&&hourOf(k)<=21);let html="",tt="",seg="";
+  if(POP.k==="wind"){tt=`Wind · ${dl}`;
+    seg=`<div class="seg2 pseg" role="group" aria-label="Wind view"><button data-flip="0" aria-pressed="${!POP.flip}">By hour</button><button data-flip="1" aria-pressed="${POP.flip}">Check</button></div>`;
+    html=(POP.flip?windCheck(s):`<p class="pnote">Knots, with gusts. Bar colour turns orange when the wind is hurting the surface. Tap an hour to jump to it.</p><div class="prows">${windRows(s,hrs)}</div>`)}
+  else if(POP.k==="tide"){tt=`Tide · ${dl}`;const ex=s.hilo.filter(e=>e.t.slice(0,10)===cd);
+    html=(s.tide?`${ex.length?`<div class="phl">${ex.map(e=>`<span><b>${e.hi?"High":"Low"}</b> ${e.v.toFixed(1)} ft<small> ${clk(e.t.replace(" ","T"))}</small></span>`).join("")}</div>`:""}<p class="pnote">${esc(s.tideSt)} predictions, in feet. Green bars are inside the band this spot likes (${TIDE_RANGE[s.td]?TIDE_RANGE[s.td][0]+" to "+TIDE_RANGE[s.td][1]+" ft":"any"}).</p><div class="prows">${tideRows(s,hrs)}</div>`:`<p class="pnote">No tide data for this spot.</p>`)}
+  else if(POP.k==="wx"){tt=`Weather · ${dl}`;html=weatherCard(s)}
+  $("popt").textContent=tt;$("popseg").innerHTML=seg;b.innerHTML=html;b.classList.remove("flip");void b.offsetWidth;b.classList.add("flip");
+  if(POP.k==="wind"&&POP.flip)b.scrollTop=0;
+  else if(center){const on=b.querySelector(".prow.on");b.scrollTop=on?Math.max(0,on.offsetTop-b.clientHeight/2+on.offsetHeight):0}else b.scrollTop=sc}
 function detail(s){const h=s.hr[TI];
   if(!s.ok)return`<div class="det"><button class="back" data-back="1">← All spots</button><h2>${esc(s.n)}</h2><p class="note">No wave data close enough to rate this spot.</p></div>`;
   const tide=h.tide,nx=s.tide&&s.tide[Math.min(TI+1,s.tide.length-1)],trend=tide==null||nx==null?"":nx>tide+0.05?"rising":nx<tide-0.05?"falling":"slack";
@@ -660,25 +693,23 @@ function detail(s){const h=s.hr[TI];
    <h2>${esc(s.n)}</h2><p class="hsub">${REG[s.r]} · ${esc(s.t)} · ${fmt(TI)}</p>
    <div class="hbig">${h.face<1?"<b>Flat</b>":`<b>${faceText(h.face).replace(" ft","")}</b><span>ft</span>`}</div>
    <span class="hpill${RT[h.cls].dk?" dk":""}"><i></i>${RT[h.cls].n}</span>
-   <p class="hline">${summary(s,h,tide,trend,sst)}</p></div>
+   <p class="hline">${summary(s,h,tide,trend,sst)}</p>${nb?`<p class="hbuoy">${ICON.buoy}<span>Buoy · ${esc(nb.b.n)} · <b>${nb.d.hs[nb.d.hs.length-1].toFixed(1)} ft · ${Math.round(nb.d.tp[nb.d.tp.length-1])} s</b> · ${ageText(nb.d)}</span></p>`:""}</div>
   <div class="tiles">
-   <div class="tile"><span class="tk">${ICON.wind}Wind</span><b>${h.w.d==null?"n/a":`${Math.round(s.wx.ws[TI])} kn ${arrow(s.wx.wd[TI])} ${comp(s.wx.wd[TI])}`}</b><small>${h.w.d==null?"":`${h.w.word} · gusts ${Math.round(s.wx.wg[TI]||0)}`}</small></div>
-   <div class="tile"><span class="tk">${ICON.tide}Tide</span><b>${tide==null?"n/a":`${tide.toFixed(1)} ft ${trend==="rising"?"↑":trend==="falling"?"↓":""}`}</b><small>${tide==null?"":`${trend[0].toUpperCase()+trend.slice(1)} · likes ${s.td}`}</small></div>
+   <button class="tile" data-pop="wind"><span class="tk">${ICON.wind}Wind<i class="chev">›</i></span><b>${h.w.d==null?"n/a":`${Math.round(s.wx.ws[TI])} kn ${arrow(s.wx.wd[TI])} ${comp(s.wx.wd[TI])}`}</b><small>${h.w.d==null?"":`${h.w.word} · gusts ${Math.round(s.wx.wg[TI]||0)}`}</small></button>
+   <button class="tile" data-pop="tide"${s.tide?"":" disabled"}><span class="tk">${ICON.tide}Tide<i class="chev">›</i></span><b>${tide==null?"n/a":`${tide.toFixed(1)} ft ${trend==="rising"?"↑":trend==="falling"?"↓":""}`}</b><small>${tide==null?"":`${trend[0].toUpperCase()+trend.slice(1)} · likes ${s.td}`}</small></button>
    <div class="tile"><span class="tk">${ICON.temp}Water</span><b>${sst==null?"n/a":`${Math.round(sst*9/5+32)}°F`}</b><small>Sea surface</small></div>
-   <div class="tile"><span class="tk">${ICON.buoy}Buoy</span><b>${nb?`${nb.d.hs[nb.d.hs.length-1].toFixed(1)} ft · ${Math.round(nb.d.tp[nb.d.tp.length-1])} s`:"n/a"}</b><small>${nb?`${esc(nb.b.n)} · ${ageText(nb.d)}`:""}</small></div>
+   <button class="tile" data-pop="wx"${s.wx&&s.wx.tp&&s.wx.tp[TI]!=null?"":" disabled"}><span class="tk">${ICON.sun}Weather<i class="chev">›</i></span><b>${s.wx&&s.wx.tp&&s.wx.tp[TI]!=null?Math.round(s.wx.tp[TI])+"°F":"n/a"}</b><small>${s.wx&&s.wx.tp&&s.wx.tp[TI]!=null?skyOf(s.wx,TI).t:""}</small></button>
   </div>
   ${alertBanner(s.r)}
-  ${weatherCard(s)}
   <div><p class="lab" style="margin-bottom:8px">By day</p>${dayCards(s)}</div>
   <div><p class="lab" style="margin-bottom:8px">Outlook · ${fmt(TI).split(" ")[0]}</p>${dayChart(s)}<div class="steprow"><div class="seg2" role="group" aria-label="Table interval"><button data-step="3" aria-pressed="${S.step===3}">3-hour</button><button data-step="1" aria-pressed="${S.step===1}">Hourly</button></div></div>${hourly(s)}</div>
   <div><p class="lab" style="margin-bottom:8px">Swell Breakdown · ${fmt(TI)}</p>${spectra(s)}</div>
   <div><p class="lab" style="margin-bottom:8px">7 Day Forecast</p>${fcChart(s)}</div>
   ${bestWindowsView(s)}
-  ${windCheck(s)}
   ${whyScore(s)}
   <p class="note">${esc(s.note)} Faces ${comp(s.f)}. Accepts swell from ${s.w.map(([a,b])=>`${comp(a)} to ${comp(b)}`).join(" and ")}; ideal faces ${s.sz[0]}–${s.sz[1]} ft.</p></div>`}
 const buoyAge=d=>(Date.now()/1000-d.t[d.t.length-1])/60;
-function ageText(d){const m=Math.round(buoyAge(d));return m<90?`${m} min ago`:`${Math.round(m/60)} h ago`}
+function ageText(d){const m=Math.max(0,Math.round(buoyAge(d)));return m<90?`${m} min ago`:`${Math.round(m/60)} h ago`}
 function buoyView(){return`<p class="note">Live buoys, north to south. Harvest and San Nicolas see new swell first.</p><div class="rows">${BUOYS.map((b,k)=>{const d=DATA.buoys[k];
   if(!d.ok)return`<button class="brow" data-buoy="${k}"><span class="nm">${esc(b.n)}</span><span class="v">Offline</span><span class="sub">No recent data</span></button>`;
   const n=d.hs.length-1,mx=Math.max(...d.hs,1),pts=d.hs.map((v,i)=>`${(i/n*368+2).toFixed(1)},${(24-v/mx*20).toFixed(1)}`).join(" ");
@@ -700,11 +731,12 @@ let lastRender=0;
 function render(fromPlay){if(!DATA)return;const b=$("body"),keep=b.scrollTop;
   for(const t of ["spots","buoys","how"])$("tab-"+t).setAttribute("aria-selected",S.tab===t);
   b.innerHTML=S.tab==="buoys"?buoyView():S.tab==="how"?howView():S.sel!=null?detail(DATA.spots[S.sel]):listView();
-  b.scrollTop=keep;lastRender=Date.now();peekRender();
+  b.scrollTop=keep;lastRender=Date.now();peekRender();if(POP.k)popRender();
   const ch=b.querySelector(".chips"),on=ch&&ch.querySelector('[aria-pressed="true"]');if(on)ch.scrollLeft=Math.max(0,on.offsetLeft-ch.offsetLeft-(ch.clientWidth-on.offsetWidth)/2)}
 $("body").addEventListener("toggle",e=>{const k=e.target&&e.target.dataset&&e.target.dataset.why;if(!k)return;if(e.target.open)WHY.add(k);else WHY.delete(k)},true);
-$("body").addEventListener("click",e=>{const t=e.target.closest("[data-spot],[data-fav],[data-sort],[data-reg],[data-back],[data-time],[data-buoy],[data-step],#refresh,#fc,[data-chart]");if(!t||!DATA)return;
-  if(t.dataset.spot!=null){const k=+t.dataset.spot,s=DATA.spots[k];select(k);goTo(s.lo,s.la,11.5)}
+$("body").addEventListener("click",e=>{const t=e.target.closest("[data-pop],[data-spot],[data-fav],[data-sort],[data-reg],[data-back],[data-time],[data-buoy],[data-step],#refresh,#fc,[data-chart]");if(!t||!DATA)return;
+  if(t.dataset.pop){popOpen(t.dataset.pop)}
+  else if(t.dataset.spot!=null){const k=+t.dataset.spot,s=DATA.spots[k];select(k);goTo(s.lo,s.la,11.5)}
   else if(t.dataset.step){S.step=+t.dataset.step;try{localStorage.setItem("swellchart.step",String(S.step))}catch(e){}render()}
   else if(t.dataset.reg){setRegion(t.dataset.reg)}
   else if(t.dataset.fav!=null){const n=DATA.spots[+t.dataset.fav].n;if(FAVS.has(n))FAVS.delete(n);else FAVS.add(n);saveFavs();render();placeMarks()}
