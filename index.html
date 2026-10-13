@@ -1104,5 +1104,8 @@ $("body").addEventListener("pointerdown",e=>{if(!DATA||e.button>0)return;const t
 $("body").addEventListener("pointermove",e=>{if(DRAG&&DATA)scrub(e)});
 for(const n of["pointerup","pointercancel"])$("body").addEventListener(n,()=>{DRAG=null});
 syncTheme();legend();placeSheet();if(initMap()){if(!REDUCED)tick();load(false)}
+
+/*DEBUGBAR*/(function(){const d=document.createElement("div");d.id="dbg";d.style.cssText="position:fixed;left:6px;top:calc(env(safe-area-inset-top) + 2px);z-index:99;font:11px/1.2 monospace;color:#0f0;background:#000a;padding:2px 4px;pointer-events:none";document.body.appendChild(d);
+const u=()=>{const r=PANEL.getBoundingClientRect(),b=$("body").getBoundingClientRect(),cs=getComputedStyle(document.documentElement);d.textContent=`ih${innerHeight} vv${Math.round(visualViewport.height)} sh${screen.height} ph${Math.round(r.height)} pb${Math.round(r.bottom)} bb${Math.round(b.bottom)} sa${getComputedStyle(PANEL).paddingBottom} sn${SH.snap} st${navigator.standalone?1:0}`};setInterval(u,700);u()})();
 </script>
 </body></html>
