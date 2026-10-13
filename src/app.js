@@ -333,7 +333,6 @@ function initMap(){
   const touch=matchMedia("(pointer: coarse)").matches&&matchMedia("(max-width:860px)").matches;
   MAP=new maplibregl.Map({container:"mapgl",style:mapStyle(),bounds:FIT,fitBoundsOptions:{padding:camPad()},minZoom:6.5,maxZoom:15.5,maxBounds:[[-125,30],[-113.5,37]],dragRotate:false,pitchWithRotate:false,attributionControl:false,cooperativeGestures:touch});
   MAP.touchZoomRotate.disableRotation();MAP.keyboard.disableRotation();
-  MAP.addControl(new maplibregl.AttributionControl({compact:true}),"bottom-right");
   MAP.on("move",viewChanged);MAP.on("idle",()=>{depthDirty=true;redraw()});MAP.on("sourcedata",e=>{if(e.sourceId==="depths")depthDirty=true;if((e.sourceId==="omt"||e.sourceId==="depths")&&e.tile)redraw()});
   MAP.on("mousemove",e=>probe(e.point.x,e.point.y));MAP.on("mouseout",()=>{const el=$("probe");if(el)el.textContent=""});
   $("zin").onclick=()=>MAP.zoomIn();$("zout").onclick=()=>MAP.zoomOut();$("zfit").onclick=()=>MAP.fitBounds(FIT,{padding:camPad()});
@@ -751,7 +750,7 @@ function howView(){return`<div class="det"><h2>How spots are rated</h2>
   <div><dt>Tide</dt><dd><small>A small penalty outside the tide the spot likes.</small></dd></div></dl>
   <div class="wins">${RT.map((r,c)=>`<div class="win" style="grid-template-columns:130px 1fr">${rlab(c)}<span class="m">${["Faces under 1 ft","Score below 2","2 to 3.5","3.5 to 5","5 to 6.5","6.5 to 8.8","Above 8.8"][c]}</span></div>`).join("")}</div>
   <p class="note">Model estimates, not cam reports. Sandbars, kelp and local shadowing are invisible to it. Spot windows and gains are starting values to tune.</p>
-  <p class="note">Data: Open-Meteo, Scripps CDIP, NOAA CO-OPS.</p></div>`}
+  <p class="note">Data: Open-Meteo, Scripps CDIP, NOAA CO-OPS, NWS. Map: OpenFreeMap, © OpenMapTiles, data from OpenStreetMap; terrain from Mapzen, USGS and NOAA; satellite imagery © Esri, Maxar, Earthstar Geographics.</p></div>`}
 let lastRender=0;
 function render(fromPlay){if(!DATA)return;const b=$("body"),keep=b.scrollTop;
   for(const t of ["spots","buoys","how"])$("tab-"+t).setAttribute("aria-selected",S.tab===t);
