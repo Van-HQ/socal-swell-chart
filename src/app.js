@@ -24,7 +24,36 @@ const rlab=c=>`<span class="rl"><i class="dot" style="background:${rtCol(c)}"></
 const K_BREAK=0.72;                      // calibration on the breaker-height estimate (tuned for peak period)
 const PEAK=1.3;                         // Open-Meteo gives mean period; buoys and Surfline quote peak period, about 1.3x longer
 const TIDE_RANGE={low:[-2,2.5],"low-mid":[0,3.5],mid:[1.5,4.5],"mid-high":[2.5,6],high:[4,8]};
-function dirFactor(s,dir){let o=180;for(const [a,b] of s.w){const span=(b-a+360)%360,off=(dir-a+360)%360;if(off<=span)return 1;o=Math.min(o,angDiff(dir,a),angDiff(dir,b))}
+/* Coastline shadow. From each spot, look out in every direction (5 deg steps, up to 150 km) and find the first land or breakwater. Land close by blocks that swell almost completely; land far away
+   only partly (swell bends around it). A direction is then smoothed over +/-10 deg. This catches headlands and islands, such as Palos Verdes and Catalina in front of Seal Beach. */
+const STRUCTS=STRUCT.map(r=>{const o=[];let x=0,y=0;for(let i=0;i<r.length;i+=2){x+=r[i];y+=r[i+1];o.push([x/1e4,y/1e4])}return o});   // breakwaters and jetties from OpenStreetMap
+const GEO_N=72,GEO={};
+function shadowRow(s){if(GEO[s.n])return GEO[s.n];const kx=111.32*Math.cos(s.la*Math.PI/180),fr=s.f*Math.PI/180,raw=[];
+  // Breakwater segments in km east/north of the spot.
+  const segs=STRUCTS.map(l=>l.map(([x,y])=>[(x-s.lo)*kx,(y-s.la)*110.57])).flatMap(l=>l.slice(1).map((q,i)=>[l[i][0],l[i][1],q[0],q[1]])).filter(q=>Math.min(Math.hypot(q[0],q[1]),Math.hypot(q[2],q[3]))<160);
+  const meet=(sn,cs,[x1,y1,x2,y2])=>{const ex=x2-x1,ey=y2-y1,den=sn*ey-cs*ex;if(Math.abs(den)<1e-9)return null;const t=(x1*ey-y1*ex)/den,u=(x1*cs-y1*sn)/den;return t>=0&&u>=0&&u<=1?t:null};
+  // Land is judged from a point 4 km out to sea (so a coast running alongside the ray does not count as blocking); breakwaters are judged from the spot itself.
+  const la=s.la+4*Math.cos(fr)/110.57,lo=s.lo+4*Math.sin(fr)/kx;
+  for(let k=0;k<GEO_N;k++){const a=k*360/GEO_N*Math.PI/180,sn=Math.sin(a),cs=Math.cos(a);let hit=null;
+    for(let km=3;km<=150;km+=3)if(isLand(lo+km*sn/kx,la+km*cs/110.57)){hit=km;break}
+    for(const q of segs){const t=meet(sn,cs,q);if(t!=null&&t>=0.3&&t<=150&&(hit==null||t<hit))hit=Math.max(t,3)}
+    raw.push(hit==null?1:Math.pow(clamp((hit-3)/97,0,1),1.5))}
+  return GEO[s.n]=raw.map((_,k)=>{let t=0,w=0;for(let j=-2;j<=2;j++){const wt=3-Math.abs(j);t+=raw[(k+j+GEO_N)%GEO_N]*wt;w+=wt}return t/w})}
+function geoFactor(s,dir){const g=s.geo;if(!g)return 1;const f=((dir%360)+360)%360/(360/GEO_N),i=Math.floor(f)%GEO_N,t=f-Math.floor(f);return Math.max(0.03,lerp(g[i],g[(i+1)%GEO_N],t))}
+// Arcs of directions that get at least half credit: drawn on the compass as the spot's effective swell window.
+function effArcs(s){const ok=[];for(let k=0;k<GEO_N;k++){const d=k*360/GEO_N;ok.push(dirFactor(s,d)>=0.5)}
+  const out=[];let start=null;for(let k=0;k<=GEO_N;k++){const on=k<GEO_N&&ok[k];if(on&&start==null)start=k;if(!on&&start!=null){out.push([start*360/GEO_N,(k-1)*360/GEO_N]);start=null}}
+  if(out.length>1&&out[0][0]===0&&out[out.length-1][1]===(GEO_N-1)*360/GEO_N){const l=out.pop();out[0][0]=l[0]}return out.length?out:s.w}
+/* Nearshore transfer table (tools/nearshore): for each spot, how much of a swell's height reaches it, found by tracing waves backward over the real sea floor and
+   around land and breakwaters. Rows are periods KTP, columns are directions in 5 degree steps. It can only reduce a swell, never add to it. */
+const KTP=[7,10,13,16,20];
+function kFactor(s,dir,T){const t=s.kt;if(!t)return geoFactor(s,dir);const tp=clamp(T*PEAK,KTP[0],KTP[KTP.length-1]);let j=0;while(j<KTP.length-2&&tp>KTP[j+1])j++;
+  const w=(tp-KTP[j])/(KTP[j+1]-KTP[j]),f=(((dir%360)+360)%360)/5,i=Math.floor(f)%72,u=f-Math.floor(f),v=r=>lerp(t[r][i],t[r][(i+1)%72],u);return Math.max(0.03,Math.min(1,lerp(v(j),v(j+1),w)))}
+/* Two ways to judge which swell directions reach a spot, switchable in the app so they can be compared side by side.
+   "simple": only the hand-drawn swell window for each spot (taper outside it).  "depth": the window, further cut by the nearshore table (land, islands, breakwaters, sea floor). */
+let MODEL="simple";try{if(localStorage.getItem("swellchart.model")==="depth")MODEL="depth"}catch(e){}
+const dirFactor=(s,dir,T)=>MODEL==="depth"?Math.min(winFactor(s,dir),kFactor(s,dir,T==null?13/PEAK:T)):winFactor(s,dir);
+function winFactor(s,dir){let o=180;for(const [a,b] of s.w){const span=(b-a+360)%360,off=(dir-a+360)%360;if(off<=span)return 1;o=Math.min(o,angDiff(dir,a),angDiff(dir,b))}
   return o>=40?0.12:0.12+0.88*(0.5+0.5*Math.cos(Math.PI*o/40))}
 // Komar-Gaughan breaker height from deep-water height (ft) and period (s)
 // Swell under 9 s is local wind chop: it stands up less and breaks weaker, so it is marked down.
@@ -36,7 +65,7 @@ const WIND_CAP=[[3,10],[6,4.9],[8,3.8],[10,2.9],[12,2.3],[15,1.8],[20,1.3],[30,1
 function windCap(ws,d){if(ws==null||d==null)return 10;const e=ws*clamp((d-70)/50,0,1);if(e<=WIND_CAP[0][0])return 10;
   for(let i=1;i<WIND_CAP.length;i++)if(e<=WIND_CAP[i][0]){const a=WIND_CAP[i-1],b=WIND_CAP[i];return lerp(a[1],b[1],(e-a[0])/(b[0]-a[0]))}return 1}
 function comps(s,i){const m=s.m,out=[];
-  const add=(k,h,p,d)=>{if(h==null||p==null||d==null||h<0.15)return;const df=dirFactor(s,d);out.push({k,h,p,d,df,face:breaker(h,p)*df*s.g})};
+  const add=(k,h,p,d)=>{if(h==null||p==null||d==null||h<0.15)return;const df=dirFactor(s,d,p);out.push({k,h,p,d,df,face:breaker(h,p)*df*s.g})};
   add("Primary swell",m.sh[i],m.sp[i],m.sd[i]);add("Secondary swell",m.s2h[i],m.s2p[i],m.s2d[i]);add("Wind waves",m.wwh[i],m.wwp[i],m.wwd[i]);return out}
 function windScore(s,ws,wd){if(ws==null||wd==null)return{q:1,word:"No wind data",d:null};
   const d=angDiff(wd,(s.f+180)%360),c=Math.cos(d*Math.PI/180),k=c>=0?14+26*c:14+5*c,q=1-0.9*clamp((ws-4)/k,0,1);
@@ -153,7 +182,7 @@ function fillGrid(vals){const n=G.nx*G.ny;let a=new Float32Array(n).fill(NaN);va
 function build(fc,tides,buoys){
   const T=fc.times.length,spots=SPOTS.map((s,k)=>{const o=Object.assign({},s,{idx:k,m:fc.m[s.fp],wx:fc.wx[s.fp]});
     const st=TIDES.slice().sort((a,b)=>dist2(a,s)-dist2(b,s))[0],tm=tides&&tides[st.id];
-    o.tideSt=st.n;o.hilo=(tides&&tides[st.id+"x"])||[];o.tide=tm?fc.times.map(t=>tm[t]==null?null:tm[t]):null;
+    if(MODEL==='depth'){o.kt=(KTAB[o.n]||null)&&KTAB[o.n].map(r=>r.split(' ').map(v=>v/100));if(!o.kt)o.geo=shadowRow(o);o.we=effArcs(o)}o.tideSt=st.n;o.hilo=(tides&&tides[st.id+"x"])||[];o.tide=tm?fc.times.map(t=>tm[t]==null?null:tm[t]):null;
     o.ok=o.m.sh.some(v=>v!=null);o.hr=fc.times.map((_,i)=>rateHour(o,i));return o});
   const F={H:[],P:[],U:[],V:[],WS:[],WU:[],WV:[]},rad=Math.PI/180;
   for(let t=0;t<T;t++){
@@ -453,7 +482,7 @@ function outlook(){const r=DATA.ref,T=DATA.times;if(!r||!r.sh.some(v=>v!=null))r
 function listView(){const rows=DATA.spots.filter(inFilter);if(S.region==="local")rows.sort((a,b)=>LOCSET.get(a.n)-LOCSET.get(b.n));else if(S.region==="all")rows.sort((a,b)=>a.idx-b.idx);else rows.sort((a,b)=>b.hr[TI].rate-a.hr[TI].rate);
   const lm=s=>S.region==="local"&&LOCSET.has(s.n)?`${LOCSET.get(s.n).toFixed(LOCSET.get(s.n)<10?1:0)} mi \u00b7 `:"";
   const info=S.region==="local"?(S.locWait?"Finding your location\u2026":S.loc&&S.loc.gps?"15 nearest to you":`15 nearest to ${HOME.n}${S.loc&&S.loc.far?" (you are far from SoCal)":" (location off)"}`):S.region==="fav"?`${rows.length} favorite${rows.length===1?"":"s"}`:S.region==="all"?`${rows.length} spots, north to south`:`${rows.length} spots, best first`;
-  return`<div style="display:flex;flex-direction:column;gap:8px"><div class="chips three" role="group" aria-label="Spot list">${Object.entries(CHIPS).map(([k,n])=>`<button data-reg="${k}" aria-pressed="${S.region===k}">${n}</button>`).join("")}</div>
+  return`<div style="display:flex;flex-direction:column;gap:8px"><div class="chips three" role="group" aria-label="Spot list">${Object.entries(CHIPS).map(([k,n])=>`<button data-reg="${k}" aria-pressed="${S.region===k}">${n}</button>`).join("")}</div>${modelSeg()}
   <div class="steprow" style="margin-top:2px"><span class="lab">${info}</span></div>
   ${alertBanner(null)}
   ${rows.length||S.locWait?"":`<p class="note">${S.region==="fav"?"No favorites yet. Open a spot and tap the star.":"No spots here."}</p>`}<div class="rows">${rows.map(s=>{const h=s.hr[TI];
@@ -511,7 +540,7 @@ function dayChart(s){const T=DATA.times,cur=T[TI].slice(0,10),ks=dayIdx().find(x
   <p class="note" style="font-size:12px;margin-top:6px">Bars: wave energy, coloured by rating.</p>`}
 function spectra(s){const h=s.hr[TI],cs=h.cs.map((c,i)=>Object.assign({i,kj:waveKJ(c.h,c.p)},c));if(!cs.length)return`<p class="note">No swell reaching this point.</p>`;
   const R=58,C=75,mx=Math.max(...cs.map(c=>c.kj),1),pt=(deg,r)=>[C+r*Math.sin(deg*Math.PI/180),C-r*Math.cos(deg*Math.PI/180)];let g="";
-  for(const [a,b] of s.w){const span=(b-a+360)%360,[x1,y1]=pt(a,R),[x2,y2]=pt(b,R);g+=`<path d="M${C} ${C}L${x1.toFixed(1)} ${y1.toFixed(1)}A${R} ${R} 0 ${span>180?1:0} 1 ${x2.toFixed(1)} ${y2.toFixed(1)}Z" fill="var(--map-ink)" opacity=".13"/>`}
+  for(const [a,b] of (s.we||s.w)){const span=(b-a+360)%360,[x1,y1]=pt(a,R),[x2,y2]=pt(b,R);g+=`<path d="M${C} ${C}L${x1.toFixed(1)} ${y1.toFixed(1)}A${R} ${R} 0 ${span>180?1:0} 1 ${x2.toFixed(1)} ${y2.toFixed(1)}Z" fill="var(--map-ink)" opacity=".13"/>`}
   g+=`<circle cx="${C}" cy="${C}" r="${R}" fill="none" stroke="var(--muted)" stroke-width="1"/><circle cx="${C}" cy="${C}" r="${R*0.6}" fill="none" stroke="var(--line)" stroke-dasharray="2 3"/><circle cx="${C}" cy="${C}" r="${R*0.3}" fill="none" stroke="var(--line)" stroke-dasharray="2 3"/>`;
   for(const [d,l] of [[0,"N"],[90,"E"],[180,"S"],[270,"W"]]){const [tx,ty]=pt(d,R+9);g+=`<text x="${tx.toFixed(1)}" y="${(ty+3.5).toFixed(1)}" font-size="10" text-anchor="middle" fill="var(--muted)">${l}</text>`}
   for(const c of cs.slice().sort((a,b)=>b.kj-a.kj)){const r=Math.max(10,Math.sqrt(c.kj/mx)*R*0.95),[xa,ya]=pt(c.d-9,r),[xb,yb]=pt(c.d+9,r);g+=`<path d="M${C} ${C}L${xa.toFixed(1)} ${ya.toFixed(1)}A${r.toFixed(1)} ${r.toFixed(1)} 0 0 1 ${xb.toFixed(1)} ${yb.toFixed(1)}Z" fill="${CCOL[c.i%3]}" opacity="${c.df<0.5?.45:.95}"/>`}
@@ -519,7 +548,7 @@ function spectra(s){const h=s.hr[TI],cs=h.cs.map((c,i)=>Object.assign({i,kj:wave
   return`<div class="spec"><div class="slist">${cs.map(c=>`<div class="srow"><svg class="arr" viewBox="-6 -6 12 12" aria-hidden="true"><g transform="rotate(${Math.round(c.d+180)})"><path d="M0 -5 L3.4 3.6 L0 1.8 L-3.4 3.6 Z" fill="${CCOL[c.i%3]}"/></g></svg><b>${c.h.toFixed(1)} ft</b><span>${Math.round(c.p)} s</span><span>${comp(c.d)} ${Math.round(c.d)}°</span><span class="num">${Math.round(c.kj)} kJ</span>
     <small>${c.k} · ${c.face<0.5?(c.p<5?"too short to surf":c.df<0.5?"blocked here":"under 1 ft here"):c.face.toFixed(1)+" ft faces here"}</small></div>`).join("")}</div>
   <svg class="rose" viewBox="0 0 150 150" role="img" aria-label="Compass showing where each swell comes from, the spot's swell window, and the wind">${g}</svg></div>
-  <p class="note" style="font-size:12px;margin-top:6px">Wedges show where each swell comes from. Shaded: the spot's swell window. Arrow: wind.</p>`}
+  <p class="note" style="font-size:12px;margin-top:6px">Wedges show where each swell comes from. Shaded: where swell can reach the spot, after the coastline blocks what it blocks. Arrow: wind.</p>`}
 function windows(s){const T=DATA.times,out=[];let i=0;
   while(i<T.length){const day=T[i].slice(0,10);let best=null;let j=i;for(;j<T.length&&T[j].slice(0,10)===day;j++){if(j<NOWI||j+2>=T.length||T[j+2].slice(0,10)!==day)continue;if(!(s.wx.day[j]&&s.wx.day[j+2]))continue;
       const r=(s.hr[j].rate+s.hr[j+1].rate+s.hr[j+2].rate)/3;if(!best||r>best.r)best={r,j}}
@@ -623,7 +652,7 @@ function whyScore(s){if(!s.ok)return"";const i=TI,h=s.hr[i],hd=`<p class="lab" s
   <p class="wsub">Built up from 0. Each factor earns part of the score, and weaker factors earn less. Tap a row for its formula.</p><div class="wmeter">${FR.map(x=>`<i style="width:${(x.cr*10).toFixed(2)}%"></i>`).join("")}</div><div class="wticks"><span>0</span><span>5</span><span>10</span></div>${rows}
   <div class="wtot"><span>Score</span><span>${sh.toFixed(1)}</span></div>
   ${10-sh>=0.05?`<p class="wlost">Left on the table: <b>${(10-sh).toFixed(1)}</b>${big.loss>=0.3?`, mostly from ${big.k==="cap"?"the wind cap":NM[big.k].toLowerCase()}`:""}. Each row\u2019s percentage is how much of its share it kept; 100% means no penalty.</p>`:""}
-  <p class="lab" style="margin:16px 0 6px">Where the size comes from</p><div class="wx" style="margin:0">${cl}<br><br>Spot window ${s.w.map(([a,b])=>`${a}–${b}°`).join(" and ")}. Combined as the square root of the sum of squares, giving a <b>${h.face.toFixed(1)} ft</b> face.<br><span class="tag">forecast model</span>${nb?` <span class="tag">buoy check: ${esc(nb.b.n)} ${nb.d.hs[nb.d.hs.length-1].toFixed(1)} ft · ${Math.round(nb.d.tp[nb.d.tp.length-1])} s</span>`:""}</div></div></div>`}
+  <p class="lab" style="margin:16px 0 6px">Where the size comes from</p><div class="wx" style="margin:0">${cl}<br><br>Swell reaches this spot from ${(s.we||s.w).map(([a,b])=>`${Math.round(a)}–${Math.round(b)}°`).join(" and ")}. Combined as the square root of the sum of squares, giving a <b>${h.face.toFixed(1)} ft</b> face.<br><span class="tag">forecast model</span>${nb?` <span class="tag">buoy check: ${esc(nb.b.n)} ${nb.d.hs[nb.d.hs.length-1].toFixed(1)} ft · ${Math.round(nb.d.tp[nb.d.tp.length-1])} s</span>`:""}</div></div></div>`}
 /* ---------- Wind check: live station observations vs each forecast model ---------- */
 const WMODELS=[["ncep_hrrr_conus","HRRR"],["ncep_nbm_conus","NBM"],["icon_seamless","ICON"],["gem_seamless","GEM"]];
 const OBS={};   // by forecast-point index: {at, st:[{id,n,mi,kn,dir,gust,age}], err}
@@ -744,7 +773,7 @@ function detail(s){const h=s.hr[TI];
   </div>
   ${alertBanner(s.r)}
   <div><p class="lab" style="margin-bottom:8px">By day</p>${dayCards(s)}</div>
-  <div><p class="lab" style="margin-bottom:8px">Outlook · ${fmt(TI).split(" ")[0]}</p>${dayChart(s)}<div class="steprow"><div class="seg2" role="group" aria-label="Table interval"><button data-step="3" aria-pressed="${S.step===3}">3-hour</button><button data-step="1" aria-pressed="${S.step===1}">Hourly</button></div></div>${hourly(s)}</div>
+  <div><p class="lab" style="margin-bottom:8px">Outlook · ${fmt(TI).split(" ")[0]}</p>${dayChart(s)}${modelSeg()}<div class="steprow"><div class="seg2" role="group" aria-label="Table interval"><button data-step="3" aria-pressed="${S.step===3}">3-hour</button><button data-step="1" aria-pressed="${S.step===1}">Hourly</button></div></div>${hourly(s)}</div>
   <div><p class="lab" style="margin-bottom:8px">Swell Breakdown · ${fmt(TI)}</p>${spectra(s)}</div>
   <div><p class="lab" style="margin-bottom:8px">7 Day Forecast</p>${fcChart(s)}</div>
   ${bestWindowsView(s)}
@@ -759,10 +788,11 @@ function buoyView(){return`<p class="note">Live buoys, north to south. Harvest a
   <span class="sub">Peak direction ${arrow(d.dp[n])} ${comp(d.dp[n])} ${Math.round(d.dp[n])}° · ${d.sst==null?"":`water ${Math.round(d.sst)}°F · `}${ageText(d)}</span>
   <svg viewBox="0 0 372 26" preserveAspectRatio="none" aria-hidden="true"><polyline points="${pts}" fill="none" stroke="var(--muted)" stroke-width="1.2" vector-effect="non-scaling-stroke"/></svg></button>`}).join("")}</div>
   <p class="note" style="font-size:12px">Significant wave height, last 24 hours.</p>`}
+function modelSeg(){return`<div class="steprow"><span class="lab" style="margin:0">Swell reach</span><div class="seg2" role="group" aria-label="Swell reach model"><button data-model="simple" aria-pressed="${MODEL==="simple"}">Simple</button><button data-model="depth" aria-pressed="${MODEL==="depth"}">Depth-based</button></div></div>`}
 function howView(){return`<div class="det"><h2>How spots are rated</h2>
   <p class="note" style="color:var(--ink)">Every hour, each spot is scored on four things. They multiply, so flat water never rates well.</p>
   <dl class="kv" style="grid-template-columns:1fr">
-  <div><dt>Size</dt><dd><small>Breaking height from each swell's height and period. Short chop under 9 s is marked down, swell outside the spot's window is cut, and a local gain adjusts for spots that focus or shelter swell.</small></dd></div>
+  <div><dt>Size</dt><dd><small>Breaking height from each swell's height and period. Short chop under 9 s is marked down, swell that land, islands, breakwaters or the shallow sea floor keep from reaching the spot is cut (found by tracing waves backward over real depth data and OpenStreetMap breakwaters, so it can only lower a swell), and a local gain adjusts for spots that focus or shelter swell.</small></dd></div>
   <div><dt>Wind</dt><dd><small>Under 4 kn is glassy. Offshore costs little, onshore costs a lot. Onshore also caps the rating: about 6 kn limits a spot to Fair, 10 kn to Poor to fair, 15 kn to Poor.</small></dd></div>
   <div><dt>Period</dt><dd><small>Longer is better, from 6 s (weak) to 14 s and up (full marks).</small></dd></div>
   <div><dt>Tide</dt><dd><small>A small penalty outside the tide the spot likes.</small></dd></div></dl>
@@ -776,9 +806,10 @@ function render(fromPlay){if(!DATA)return;const b=$("body"),keep=b.scrollTop;
   b.scrollTop=keep;lastRender=Date.now();peekRender();if(POP.k)popRender();
   const ch=b.querySelector(".chips"),on=ch&&ch.querySelector('[aria-pressed="true"]');if(on)ch.scrollLeft=Math.max(0,on.offsetLeft-ch.offsetLeft-(ch.clientWidth-on.offsetWidth)/2)}
 $("body").addEventListener("toggle",e=>{const k=e.target&&e.target.dataset&&e.target.dataset.why;if(!k)return;if(e.target.open)WHY.add(k);else WHY.delete(k)},true);
-$("body").addEventListener("click",e=>{const t=e.target.closest("[data-pop],[data-spot],[data-fav],[data-sort],[data-reg],[data-back],[data-time],[data-buoy],[data-step],#refresh,#fc,[data-chart]");if(!t||!DATA)return;
+$("body").addEventListener("click",e=>{const t=e.target.closest("[data-pop],[data-spot],[data-fav],[data-sort],[data-reg],[data-back],[data-time],[data-buoy],[data-step],[data-model],#refresh,#fc,[data-chart]");if(!t||!DATA)return;
   if(t.dataset.pop){popOpen(t.dataset.pop)}
   else if(t.dataset.spot!=null){const k=+t.dataset.spot,s=DATA.spots[k];select(k);goTo(s.lo,s.la,11.5)}
+  else if(t.dataset.model){try{localStorage.setItem("swellchart.model",t.dataset.model)}catch(e){}location.reload()}
   else if(t.dataset.step){S.step=+t.dataset.step;try{localStorage.setItem("swellchart.step",String(S.step))}catch(e){}render()}
   else if(t.dataset.reg){setRegion(t.dataset.reg)}
   else if(t.dataset.fav!=null){const n=DATA.spots[+t.dataset.fav].n;if(FAVS.has(n))FAVS.delete(n);else FAVS.add(n);saveFavs();render();placeMarks()}
