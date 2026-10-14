@@ -1,0 +1,64 @@
+# One-off data pull: sea-floor depth for the SoCal Bight. Writes data/bathy/* to the "data" branch.
+name: Fetch bathymetry
+on:
+  workflow_dispatch:
+  push:
+    paths: [".github/workflows/fetch-bathymetry.yml"]
+permissions:
+  contents: write
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download depth data
+        run: |
+          pip install numpy pillow netCDF4 requests >/dev/null 2>&1 || pip install numpy pillow requests
+          mkdir -p out
+          python3 - <<'PY'
+          import io, math, json, sys, requests, numpy as np
+          from PIL import Image
+          log = {}
+          # Source A: Mapzen/AWS terrarium tiles (zoom 10, about 150 m per pixel), same tiles the app already uses.
+          def tile_xy(lon, lat, z):
+              n = 2**z
+              x = (lon + 180) / 360 * n
+              y = (1 - math.asinh(math.tan(math.radians(lat))) / math.pi) / 2 * n
+              return x, y
+          z = 10
+          x0, y1 = tile_xy(-121.2, 32.2, z); x1, y0 = tile_xy(-116.7, 34.8, z)
+          xs = range(int(x0), int(x1) + 1); ys = range(int(y0), int(y1) + 1)
+          W = len(xs) * 256; H = len(ys) * 256
+          grid = np.zeros((H, W), dtype=np.float32); ok = 0
+          for i, x in enumerate(xs):
+              for j, y in enumerate(ys):
+                  try:
+                      r = requests.get(f"https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png", timeout=30)
+                      im = np.array(Image.open(io.BytesIO(r.content)).convert("RGB"), dtype=np.float32)
+                      grid[j*256:(j+1)*256, i*256:(i+1)*256] = im[:,:,0]*256 + im[:,:,1] + im[:,:,2]/256 - 32768
+                      ok += 1
+                  except Exception as e:
+                      print("tile fail", x, y, e)
+          log["terrarium"] = {"z": z, "x0": min(xs), "y0": min(ys), "w": W, "h": H, "tiles_ok": ok, "tiles": len(xs)*len(ys)}
+          np.save("out/terrarium_z10.npy", grid.astype(np.int16))
+          # quick look at resolution of sea-floor data: sample a line out from Seal Beach
+          lon, lat = -118.107, 33.737
+          row = []
+          for k in range(0, 40):
+              px, py = tile_xy(lon + k*0.01*0.0, lat - k*0.005, z)
+              gx = int((px - min(xs)) * 256); gy = int((py - min(ys)) * 256)
+              row.append(float(grid[gy, gx]))
+          log["seal_south_profile_m"] = [round(v) for v in row]
+          json.dump(log, open("out/log.json", "w"))
+          print(json.dumps(log))
+          PY
+          ls -l out
+      - name: Publish to data branch
+        run: |
+          git config user.name "github-actions"; git config user.email "actions@github.com"
+          git fetch origin data || true
+          git checkout -B data origin/data 2>/dev/null || git checkout --orphan data
+          mkdir -p data/bathy && cp out/* data/bathy/
+          git add data/bathy
+          git commit -m "Bathymetry grid"
+          git push -f origin data
