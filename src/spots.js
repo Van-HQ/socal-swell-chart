@@ -49,7 +49,6 @@ const SPOT_ROWS=[
 ["Cabrillo Beach","la",33.7075,-118.2840,180,"s",.7,"Beach and reef","mid","sm","South swell only. Windy most afternoons."],
 ["Seal Beach Jetty","oc",33.7440,-118.1150,205,"seal",.85,"River jetty","mid","seal","The San Gabriel River jetty, also called Ray Bay. Best on south swell."],
 ["Seal Beach Pier","oc",33.7375,-118.1075,200,"seal",.85,"Beach break","mid","seal","Sheltered by Palos Verdes and the breakwater. Best on south swell."],
-["Seal Beach 13th St","oc",33.7345,-118.1005,205,"seal",.8,"Beach break","mid","seal","South of the pier, a little smaller."],
 ["Surfside Jetty","oc",33.7280,-118.0855,215,"surf",.9,"Jetty","mid","md","Wedges off the Anaheim Bay jetty on south swell."],
 ["Sunset Beach","oc",33.7170,-118.0700,220,"oc",.9,"Beach break","mid","md","Open beach break, less sheltered than Seal Beach."],
 ["Bolsa Chica","oc",33.6930,-118.0480,220,"oc",.95,"Beach break","mid","seal","Gentle, consistent beach break. Takes any swell."],
