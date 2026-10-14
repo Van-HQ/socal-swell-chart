@@ -1,0 +1,31 @@
+# One-off data pull: breakwaters, jetties and piers along the SoCal coast, from OpenStreetMap.
+# Writes data/structures.json to the "data" branch (not main, so the site is not redeployed).
+name: Fetch coastal structures
+on:
+  workflow_dispatch:
+  push:
+    paths: [".github/workflows/fetch-structures.yml"]
+permissions:
+  contents: write
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Query OpenStreetMap
+        run: |
+          mkdir -p out
+          Q='[out:json][timeout:120];(way["man_made"~"breakwater|groyne|pier|jetty"](32.4,-120.7,34.6,-116.9);way["seamark:type"~"breakwater|training_wall"](32.4,-120.7,34.6,-116.9););out geom tags;'
+          for H in https://overpass-api.de/api/interpreter https://overpass.kumi.systems/api/interpreter https://overpass.private.coffee/api/interpreter; do
+            if curl -sS -m 150 --data-urlencode "data=$Q" "$H" -o out/structures.json && head -c 1 out/structures.json | grep -q '{'; then echo "ok $H"; break; fi
+          done
+          ls -l out/structures.json
+      - name: Publish to data branch
+        run: |
+          git config user.name "github-actions"; git config user.email "actions@github.com"
+          git checkout --orphan data
+          git rm -rf . >/dev/null 2>&1 || true
+          mkdir -p data && cp out/structures.json data/structures.json
+          git add data/structures.json
+          git commit -m "OSM coastal structures"
+          git push -f origin data
