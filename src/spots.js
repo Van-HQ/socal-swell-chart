@@ -4,7 +4,7 @@
 const WIN={exp:[[190,320]],ch:[[245,290]],vcw:[[240,295]],vc:[[175,295]],mal:[[165,275]],malS:[[165,225]],smb:[[200,290]],
   sbay:[[220,295]],pv:[[255,310]],seal:[[160,215],[255,280]],surf:[[165,220],[255,285]],oc:[[165,290]],ocS:[[165,230],[260,285]],
   s:[[160,215]],soc:[[170,285]],sd:[[185,300]],sdw:[[220,300]]};
-const SIZE={sm:[2,5],lb:[2,6],md:[3,7],std:[3,8],big:[3,10],hv:[4,12],wedge:[5,18],seal:[1.5,6.5]};
+const SIZE={sm:[2,5],lb:[2,6],md:[3,7],std:[3,8],big:[3,10],hv:[4,12],wedge:[5,18],seal:[2.5,6]};
 const SPOT_ROWS=[
 ["Jalama","sb",34.5105,-120.5025,255,"exp",1.1,"Beach break","mid","std","Fully exposed north of Point Conception. Picks up everything; usually windy by late morning."],
 ["Gaviota","sb",34.4705,-120.2285,190,"ch",.65,"Beach and reef","mid","sm","Needs a solid west swell to get into the channel."],
