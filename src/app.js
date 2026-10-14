@@ -597,10 +597,10 @@ function weatherCard(s){const w=s.wx;if(!w||!w.tp||w.tp[TI]==null)return"";
    <div class="sub">${[ml,pp!=null?`Rain ${pp}%`:""].filter(Boolean).join(" \u00b7 ")}</div>
    <div class="row">${cols.map(k=>{const q=skyOf(w,k),h=hourOf(k),r=w.pp[k]||0;return`<button data-time="${k}" class="${k===on?"on":""}"><span>${h12s(h)}${ampm(h)}</span>${q.i}<b>${Math.round(w.tp[k])}\u00b0</b><em>${r>=20?r+"%":""}</em></button>`}).join("")}</div>
    <div class="mini"><div><span>Sunrise</span><b>${clk(rise)}</b></div><div><span>Sunset</span><b>${clk(set)}</b></div><div><span>UV</span><b>${Math.round(uvm)} \u00b7 ${uvn}</b></div></div></div></div>`}
-/* "Why this score": splits the 10 - score gap between the factors in rateHour. The factors multiply, so each one's share of the loss
+/* "Score Calculation": splits the 10 - score gap between the factors in rateHour. The factors multiply, so each one's share of the loss
    is its log-share of the total (rows add up exactly and order does not matter). "Without" = score if that one factor were perfect. */
 const WHY=new Set();
-function whyScore(s){if(!s.ok)return"";const i=TI,h=s.hr[i],hd=`<p class="lab" style="margin-bottom:8px">Why this score · ${fmt(TI)}</p>`;
+function whyScore(s){if(!s.ok)return"";const i=TI,h=s.hr[i],hd=`<p class="lab" style="margin-bottom:8px">Score Calculation · ${fmt(TI)}</p>`;
   if(h.face<1)return`<div>${hd}<p class="note">Under 1 ft at the face, so it rates as Flat and there is no score to explain.</p></div>`;
   const w=h.w,ws=s.wx.ws[i],wd=s.wx.wd[i],tide=h.tide,dom=h.dom,lo=s.sz[0],hi=s.sz[1];
   const per=dom?clamp((dom.p-6)/8,0,1)*0.8+0.2:0.2,fs=sizeScore(h.face,lo,hi),fw=0.25+0.75*w.q,fp=0.55+0.45*per,ft=tideScore(s.td,tide);
