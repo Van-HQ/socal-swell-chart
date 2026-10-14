@@ -24,12 +24,19 @@ const rlab=c=>`<span class="rl"><i class="dot" style="background:${rtCol(c)}"></
 const K_BREAK=0.72;                      // calibration on the breaker-height estimate (tuned for peak period)
 const PEAK=1.3;                         // Open-Meteo gives mean period; buoys and Surfline quote peak period, about 1.3x longer
 const TIDE_RANGE={low:[-2,2.5],"low-mid":[0,3.5],mid:[1.5,4.5],"mid-high":[2.5,6],high:[4,8]};
-/* Coastline shadow. From each spot, look out in every direction (5 deg steps, up to 150 km) and find the first land. Land close by blocks that swell almost completely; land far away
+/* Coastline shadow. From each spot, look out in every direction (5 deg steps, up to 150 km) and find the first land or breakwater. Land close by blocks that swell almost completely; land far away
    only partly (swell bends around it). A direction is then smoothed over +/-10 deg. This catches headlands and islands, such as Palos Verdes and Catalina in front of Seal Beach. */
+const STRUCTS=STRUCT.map(r=>{const o=[];let x=0,y=0;for(let i=0;i<r.length;i+=2){x+=r[i];y+=r[i+1];o.push([x/1e4,y/1e4])}return o});   // breakwaters and jetties from OpenStreetMap
 const GEO_N=72,GEO={};
-function shadowRow(s){if(GEO[s.n])return GEO[s.n];const kx=111.32*Math.cos(s.la*Math.PI/180),fr=s.f*Math.PI/180,raw=[],la=s.la+4*Math.cos(fr)/110.57,lo=s.lo+4*Math.sin(fr)/kx;   // start 4 km out to sea, so a coast running alongside the ray does not count as blocking
+function shadowRow(s){if(GEO[s.n])return GEO[s.n];const kx=111.32*Math.cos(s.la*Math.PI/180),fr=s.f*Math.PI/180,raw=[];
+  // Breakwater segments in km east/north of the spot.
+  const segs=STRUCTS.map(l=>l.map(([x,y])=>[(x-s.lo)*kx,(y-s.la)*110.57])).flatMap(l=>l.slice(1).map((q,i)=>[l[i][0],l[i][1],q[0],q[1]])).filter(q=>Math.min(Math.hypot(q[0],q[1]),Math.hypot(q[2],q[3]))<160);
+  const meet=(sn,cs,[x1,y1,x2,y2])=>{const ex=x2-x1,ey=y2-y1,den=sn*ey-cs*ex;if(Math.abs(den)<1e-9)return null;const t=(x1*ey-y1*ex)/den,u=(x1*cs-y1*sn)/den;return t>=0&&u>=0&&u<=1?t:null};
+  // Land is judged from a point 4 km out to sea (so a coast running alongside the ray does not count as blocking); breakwaters are judged from the spot itself.
+  const la=s.la+4*Math.cos(fr)/110.57,lo=s.lo+4*Math.sin(fr)/kx;
   for(let k=0;k<GEO_N;k++){const a=k*360/GEO_N*Math.PI/180,sn=Math.sin(a),cs=Math.cos(a);let hit=null;
     for(let km=3;km<=150;km+=3)if(isLand(lo+km*sn/kx,la+km*cs/110.57)){hit=km;break}
+    for(const q of segs){const t=meet(sn,cs,q);if(t!=null&&t>=0.3&&t<=150&&(hit==null||t<hit))hit=Math.max(t,3)}
     raw.push(hit==null?1:Math.pow(clamp((hit-3)/97,0,1),1.5))}
   return GEO[s.n]=raw.map((_,k)=>{let t=0,w=0;for(let j=-2;j<=2;j++){const wt=3-Math.abs(j);t+=raw[(k+j+GEO_N)%GEO_N]*wt;w+=wt}return t/w})}
 function geoFactor(s,dir){const g=s.geo;if(!g)return 1;const f=((dir%360)+360)%360/(360/GEO_N),i=Math.floor(f)%GEO_N,t=f-Math.floor(f);return Math.max(0.03,lerp(g[i],g[(i+1)%GEO_N],t))}
@@ -776,7 +783,7 @@ function buoyView(){return`<p class="note">Live buoys, north to south. Harvest a
 function howView(){return`<div class="det"><h2>How spots are rated</h2>
   <p class="note" style="color:var(--ink)">Every hour, each spot is scored on four things. They multiply, so flat water never rates well.</p>
   <dl class="kv" style="grid-template-columns:1fr">
-  <div><dt>Size</dt><dd><small>Breaking height from each swell's height and period. Short chop under 9 s is marked down, swell the coastline blocks is cut (from the first land found in each direction: close land blocks almost all of it, distant land only some), and a local gain adjusts for spots that focus or shelter swell.</small></dd></div>
+  <div><dt>Size</dt><dd><small>Breaking height from each swell's height and period. Short chop under 9 s is marked down, swell the coastline blocks is cut (from the first land or breakwater found in each direction, using OpenStreetMap breakwater positions: close land blocks almost all of it, distant land only some), and a local gain adjusts for spots that focus or shelter swell.</small></dd></div>
   <div><dt>Wind</dt><dd><small>Under 4 kn is glassy. Offshore costs little, onshore costs a lot. Onshore also caps the rating: about 6 kn limits a spot to Fair, 10 kn to Poor to fair, 15 kn to Poor.</small></dd></div>
   <div><dt>Period</dt><dd><small>Longer is better, from 6 s (weak) to 14 s and up (full marks).</small></dd></div>
   <div><dt>Tide</dt><dd><small>A small penalty outside the tide the spot likes.</small></dd></div></dl>
