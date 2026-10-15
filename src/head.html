@@ -89,9 +89,10 @@ button{font:inherit;color:inherit;cursor:pointer}
 .when{min-width:150px}
 .when strong{display:block;font:600 15px/1.2 var(--f-ui)}
 .when small{color:var(--muted);font-size:12px}
-.tbtn{display:flex;gap:6px;align-self:flex-start;margin-top:-8px;flex:none}
-.ib{width:34px;height:34px;display:grid;place-items:center;padding:0;border:1px solid var(--line);background:var(--raise);border-radius:50%;color:var(--ink)}
-.ib:hover{background:color-mix(in srgb,var(--ink) 8%,var(--raise))}
+.tbtn{display:flex;align-self:center;flex:none;height:28px;border:1px solid var(--line);border-radius:999px;overflow:hidden}
+.ib{width:30px;height:100%;display:grid;place-items:center;padding:0;border:0;background:none;color:var(--ink)}
+.ib+.ib{border-left:1px solid var(--line)}
+.ib:hover,.ib:active{background:color-mix(in srgb,var(--ink) 8%,transparent)}
 .ib svg{display:block}
 .tsl{flex:1;min-width:0;align-self:center}
 .btn{border:1px solid var(--line);background:none;padding:6px 11px;font:500 13px/1 var(--f-ui);border-radius:7px;color:var(--ink)}
@@ -388,7 +389,7 @@ button.tile:disabled{cursor:default;opacity:.6}
     <div class="time">
       <div class="when"><strong id="when">&nbsp;</strong><small id="whensub"></small></div>
       <div class="track">
-        <div class="tbtn"><button class="ib" id="now" aria-label="Back to now" title="Back to now"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 12a8.5 8.5 0 1 0 2.6-6.1"/><path d="M3.5 4v4.5H8"/></svg></button><button class="ib" id="play" aria-pressed="false" aria-label="Play" title="Play"></button></div>
+        <div class="tbtn"><button class="ib" id="now" aria-label="Back to now" title="Back to now"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 12a8.5 8.5 0 1 0 2.6-6.1"/><path d="M3.5 4v4.5H8"/></svg></button><button class="ib" id="play" aria-pressed="false" aria-label="Play" title="Play"></button></div>
         <div class="tsl"><input type="range" id="t" min="0" max="167" value="0" step="1" aria-label="Forecast hour"><div class="days" id="days"></div></div>
       </div>
     </div>
