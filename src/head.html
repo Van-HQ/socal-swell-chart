@@ -85,14 +85,18 @@ button{font:inherit;color:inherit;cursor:pointer}
 .legend .tk{display:flex;justify-content:space-between;gap:8px;margin-top:4px}
 .legend .probe{color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .legend .probe:not(:empty){margin-top:7px}
-.time{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:6px 16px;align-items:center;padding:10px 16px 11px;background:var(--panel);border-top:1px solid var(--line)}
+.time{display:grid;grid-template-columns:auto minmax(0,1fr);gap:6px 16px;align-items:center;padding:10px 16px 11px;background:var(--panel);border-top:1px solid var(--line)}
 .when{min-width:150px}
 .when strong{display:block;font:600 15px/1.2 var(--f-ui)}
 .when small{color:var(--muted);font-size:12px}
-.tbtn{display:flex;gap:6px}
+.tbtn{display:flex;gap:6px;align-self:flex-start;margin-top:-8px;flex:none}
+.ib{width:34px;height:34px;display:grid;place-items:center;padding:0;border:1px solid var(--line);background:var(--raise);border-radius:50%;color:var(--ink)}
+.ib:hover{background:color-mix(in srgb,var(--ink) 8%,var(--raise))}
+.ib svg{display:block}
+.tsl{flex:1;min-width:0;align-self:center}
 .btn{border:1px solid var(--line);background:none;padding:6px 11px;font:500 13px/1 var(--f-ui);border-radius:7px;color:var(--ink)}
 .btn:hover{background:var(--raise)}
-.track{position:relative;min-width:0}
+.track{position:relative;min-width:0;display:flex;align-items:center;gap:12px}
 .track input{width:100%;margin:0;display:block;height:18px;background:none;-webkit-appearance:none;appearance:none}
 .track input::-webkit-slider-runnable-track{height:4px;border-radius:2px;background:color-mix(in srgb,var(--ink) 22%,transparent)}
 .track input::-moz-range-track{height:4px;border-radius:2px;background:color-mix(in srgb,var(--ink) 22%,transparent)}
@@ -341,7 +345,7 @@ button.tile:disabled{cursor:default;opacity:.6}
   .time input{touch-action:pan-x}
   .grab{display:flex;justify-content:center;align-items:center;height:30px;flex:none;touch-action:none;cursor:grab}
   .grab i{width:38px;height:4px;border-radius:2px;background:var(--line);filter:brightness(1.6)}
-  .panel .time{border-top:0;padding:2px 16px 14px;grid-template-columns:minmax(0,1fr) auto;flex:none}
+  .panel .time{border-top:0;padding:2px 16px 14px;grid-template-columns:minmax(0,1fr);flex:none}
   .track{grid-column:1/-1;grid-row:2}
   .days i{display:none}
   .peek{display:none!important;align-items:center;gap:12px;flex:none;width:calc(100% - 24px);margin:0 12px 10px;padding:10px 12px;text-align:left;border:1px solid var(--line);border-radius:12px;background:var(--raise);touch-action:none}
@@ -383,8 +387,10 @@ button.tile:disabled{cursor:default;opacity:.6}
     </div>
     <div class="time">
       <div class="when"><strong id="when">&nbsp;</strong><small id="whensub"></small></div>
-      <div class="track"><input type="range" id="t" min="0" max="167" value="0" step="1" aria-label="Forecast hour"><div class="days" id="days"></div></div>
-      <div class="tbtn"><button class="btn" id="play" aria-pressed="false">Play</button><button class="btn" id="now">Now</button></div>
+      <div class="track">
+        <div class="tbtn"><button class="ib" id="now" aria-label="Back to now" title="Back to now"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 12a8.5 8.5 0 1 0 2.6-6.1"/><path d="M3.5 4v4.5H8"/></svg></button><button class="ib" id="play" aria-pressed="false" aria-label="Play" title="Play"></button></div>
+        <div class="tsl"><input type="range" id="t" min="0" max="167" value="0" step="1" aria-label="Forecast hour"><div class="days" id="days"></div></div>
+      </div>
     </div>
   </section>
   <aside class="panel" id="panel">

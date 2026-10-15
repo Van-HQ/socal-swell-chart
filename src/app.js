@@ -375,7 +375,9 @@ function setTime(i,fromPlay){TI=clamp(i,0,DATA.times.length-1);$("t").value=TI;$
 $("t").addEventListener("input",e=>{if(DATA)setTime(+e.target.value)});
 $("now").onclick=()=>{if(DATA)setTime(NOWI)};
 let playT=0;
-$("play").onclick=()=>{if(!DATA)return;const on=!playT;$("play").setAttribute("aria-pressed",on);$("play").textContent=on?"Pause":"Play";
+const PLAYI='<svg viewBox="0 0 24 24" width="17" height="17" fill="currentColor" aria-hidden="true"><path d="M8 5.5v13a1 1 0 0 0 1.5.86l10.5-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5z"/></svg>',PAUSEI='<svg viewBox="0 0 24 24" width="17" height="17" fill="currentColor" aria-hidden="true"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>';
+$("play").innerHTML=PLAYI;
+$("play").onclick=()=>{if(!DATA)return;const on=!playT;$("play").setAttribute("aria-pressed",on);$("play").innerHTML=on?PAUSEI:PLAYI;$("play").setAttribute("aria-label",on?"Pause":"Play");$("play").title=on?"Pause":"Play";
   if(on)playT=setInterval(()=>setTime(TI>=DATA.times.length-1?NOWI:TI+1,true),900);else{clearInterval(playT);playT=0}};
 
 /* ---------- panel ---------- */
