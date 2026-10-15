@@ -498,8 +498,7 @@ function bestView(){const days=bestDays(),today=laNow().date;
     const dist=BEST.scope==="local"&&LOCSET.has(s.n)?`${LOCSET.get(s.n).toFixed(LOCSET.get(s.n)<10?1:0)} mi · `:"";
     return`<button class="bcard" data-best="${s.idx}:${pk}" style="--rc:${rtCol(cls)}"><span class="bring" style="--p:${Math.round(shown(w.m)*10)}"><b>${shown(w.m).toFixed(1)}</b></span>
       <span class="bm"><span class="bn">${esc(s.n)}${FAVS.has(s.n)?' <span class="fv" aria-label="Favorite">★</span>':""}</span><span class="bs">${dist}${faceText(face)} · ${hm.dom?`${Math.round(hm.dom.p)} s ${comp(hm.dom.d)}`:"no swell"} · ${hm.w.d==null||ws==null?"wind n/a":`${Math.round(ws)} kt ${hm.w.word.toLowerCase()}`}</span></span>
-      <span class="bt"><b>${d===today?"Today":DOW[p.dow]} ${spanText(hourOf(ks[0]),hourOf(ks[ks.length-1])+1)}</b>${RT[cls].n}</span></button>`}).join("")}</div>
-  <p class="note" style="margin-top:2px">Tap a card to open that spot at its best hour.</p></div>${foot()}`}
+      <span class="bt"><b>${d===today?"Today":DOW[p.dow]} ${spanText(hourOf(ks[0]),hourOf(ks[ks.length-1])+1)}</b>${RT[cls].n}</span></button>`}).join("")}</div></div>${foot()}`}
 
 /* ---------- Compare tab: up to three spots side by side at the timeline hour ---------- */
 let CMP=[],CMPINIT=false;try{CMP=JSON.parse(localStorage.getItem("swellchart.cmp")||"[]");if(!Array.isArray(CMP))CMP=[]}catch(e){CMP=[]}
@@ -516,15 +515,14 @@ function cmpView(){const ok=DATA.spots.filter(s=>s.ok);
   const left=ok.filter(s=>!CMP.includes(s.n));
   return`<div style="display:flex;flex-direction:column;gap:10px"><p class="lab">Spots (pick up to 3)</p>
   <div class="csel">${cols.map(s=>`<button class="cchip" data-cmprm="${s.idx}" aria-label="Remove ${esc(s.n)}">${esc(s.n)} ✕</button>`).join("")}${cols.length<3?`<select id="cmpadd" class="cadd" aria-label="Add a spot"><option value="">+ Add spot</option>${left.map(s=>`<option value="${s.idx}">${esc(s.n)}</option>`).join("")}</select>`:""}</div>
-  <p class="lab">Time: <b style="color:var(--ink);font-weight:600">${fmt(TI)}</b> · follows the timeline</p>
-  ${cols.length?`<table class="cmp"><thead><tr><th></th>${cols.map(s=>`<th><button data-spot="${s.idx}">${esc(s.n)}</button></th>`).join("")}</tr></thead><tbody>
-  ${row("Score",(s,i)=>{const h=s.hr[TI];return`<div class="sc${star(rates,i)}"><i style="background:${rtCol(h.cls)}"></i>${shown(h.rate).toFixed(1)}</div><small>${RT[h.cls].n}</small>`})}
-  ${row("Size",(s,i)=>`<span class="v${star(faces,i)}">${faceText(s.hr[TI].face)}</span>`)}
+  <p class="lab">Time: <b style="color:var(--ink);font-weight:600">${fmt(TI)}</b></p>
+  ${cols.length?`<table class="cmp"><thead><tr><th></th>${cols.map(s=>`<th><button data-spot="${s.idx}">${esc(s.n)}</button>${cols.length>1&&rates.indexOf(Math.max(...rates))===cols.indexOf(s)?'<span class="gstar" aria-label="Best of these">\u2605</span>':""}</th>`).join("")}</tr></thead><tbody>
+  ${row("Score",(s,i)=>{const h=s.hr[TI];return`<div class="sc"><i style="background:${rtCol(h.cls)}"></i>${shown(h.rate).toFixed(1)}</div><small>${RT[h.cls].n}</small>`})}
+  ${row("Size",(s,i)=>`<span class="v">${faceText(s.hr[TI].face)}</span>`)}
   ${row("Swell",s=>{const d=s.hr[TI].dom;return d?`${d.h.toFixed(1)} ft · ${Math.round(d.p)} s<small>${comp(d.d)}</small>`:"–"})}
-  ${row("Wind",(s,i)=>{const h=s.hr[TI],ws=s.wx.ws[TI];return h.w.d==null||ws==null?"–":`<span class="v${star(qs,i)}">${Math.round(ws)} kt</span><small>${h.w.word}</small>`})}
+  ${row("Wind",(s,i)=>{const h=s.hr[TI],ws=s.wx.ws[TI];return h.w.d==null||ws==null?"–":`<span class="v">${Math.round(ws)} kt</span><small>${h.w.word}</small>`})}
   ${row("Tide",s=>tideA(s))}
-  ${row("Day",s=>`<div class="mini">${seg(s)}</div>`)}</tbody></table>
-  <p class="note">The gold star marks the best score, size and wind. Day bars are morning, midday and afternoon. Tap a name to open the spot.</p>`:`<p class="note">Pick two or three spots to compare them hour by hour.</p>`}</div>${foot()}`}
+  ${row("Day",s=>`<div class="mini">${seg(s)}</div>`)}</tbody></table>`:`<p class="note">Pick two or three spots to compare them hour by hour.</p>`}</div>${foot()}`}
 function fcChart(s){const T=DATA.times,W=372,H=176,x0=24,bw=(W-x0-4)/T.length,x=i=>x0+i*bw,top=18,base=112,mx=Math.max(6,Math.ceil(Math.max(...s.hr.map(h=>h.face)))),y=v=>base-(v/mx)*(base-top);
   let g="";
   for(let i=0;i<T.length;i++){if(s.wx.day[i]===0)g+=`<rect x="${x(i).toFixed(1)}" y="${top}" width="${(bw+.05).toFixed(2)}" height="${H-top-14}" fill="var(--night)"/>`}
