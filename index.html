@@ -266,6 +266,7 @@ td.num,th.num{text-align:right;padding-right:0}
 .wcr.used{border-top:1px solid var(--line)}.wcr.used+.wcr.used{border-top:0}
 .wflag{margin:0 0 10px;padding:8px 10px;border-radius:10px;background:color-mix(in srgb,var(--warn) 14%,transparent);color:var(--ink);font-size:13px}
 .wcn{margin:8px 0 0;font-size:12px;color:var(--muted)}
+.tile small.wg{font-size:clamp(10.5px,3.15vw,12.5px)}
 button.tile{text-align:left;font:inherit;color:inherit;cursor:pointer;width:100%;-webkit-tap-highlight-color:transparent}
 button.tile:active{background:color-mix(in srgb,var(--ink) 8%,var(--raise))}
 button.tile:disabled{cursor:default;opacity:.6}
@@ -1250,7 +1251,7 @@ function detail(s){const h=s.hr[TI];
    <div class="hchips"><span class="hpill${RT[h.cls].dk?" dk":""}"><i></i>${RT[h.cls].n}</span>${h.face<1?"":`<span class="hchip"><b>${faceText(h.face)}</b></span>${dom?`<span class="hchip">${Math.round(dom.p)} s</span><span class="hchip">${comp(dom.d)} ${Math.round(dom.d)}\u00b0</span>`:""}`}</div>
    <p class="hline">${summary(s,h,tide,trend,sst)}</p>${nb?`<p class="hbuoy">${esc(nb.b.n)} · ${nb.d.hs[nb.d.hs.length-1].toFixed(1)} ft · ${Math.round(nb.d.tp[nb.d.tp.length-1])} s · ${ageText(nb.d)}</p>`:""}</div>
   <div class="tiles">
-   <button class="tile" data-pop="wind"><span class="tk">${ICON.wind}Wind<i class="chev">›</i></span><b>${h.w.d==null?"n/a":`${Math.round(s.wx.ws[TI])} kt ${arrow(s.wx.wd[TI])} ${comp(s.wx.wd[TI])}`}</b><small>${h.w.d==null?"":`${Math.round(s.wx.wg[TI]||s.wx.ws[TI]||0)} kt`}</small><small>${h.w.d==null?"":h.w.word}</small></button>
+   <button class="tile" data-pop="wind"><span class="tk">${ICON.wind}Wind<i class="chev">›</i></span><b>${h.w.d==null?"n/a":`${Math.round(s.wx.ws[TI])} kt ${arrow(s.wx.wd[TI])} ${comp(s.wx.wd[TI])}`}</b><small class="wg">${h.w.d==null?"":`${Math.round(s.wx.wg[TI]||s.wx.ws[TI]||0)} kt · ${h.w.word}`}</small></button>
    <button class="tile" data-pop="tide"${s.tide?"":" disabled"}><span class="tk">${ICON.tide}Tide<i class="chev">›</i></span><b>${tide==null?"n/a":`${tide.toFixed(1)} ft ${trend==="rising"?"↑":trend==="falling"?"↓":""}`}</b><small>${tide==null?"":`${trend[0].toUpperCase()+trend.slice(1)} · likes ${s.td}`}</small></button>
    <div class="tile"><span class="tk">${ICON.temp}Water</span><b>${sst==null?"n/a":`${Math.round(sst*9/5+32)}°F`}</b><small>${sst==null?"":suitFor(sst*9/5+32)}</small></div>
    <button class="tile" data-pop="wx"${s.wx&&s.wx.tp&&s.wx.tp[TI]!=null?"":" disabled"}><span class="tk">${ICON.sun}Weather<i class="chev">›</i></span><b>${s.wx&&s.wx.tp&&s.wx.tp[TI]!=null?Math.round(s.wx.tp[TI])+"°F":"n/a"}</b><small>${s.wx&&s.wx.tp&&s.wx.tp[TI]!=null?skyOf(s.wx,TI).t:""}</small></button>
