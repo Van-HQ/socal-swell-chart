@@ -518,13 +518,13 @@ function spectra(s){const h=s.hr[TI],cs=h.cs.map((c,i)=>Object.assign({i,kj:wave
   const R=58,C=75,mx=Math.max(...cs.map(c=>c.kj),1),pt=(deg,r)=>[C+r*Math.sin(deg*Math.PI/180),C-r*Math.cos(deg*Math.PI/180)];let g="";
   for(const [a,b] of s.w){const span=(b-a+360)%360,[x1,y1]=pt(a,R),[x2,y2]=pt(b,R);g+=`<path d="M${C} ${C}L${x1.toFixed(1)} ${y1.toFixed(1)}A${R} ${R} 0 ${span>180?1:0} 1 ${x2.toFixed(1)} ${y2.toFixed(1)}Z" fill="var(--map-ink)" opacity=".13"/>`}
   g+=`<circle cx="${C}" cy="${C}" r="${R}" fill="none" stroke="var(--muted)" stroke-width="1"/><circle cx="${C}" cy="${C}" r="${R*0.6}" fill="none" stroke="var(--line)" stroke-dasharray="2 3"/><circle cx="${C}" cy="${C}" r="${R*0.3}" fill="none" stroke="var(--line)" stroke-dasharray="2 3"/>`;
-  for(const [d,l] of [[0,"N"],[90,"E"],[180,"S"],[270,"W"]]){const [tx,ty]=pt(d,R+9);g+=`<text x="${tx.toFixed(1)}" y="${(ty+3.5).toFixed(1)}" font-size="10" text-anchor="middle" fill="var(--muted)">${l}</text>`}
+  for(const [d,l] of [[0,"N"],[90,"E"],[180,"S"],[270,"W"]]){const [tx,ty]=pt(d,R+12);g+=`<text x="${tx.toFixed(1)}" y="${(ty+3.5).toFixed(1)}" font-size="10" text-anchor="middle" fill="var(--muted)">${l}</text>`}
   for(const c of cs.slice().sort((a,b)=>b.kj-a.kj)){const r=Math.max(10,Math.sqrt(c.kj/mx)*R*0.95),[xa,ya]=pt(c.d-9,r),[xb,yb]=pt(c.d+9,r);g+=`<path d="M${C} ${C}L${xa.toFixed(1)} ${ya.toFixed(1)}A${r.toFixed(1)} ${r.toFixed(1)} 0 0 1 ${xb.toFixed(1)} ${yb.toFixed(1)}Z" fill="${CCOL[c.i%3]}" opacity="${c.df<0.5?.45:.95}"/>`}
-  const ws=s.wx.ws[TI],wd=s.wx.wd[TI];if(ws!=null){const [wx1,wy1]=pt(wd,R+4);g+=`<g transform="translate(${wx1.toFixed(1)},${wy1.toFixed(1)}) rotate(${Math.round(wd+180)})"><path d="M0 -7 L4.5 5 L0 2.5 L-4.5 5 Z" fill="var(--ink)" stroke="var(--panel)" stroke-width="1"/></g>`}
+  const ws=s.wx.ws[TI],wd=s.wx.wd[TI];if(ws!=null){const [wx1,wy1]=pt(wd,R+1);g+=`<g transform="translate(${wx1.toFixed(1)},${wy1.toFixed(1)}) rotate(${Math.round(wd+180)}) scale(1.25)"><path d="M0 -7 L4.5 5 L0 2.5 L-4.5 5 Z" fill="var(--accent)" stroke="var(--panel)" stroke-width="1.6" stroke-linejoin="round" paint-order="stroke"/></g>`}
   return`<div class="spec"><div class="slist">${cs.map(c=>`<div class="srow"><svg class="arr" viewBox="-6 -6 12 12" aria-hidden="true"><g transform="rotate(${Math.round(c.d+180)})"><path d="M0 -5 L3.4 3.6 L0 1.8 L-3.4 3.6 Z" fill="${CCOL[c.i%3]}"/></g></svg><b>${c.h.toFixed(1)} ft</b><span>${Math.round(c.p)} s</span><span>${comp(c.d)} ${Math.round(c.d)}°</span><span class="num">${Math.round(c.kj)} kJ</span>
     <small>${c.k} · ${c.face<0.5?(c.p<5?"too short to surf":c.df<0.5?"blocked here":"under 1 ft here"):c.face.toFixed(1)+" ft faces here"}</small></div>`).join("")}</div>
   <svg class="rose" viewBox="0 0 150 150" role="img" aria-label="Compass showing where each swell comes from, the spot's swell window, and the wind">${g}</svg></div>
-  <p class="note" style="font-size:12px;margin-top:6px">Wedges show where each swell comes from. Shaded: the spot's swell window. Arrow: wind.</p>`}
+  <p class="note" style="font-size:12px;margin-top:6px">Wedges show where each swell comes from. Shaded: the spot's swell window. Arrow: wind, pointing the way it blows.</p>`}
 function windows(s){const T=DATA.times,out=[];let i=0;
   while(i<T.length){const day=T[i].slice(0,10);let best=null;let j=i;for(;j<T.length&&T[j].slice(0,10)===day;j++){if(j<NOWI||j+2>=T.length||T[j+2].slice(0,10)!==day)continue;if(!(s.wx.day[j]&&s.wx.day[j+2]))continue;
       const r=(s.hr[j].rate+s.hr[j+1].rate+s.hr[j+2].rate)/3;if(!best||r>best.r)best={r,j}}
@@ -622,11 +622,9 @@ function whyScore(s){if(!s.ok)return"";const i=TI,h=s.hr[i],hd=`<p class="lab" s
     return`<details class="wy${bad?" bad":""}${drag?" drag":""}" data-why="${x.k}"${on?" open":""}><summary><span class="nm">${NM[x.k]}</span><span class="f">${fmtF(x)}</span><span class="in">${d.inp}</span><span class="bar"><i style="width:${Math.round(clamp(x.f,0,1)*100)}%"></i></span></summary>
     <div class="wx"><b>${x.k==="cap"?"Ceiling":NM[x.k]+" factor"} ${x.f>=0.995&&x.k==="cap"?"none":x.f.toFixed(2)}</b><br>${d.fm}<br><b>Share of the score:</b> +${x.cr.toFixed(1)} of ${sh.toFixed(1)}<br><b>Without this:</b> ${shown(x.wo).toFixed(1)} instead of ${sh.toFixed(1)}${shown(x.wo)-sh<0.05?" (no change)":" (+"+(shown(x.wo)-sh).toFixed(1)+")"}<br><span class="tag">${d.src}</span></div></details>`}).join("");
   const nb=BUOYS.map((b,k)=>({b,d:DATA.buoys[k]})).filter(o=>o.d.ok).sort((a,c)=>dist2(a.b,s)-dist2(c.b,s))[0];
-  const ctab=h.cs.length?`<table class="wtb"><thead><tr><th>Swell</th><th>Face</th></tr></thead><tbody>${h.cs.map(c=>`<tr><td>${c.h.toFixed(1)} ft · ${Math.round(c.p)} s · ${comp(c.d)}<small>${Math.round(c.d)}°${c.df<0.95?` · only ${Math.round(c.df*100)}% reaches this spot`:""}${c.p/PEAK<9?` · short-period chop ×${chopFactor(c.p).toFixed(2)}`:""}</small></td><td>${c.face.toFixed(1)} ft</td></tr>`).join("")}</tbody></table><div class="wcomb"><span>Combined face</span><b>${h.face.toFixed(1)} ft</b></div>`:`<p class="note">No swell reaching this spot.</p>`;
   return`<div>${hd}<div class="why"><div class="wtop"><span class="wsc">${sh.toFixed(1)}<small> / 10</small></span><span class="wbg">${big.loss>=0.3?`Held back by <b>${big.k==="cap"?"wind cap":NM[big.k].toLowerCase()}</b>`:"Nothing is holding it back"}</span></div>
   ${rows}
-  <p class="lab" style="margin:18px 0 6px">Where the size comes from</p>${ctab}
-  <div class="wsrc">${nb?`Forecast model · buoy check: ${esc(nb.b.n)} ${nb.d.hs[nb.d.hs.length-1].toFixed(1)} ft, ${Math.round(nb.d.tp[nb.d.tp.length-1])} s`:"Forecast model"}<br>Spot gain ×${s.g} · swell window ${s.w.map(([a,b])=>`${a}–${b}°`).join(", ")}. Swells combine as the square root of the sum of squares.</div></div></div>`}
+</div></div>`}
 /* ---------- Wind check: live station observations vs each forecast model ---------- */
 const WMODELS=[["ncep_hrrr_conus","HRRR"],["ncep_nbm_conus","NBM"],["icon_seamless","ICON"],["gem_seamless","GEM"]];
 const OBS={};   // by forecast-point index: {at, st:[{id,n,mi,kn,dir,gust,age}], err}
@@ -762,7 +760,7 @@ function buoyView(){return`<p class="note">Live buoys, north to south. Harvest a
   <span class="sub">Peak direction ${arrow(d.dp[n])} ${comp(d.dp[n])} ${Math.round(d.dp[n])}° · ${d.sst==null?"":`water ${Math.round(d.sst)}°F · `}${ageText(d)}</span>
   <svg viewBox="0 0 372 26" preserveAspectRatio="none" aria-hidden="true"><polyline points="${pts}" fill="none" stroke="var(--muted)" stroke-width="1.2" vector-effect="non-scaling-stroke"/></svg></button>`}).join("")}</div>
   <p class="note" style="font-size:12px">Significant wave height, last 24 hours.</p>`}
-function modelSeg(){return`<div class="steprow"><span class="lab" style="margin:0">Scoring</span><div class="seg2" role="group" aria-label="Scoring version"><button data-model="current" aria-pressed="${CUR}">Current</button><button data-model="original" aria-pressed="${!CUR}">Original</button></div></div>`}
+function modelSeg(){return`<div class="steprow"><span class="lab" style="margin:0">Intraday Forecast</span><div class="seg2" role="group" aria-label="Scoring version"><button data-model="current" aria-pressed="${CUR}">Current</button><button data-model="original" aria-pressed="${!CUR}">Original</button></div></div>`}
 function howView(){return`<div class="det"><h2>How spots are rated</h2>
   <p class="note" style="color:var(--ink)">Every hour, each spot is scored on four things. They multiply, so flat water never rates well.</p>
   <dl class="kv" style="grid-template-columns:1fr">
