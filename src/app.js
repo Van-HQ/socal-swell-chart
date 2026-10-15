@@ -773,10 +773,11 @@ function howView(){return`<div class="det"><h2>How spots are rated</h2>
   <p class="note">Model estimates, not cam reports. Sandbars, kelp and local shadowing are invisible to it. Spot windows and gains are starting values to tune.</p>
   <p class="note">Data: Open-Meteo, Scripps CDIP, NOAA CO-OPS, NWS. Map: OpenFreeMap, © OpenMapTiles, data from OpenStreetMap; terrain from Mapzen, USGS and NOAA; satellite imagery © Esri, Maxar, Earthstar Geographics.</p></div>`}
 let lastRender=0;
-function render(fromPlay){if(!DATA)return;const b=$("body"),keep=b.scrollTop;
+function render(fromPlay){if(!DATA)return;const b=$("body"),keep=b.scrollTop,vh=b.clientHeight;
   for(const t of ["spots","buoys","how"])$("tab-"+t).setAttribute("aria-selected",S.tab===t);
-  b.innerHTML=S.tab==="buoys"?buoyView():S.tab==="how"?howView():S.sel!=null?detail(DATA.spots[S.sel]):listView();
-  b.scrollTop=keep;lastRender=Date.now();peekRender();if(POP.k)popRender();
+  /* Swapping the whole body briefly makes it shorter, which on some phones throws the scroll position back to the top (it showed when playing the timeline while scrolled down). A spacer keeps it tall enough for one frame so the position holds. */
+  b.innerHTML=(S.tab==="buoys"?buoyView():S.tab==="how"?howView():S.sel!=null?detail(DATA.spots[S.sel]):listView())+(keep>0?`<div id="slock" style="height:${keep+vh}px" aria-hidden="true"></div>`:"");
+  b.scrollTop=keep;if(keep>0)requestAnimationFrame(()=>{const l=document.getElementById("slock");if(l)l.remove()});lastRender=Date.now();peekRender();if(POP.k)popRender();
   const ch=b.querySelector(".chips"),on=ch&&ch.querySelector('[aria-pressed="true"]');if(on)ch.scrollLeft=Math.max(0,on.offsetLeft-ch.offsetLeft-(ch.clientWidth-on.offsetWidth)/2)}
 $("body").addEventListener("toggle",e=>{const k=e.target&&e.target.dataset&&e.target.dataset.why;if(!k)return;if(e.target.open)WHY.add(k);else WHY.delete(k)},true);
 $("body").addEventListener("click",e=>{const t=e.target.closest("[data-pop],[data-spot],[data-fav],[data-sort],[data-reg],[data-back],[data-time],[data-buoy],[data-step],[data-model],#refresh,#fc,[data-chart]");if(!t||!DATA)return;

@@ -144,9 +144,9 @@ button{font:inherit;color:inherit;cursor:pointer}
 .hsub{margin:2px 0 0;font-size:13px;color:var(--muted)}
 .hstar{position:absolute;right:9px;top:9px;width:30px;height:30px;border-radius:50%;border:0;background:color-mix(in srgb,var(--ink) 9%,transparent);font-size:16px;line-height:1;color:var(--muted)}
 .hstar[aria-pressed="true"]{color:var(--r-fair)}
-.hchips{display:flex;flex-wrap:wrap;gap:6px;margin-top:11px}
-.hchip{background:color-mix(in srgb,var(--ink) 8%,transparent);border-radius:999px;padding:6px 11px;font:500 13px/1 var(--f-ui)}.hchip b{font-weight:700}
-.hpill{display:inline-flex;align-items:center;gap:6px;background:var(--rc);color:#111;font:600 13px/1 var(--f-ui);padding:6px 11px;border-radius:999px}
+.hchips{display:flex;flex-wrap:nowrap;gap:4px;margin-top:11px;min-width:0;font-size:clamp(9.5px,3.2vw,12.5px)}.hchips>*{flex:none;white-space:nowrap}
+.hchip{background:color-mix(in srgb,var(--ink) 8%,transparent);border-radius:999px;padding:6px 8px;font:500 1em/1 var(--f-ui)}.hchip b{font-weight:700}
+.hpill{display:inline-flex;align-items:center;gap:6px;background:var(--rc);color:#111;font:600 1em/1 var(--f-ui);padding:6px 9px;border-radius:999px}
 .hpill.dk{color:#fff}
 .hpill i{width:6px;height:6px;border-radius:50%;background:currentColor}
 .hline{margin:10px 0 0;font-size:13.5px}
@@ -1284,10 +1284,11 @@ function howView(){return`<div class="det"><h2>How spots are rated</h2>
   <p class="note">Model estimates, not cam reports. Sandbars, kelp and local shadowing are invisible to it. Spot windows and gains are starting values to tune.</p>
   <p class="note">Data: Open-Meteo, Scripps CDIP, NOAA CO-OPS, NWS. Map: OpenFreeMap, © OpenMapTiles, data from OpenStreetMap; terrain from Mapzen, USGS and NOAA; satellite imagery © Esri, Maxar, Earthstar Geographics.</p></div>`}
 let lastRender=0;
-function render(fromPlay){if(!DATA)return;const b=$("body"),keep=b.scrollTop;
+function render(fromPlay){if(!DATA)return;const b=$("body"),keep=b.scrollTop,vh=b.clientHeight;
   for(const t of ["spots","buoys","how"])$("tab-"+t).setAttribute("aria-selected",S.tab===t);
-  b.innerHTML=S.tab==="buoys"?buoyView():S.tab==="how"?howView():S.sel!=null?detail(DATA.spots[S.sel]):listView();
-  b.scrollTop=keep;lastRender=Date.now();peekRender();if(POP.k)popRender();
+  /* Swapping the whole body briefly makes it shorter, which on some phones throws the scroll position back to the top (it showed when playing the timeline while scrolled down). A spacer keeps it tall enough for one frame so the position holds. */
+  b.innerHTML=(S.tab==="buoys"?buoyView():S.tab==="how"?howView():S.sel!=null?detail(DATA.spots[S.sel]):listView())+(keep>0?`<div id="slock" style="height:${keep+vh}px" aria-hidden="true"></div>`:"");
+  b.scrollTop=keep;if(keep>0)requestAnimationFrame(()=>{const l=document.getElementById("slock");if(l)l.remove()});lastRender=Date.now();peekRender();if(POP.k)popRender();
   const ch=b.querySelector(".chips"),on=ch&&ch.querySelector('[aria-pressed="true"]');if(on)ch.scrollLeft=Math.max(0,on.offsetLeft-ch.offsetLeft-(ch.clientWidth-on.offsetWidth)/2)}
 $("body").addEventListener("toggle",e=>{const k=e.target&&e.target.dataset&&e.target.dataset.why;if(!k)return;if(e.target.open)WHY.add(k);else WHY.delete(k)},true);
 $("body").addEventListener("click",e=>{const t=e.target.closest("[data-pop],[data-spot],[data-fav],[data-sort],[data-reg],[data-back],[data-time],[data-buoy],[data-step],[data-model],#refresh,#fc,[data-chart]");if(!t||!DATA)return;

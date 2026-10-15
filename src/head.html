@@ -144,9 +144,9 @@ button{font:inherit;color:inherit;cursor:pointer}
 .hsub{margin:2px 0 0;font-size:13px;color:var(--muted)}
 .hstar{position:absolute;right:9px;top:9px;width:30px;height:30px;border-radius:50%;border:0;background:color-mix(in srgb,var(--ink) 9%,transparent);font-size:16px;line-height:1;color:var(--muted)}
 .hstar[aria-pressed="true"]{color:var(--r-fair)}
-.hchips{display:flex;flex-wrap:wrap;gap:6px;margin-top:11px}
-.hchip{background:color-mix(in srgb,var(--ink) 8%,transparent);border-radius:999px;padding:6px 11px;font:500 13px/1 var(--f-ui)}.hchip b{font-weight:700}
-.hpill{display:inline-flex;align-items:center;gap:6px;background:var(--rc);color:#111;font:600 13px/1 var(--f-ui);padding:6px 11px;border-radius:999px}
+.hchips{display:flex;flex-wrap:nowrap;gap:4px;margin-top:11px;min-width:0;font-size:clamp(9.5px,3.2vw,12.5px)}.hchips>*{flex:none;white-space:nowrap}
+.hchip{background:color-mix(in srgb,var(--ink) 8%,transparent);border-radius:999px;padding:6px 8px;font:500 1em/1 var(--f-ui)}.hchip b{font-weight:700}
+.hpill{display:inline-flex;align-items:center;gap:6px;background:var(--rc);color:#111;font:600 1em/1 var(--f-ui);padding:6px 9px;border-radius:999px}
 .hpill.dk{color:#fff}
 .hpill i{width:6px;height:6px;border-radius:50%;background:currentColor}
 .hline{margin:10px 0 0;font-size:13.5px}
