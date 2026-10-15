@@ -486,7 +486,7 @@ function dayCards(s){const T=DATA.times,cur=T[TI].slice(0,10),today=laNow().date
     const seg=[[5,10,"Morning"],[10,14,"Midday"],[14,19,"Afternoon"]].map(([a,b,nm])=>{const ks=idx.filter(k=>hourOf(k)>=a&&hourOf(k)<b);if(!ks.length)return`<i style="background:var(--line)"></i>`;
       const f=ks.reduce((t,k)=>t+s.hr[k].face,0)/ks.length,r=ks.reduce((t,k)=>t+s.hr[k].rate,0)/ks.length,c=clsOf(f,r);return`<i style="background:${rtCol(c)}" title="${nm}: ${RT[c].n}"></i>`}).join("");
     const go=idx.find(k=>hourOf(k)===hNow)??idx[Math.min(idx.length-1,12)];
-    return`<button class="dcard" data-time="${go}" aria-pressed="${d===cur}"><span class="dn">${d===today?"Today":DOW[p.dow]+" "+p.d}</span><span class="dh">${rangeText(use.map(k=>s.hr[k].face))}</span><span class="dseg">${seg}</span></button>`}).join("")}</div>`}
+    return`<button class="dcard" data-time="${go}" aria-pressed="${d===cur}"><span class="dn">${d===today?"Today":DOW[p.dow]+" "+p.d}</span><span class="dh">${faceText(use.reduce((a,k)=>a+s.hr[k].face,0)/use.length)}</span><span class="dseg">${seg}</span></button>`}).join("")}</div>`}
 function hourly(s){const T=DATA.times,cur=T[TI].slice(0,10),day=dayIdx().find(x=>x.d===cur),step=S.step,ks=day.idx.filter(k=>hourOf(k)>=5&&hourOf(k)<=20&&(step===1||((hourOf(k)-5)%3===0&&hourOf(k)<20)));
   const head=`<div class="hrow hhead${step===3?" w3":""}"><span>Time</span><span>Surf</span><span>Swell</span><span>Wind</span><span class="num">Tide</span><span class="num">Score</span></div>`;
   return`<div class="hours">${head}${ks.map(k=>{const grp=step===1?[k]:day.idx.filter(j=>j>=k&&j<k+3&&hourOf(j)<=20),n=grp.length,mid=grp[Math.min(1,n-1)],hm=s.hr[mid];
@@ -745,7 +745,7 @@ function detail(s){const h=s.hr[TI];
    <button class="tile" data-pop="wx"${s.wx&&s.wx.tp&&s.wx.tp[TI]!=null?"":" disabled"}><span class="tk">${ICON.sun}Weather<i class="chev">›</i></span><b>${s.wx&&s.wx.tp&&s.wx.tp[TI]!=null?Math.round(s.wx.tp[TI])+"°F":"n/a"}</b><small>${s.wx&&s.wx.tp&&s.wx.tp[TI]!=null?skyOf(s.wx,TI).t:""}</small></button>
   </div>
   ${alertBanner(s.r)}
-  <div><p class="lab" style="margin-bottom:8px">By day</p>${dayCards(s)}</div>
+  <div><p class="lab" style="margin-bottom:8px">Forecast</p>${dayCards(s)}</div>
   <div><p class="lab" style="margin-bottom:8px">Outlook · ${fmt(TI).split(" ")[0]}</p>${dayChart(s)}${modelSeg()}<div class="steprow"><div class="seg2" role="group" aria-label="Table interval"><button data-step="3" aria-pressed="${S.step===3}">3-hour</button><button data-step="1" aria-pressed="${S.step===1}">Hourly</button></div></div>${hourly(s)}</div>
   <div><p class="lab" style="margin-bottom:8px">Swell Breakdown · ${fmt(TI)}</p>${spectra(s)}</div>
   <div><p class="lab" style="margin-bottom:8px">7 Day Forecast</p>${fcChart(s)}</div>
