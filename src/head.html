@@ -135,18 +135,21 @@ button{font:inherit;color:inherit;cursor:pointer}
 .det h2{margin:0 0 2px;font:600 22px/1.15 var(--f-ui);letter-spacing:-.005em}
 .det .back{border:0;background:none;padding:0;color:var(--muted);font:500 13px/1 var(--f-ui);align-self:flex-start}
 .det .back:hover{color:var(--ink)}
-.hcard{position:relative;border-radius:18px;padding:14px 16px 13px;background:linear-gradient(145deg,color-mix(in srgb,var(--rc) 34%,var(--panel)) 0%,color-mix(in srgb,var(--rc) 10%,var(--panel)) 55%,var(--raise) 100%);border:1px solid color-mix(in srgb,var(--rc) 32%,var(--line))}
-.hcard h2{margin:0;padding-right:44px;font:600 19px/1.15 var(--f-ui)}
+.hcard{position:relative;border-radius:18px;padding:12px 14px 13px;background:linear-gradient(145deg,color-mix(in srgb,var(--rc) 34%,var(--panel)) 0%,color-mix(in srgb,var(--rc) 10%,var(--panel)) 55%,var(--raise) 100%);border:1px solid color-mix(in srgb,var(--rc) 32%,var(--line))}
+.hctop{display:flex;align-items:center;gap:12px}
+.hring{flex:none;width:58px;height:58px;border-radius:50%;display:grid;place-items:center;position:relative;background:conic-gradient(var(--rc) calc(var(--p)*1%),color-mix(in srgb,var(--ink) 12%,transparent) 0)}
+.hring::before{content:"";position:absolute;inset:5px;border-radius:50%;background:color-mix(in srgb,var(--rc) 10%,var(--panel))}
+.hring b{position:relative;font:700 21px/1 var(--f-ui)}
+.hcard h2{margin:0;padding-right:34px;font:600 18px/1.15 var(--f-ui)}
 .hsub{margin:2px 0 0;font-size:13px;color:var(--muted)}
-.hstar{position:absolute;right:10px;top:10px;width:34px;height:34px;border-radius:50%;border:0;background:color-mix(in srgb,var(--ink) 9%,transparent);font-size:18px;line-height:1;color:var(--muted)}
+.hstar{position:absolute;right:9px;top:9px;width:30px;height:30px;border-radius:50%;border:0;background:color-mix(in srgb,var(--ink) 9%,transparent);font-size:16px;line-height:1;color:var(--muted)}
 .hstar[aria-pressed="true"]{color:var(--r-fair)}
-.hbig{display:flex;align-items:baseline;gap:8px;margin-top:11px}
-.hbig b{font:700 42px/0.9 var(--f-ui);letter-spacing:-.02em}
-.hbig span{font:600 17px/1 var(--f-ui);color:var(--muted)}
-.hpill{display:inline-flex;align-items:center;gap:7px;margin-top:9px;background:var(--rc);color:#111;font:600 13px/1 var(--f-ui);padding:7px 12px;border-radius:999px}
+.hchips{display:flex;flex-wrap:wrap;gap:6px;margin-top:11px}
+.hchip{background:color-mix(in srgb,var(--ink) 8%,transparent);border-radius:999px;padding:6px 11px;font:500 13px/1 var(--f-ui)}.hchip b{font-weight:700}
+.hpill{display:inline-flex;align-items:center;gap:6px;background:var(--rc);color:#111;font:600 13px/1 var(--f-ui);padding:6px 11px;border-radius:999px}
 .hpill.dk{color:#fff}
 .hpill i{width:6px;height:6px;border-radius:50%;background:currentColor}
-.hline{margin:9px 0 0;font-size:13.5px}
+.hline{margin:10px 0 0;font-size:13.5px}
 .tiles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:-6px}
 .tile{background:var(--raise);border:1px solid var(--line);border-radius:16px;padding:12px 13px;min-width:0;display:flex;flex-direction:column}
 .tile .tk{display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--muted)}
@@ -268,8 +271,7 @@ button.tile:active{background:color-mix(in srgb,var(--ink) 8%,var(--raise))}
 button.tile:disabled{cursor:default;opacity:.6}
 .tile .chev{margin-left:auto;font-style:normal;font-size:17px;line-height:1;color:var(--muted)}
 .tile .tk svg{flex:none}
-.hbuoy{display:flex;align-items:center;gap:7px;margin:9px 0 0;padding-top:9px;border-top:1px solid color-mix(in srgb,var(--ink) 12%,transparent);font-size:12.5px;color:var(--muted)}
-.hbuoy svg{width:15px;height:15px;flex:none}.hbuoy b{color:var(--ink);font-weight:500}
+.hbuoy{margin:5px 0 0;font-size:12.5px;color:var(--muted)}
 #pop{position:fixed;inset:0;z-index:50;background:rgba(0,0,0,.5);display:flex;align-items:flex-end;justify-content:center}
 #pop[hidden]{display:none}
 .popc{width:100%;max-width:460px;max-height:82vh;max-height:82dvh;display:flex;flex-direction:column;background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:20px 20px 0 0;padding:14px 16px calc(16px + env(safe-area-inset-bottom));box-shadow:0 -12px 40px rgba(0,0,0,.35)}

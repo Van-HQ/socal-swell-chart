@@ -135,18 +135,21 @@ button{font:inherit;color:inherit;cursor:pointer}
 .det h2{margin:0 0 2px;font:600 22px/1.15 var(--f-ui);letter-spacing:-.005em}
 .det .back{border:0;background:none;padding:0;color:var(--muted);font:500 13px/1 var(--f-ui);align-self:flex-start}
 .det .back:hover{color:var(--ink)}
-.hcard{position:relative;border-radius:18px;padding:14px 16px 13px;background:linear-gradient(145deg,color-mix(in srgb,var(--rc) 34%,var(--panel)) 0%,color-mix(in srgb,var(--rc) 10%,var(--panel)) 55%,var(--raise) 100%);border:1px solid color-mix(in srgb,var(--rc) 32%,var(--line))}
-.hcard h2{margin:0;padding-right:44px;font:600 19px/1.15 var(--f-ui)}
+.hcard{position:relative;border-radius:18px;padding:12px 14px 13px;background:linear-gradient(145deg,color-mix(in srgb,var(--rc) 34%,var(--panel)) 0%,color-mix(in srgb,var(--rc) 10%,var(--panel)) 55%,var(--raise) 100%);border:1px solid color-mix(in srgb,var(--rc) 32%,var(--line))}
+.hctop{display:flex;align-items:center;gap:12px}
+.hring{flex:none;width:58px;height:58px;border-radius:50%;display:grid;place-items:center;position:relative;background:conic-gradient(var(--rc) calc(var(--p)*1%),color-mix(in srgb,var(--ink) 12%,transparent) 0)}
+.hring::before{content:"";position:absolute;inset:5px;border-radius:50%;background:color-mix(in srgb,var(--rc) 10%,var(--panel))}
+.hring b{position:relative;font:700 21px/1 var(--f-ui)}
+.hcard h2{margin:0;padding-right:34px;font:600 18px/1.15 var(--f-ui)}
 .hsub{margin:2px 0 0;font-size:13px;color:var(--muted)}
-.hstar{position:absolute;right:10px;top:10px;width:34px;height:34px;border-radius:50%;border:0;background:color-mix(in srgb,var(--ink) 9%,transparent);font-size:18px;line-height:1;color:var(--muted)}
+.hstar{position:absolute;right:9px;top:9px;width:30px;height:30px;border-radius:50%;border:0;background:color-mix(in srgb,var(--ink) 9%,transparent);font-size:16px;line-height:1;color:var(--muted)}
 .hstar[aria-pressed="true"]{color:var(--r-fair)}
-.hbig{display:flex;align-items:baseline;gap:8px;margin-top:11px}
-.hbig b{font:700 42px/0.9 var(--f-ui);letter-spacing:-.02em}
-.hbig span{font:600 17px/1 var(--f-ui);color:var(--muted)}
-.hpill{display:inline-flex;align-items:center;gap:7px;margin-top:9px;background:var(--rc);color:#111;font:600 13px/1 var(--f-ui);padding:7px 12px;border-radius:999px}
+.hchips{display:flex;flex-wrap:wrap;gap:6px;margin-top:11px}
+.hchip{background:color-mix(in srgb,var(--ink) 8%,transparent);border-radius:999px;padding:6px 11px;font:500 13px/1 var(--f-ui)}.hchip b{font-weight:700}
+.hpill{display:inline-flex;align-items:center;gap:6px;background:var(--rc);color:#111;font:600 13px/1 var(--f-ui);padding:6px 11px;border-radius:999px}
 .hpill.dk{color:#fff}
 .hpill i{width:6px;height:6px;border-radius:50%;background:currentColor}
-.hline{margin:9px 0 0;font-size:13.5px}
+.hline{margin:10px 0 0;font-size:13.5px}
 .tiles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:-6px}
 .tile{background:var(--raise);border:1px solid var(--line);border-radius:16px;padding:12px 13px;min-width:0;display:flex;flex-direction:column}
 .tile .tk{display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--muted)}
@@ -268,8 +271,7 @@ button.tile:active{background:color-mix(in srgb,var(--ink) 8%,var(--raise))}
 button.tile:disabled{cursor:default;opacity:.6}
 .tile .chev{margin-left:auto;font-style:normal;font-size:17px;line-height:1;color:var(--muted)}
 .tile .tk svg{flex:none}
-.hbuoy{display:flex;align-items:center;gap:7px;margin:9px 0 0;padding-top:9px;border-top:1px solid color-mix(in srgb,var(--ink) 12%,transparent);font-size:12.5px;color:var(--muted)}
-.hbuoy svg{width:15px;height:15px;flex:none}.hbuoy b{color:var(--ink);font-weight:500}
+.hbuoy{margin:5px 0 0;font-size:12.5px;color:var(--muted)}
 #pop{position:fixed;inset:0;z-index:50;background:rgba(0,0,0,.5);display:flex;align-items:flex-end;justify-content:center}
 #pop[hidden]{display:none}
 .popc{width:100%;max-width:460px;max-height:82vh;max-height:82dvh;display:flex;flex-direction:column;background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:20px 20px 0 0;padding:14px 16px calc(16px + env(safe-area-inset-bottom));box-shadow:0 -12px 40px rgba(0,0,0,.35)}
@@ -1239,13 +1241,12 @@ function detail(s){const h=s.hr[TI];
   if(!s.ok)return`<div class="det"><button class="back" data-back="1">← All spots</button><h2>${esc(s.n)}</h2><p class="note">No wave data close enough to rate this spot.</p></div>`;
   const tide=h.tide,nx=s.tide&&s.tide[Math.min(TI+1,s.tide.length-1)],trend=tide==null||nx==null?"":nx>tide+0.05?"rising":nx<tide-0.05?"falling":"slack";
   const nb=BUOYS.map((b,k)=>({b,d:DATA.buoys[k]})).filter(o=>o.d.ok).sort((a,c)=>dist2(a.b,s)-dist2(c.b,s))[0];
-  const sst=s.m.sst[TI];
+  const sst=s.m.sst[TI],dom=h.dom;
   return`<div class="det"><button class="back" data-back="1">← All spots</button>
   <div class="hcard" style="--rc:${rtCol(h.cls)}"><button class="hstar" data-fav="${s.idx}" aria-pressed="${FAVS.has(s.n)}" aria-label="${FAVS.has(s.n)?"Remove from favorites":"Save to favorites"}">${FAVS.has(s.n)?"★":"☆"}</button>
-   <h2>${esc(s.n)}</h2><p class="hsub">${REG[s.r]} · ${esc(s.t)} · ${fmt(TI)}</p>
-   <div class="hbig">${h.face<1?"<b>Flat</b>":`<b>${faceText(h.face).replace(" ft","")}</b><span>ft</span>`}</div>
-   <span class="hpill${RT[h.cls].dk?" dk":""}"><i></i>${RT[h.cls].n}</span>
-   <p class="hline">${summary(s,h,tide,trend,sst)}</p>${nb?`<p class="hbuoy">${ICON.buoy}<span>Buoy · ${esc(nb.b.n)} · <b>${nb.d.hs[nb.d.hs.length-1].toFixed(1)} ft · ${Math.round(nb.d.tp[nb.d.tp.length-1])} s</b> · ${ageText(nb.d)}</span></p>`:""}</div>
+   <div class="hctop"><div class="hring" style="--p:${h.face<1?0:Math.round(shown(h.rate)*10)}"><b>${h.face<1?"\u2013":shown(h.rate).toFixed(1)}</b></div><div><h2>${esc(s.n)}</h2><p class="hsub">${REG[s.r]} · ${esc(s.t)} · ${fmt(TI)}</p></div></div>
+   <div class="hchips"><span class="hpill${RT[h.cls].dk?" dk":""}"><i></i>${RT[h.cls].n}</span>${h.face<1?"":`<span class="hchip"><b>${faceText(h.face)}</b></span>${dom?`<span class="hchip">${Math.round(dom.p)} s</span><span class="hchip">${comp(dom.d)} ${Math.round(dom.d)}\u00b0</span>`:""}`}</div>
+   <p class="hline">${summary(s,h,tide,trend,sst)}</p>${nb?`<p class="hbuoy">${esc(nb.b.n)} · ${nb.d.hs[nb.d.hs.length-1].toFixed(1)} ft · ${Math.round(nb.d.tp[nb.d.tp.length-1])} s · ${ageText(nb.d)}</p>`:""}</div>
   <div class="tiles">
    <button class="tile" data-pop="wind"><span class="tk">${ICON.wind}Wind<i class="chev">›</i></span><b>${h.w.d==null?"n/a":`${Math.round(s.wx.ws[TI])} kn ${arrow(s.wx.wd[TI])} ${comp(s.wx.wd[TI])}`}</b><small>${h.w.d==null?"":`${h.w.word} · gusts ${Math.round(s.wx.wg[TI]||0)}`}</small></button>
    <button class="tile" data-pop="tide"${s.tide?"":" disabled"}><span class="tk">${ICON.tide}Tide<i class="chev">›</i></span><b>${tide==null?"n/a":`${tide.toFixed(1)} ft ${trend==="rising"?"↑":trend==="falling"?"↓":""}`}</b><small>${tide==null?"":`${trend[0].toUpperCase()+trend.slice(1)} · likes ${s.td}`}</small></button>

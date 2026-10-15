@@ -730,13 +730,12 @@ function detail(s){const h=s.hr[TI];
   if(!s.ok)return`<div class="det"><button class="back" data-back="1">← All spots</button><h2>${esc(s.n)}</h2><p class="note">No wave data close enough to rate this spot.</p></div>`;
   const tide=h.tide,nx=s.tide&&s.tide[Math.min(TI+1,s.tide.length-1)],trend=tide==null||nx==null?"":nx>tide+0.05?"rising":nx<tide-0.05?"falling":"slack";
   const nb=BUOYS.map((b,k)=>({b,d:DATA.buoys[k]})).filter(o=>o.d.ok).sort((a,c)=>dist2(a.b,s)-dist2(c.b,s))[0];
-  const sst=s.m.sst[TI];
+  const sst=s.m.sst[TI],dom=h.dom;
   return`<div class="det"><button class="back" data-back="1">← All spots</button>
   <div class="hcard" style="--rc:${rtCol(h.cls)}"><button class="hstar" data-fav="${s.idx}" aria-pressed="${FAVS.has(s.n)}" aria-label="${FAVS.has(s.n)?"Remove from favorites":"Save to favorites"}">${FAVS.has(s.n)?"★":"☆"}</button>
-   <h2>${esc(s.n)}</h2><p class="hsub">${REG[s.r]} · ${esc(s.t)} · ${fmt(TI)}</p>
-   <div class="hbig">${h.face<1?"<b>Flat</b>":`<b>${faceText(h.face).replace(" ft","")}</b><span>ft</span>`}</div>
-   <span class="hpill${RT[h.cls].dk?" dk":""}"><i></i>${RT[h.cls].n}</span>
-   <p class="hline">${summary(s,h,tide,trend,sst)}</p>${nb?`<p class="hbuoy">${ICON.buoy}<span>Buoy · ${esc(nb.b.n)} · <b>${nb.d.hs[nb.d.hs.length-1].toFixed(1)} ft · ${Math.round(nb.d.tp[nb.d.tp.length-1])} s</b> · ${ageText(nb.d)}</span></p>`:""}</div>
+   <div class="hctop"><div class="hring" style="--p:${h.face<1?0:Math.round(shown(h.rate)*10)}"><b>${h.face<1?"\u2013":shown(h.rate).toFixed(1)}</b></div><div><h2>${esc(s.n)}</h2><p class="hsub">${REG[s.r]} · ${esc(s.t)} · ${fmt(TI)}</p></div></div>
+   <div class="hchips"><span class="hpill${RT[h.cls].dk?" dk":""}"><i></i>${RT[h.cls].n}</span>${h.face<1?"":`<span class="hchip"><b>${faceText(h.face)}</b></span>${dom?`<span class="hchip">${Math.round(dom.p)} s</span><span class="hchip">${comp(dom.d)} ${Math.round(dom.d)}\u00b0</span>`:""}`}</div>
+   <p class="hline">${summary(s,h,tide,trend,sst)}</p>${nb?`<p class="hbuoy">${esc(nb.b.n)} · ${nb.d.hs[nb.d.hs.length-1].toFixed(1)} ft · ${Math.round(nb.d.tp[nb.d.tp.length-1])} s · ${ageText(nb.d)}</p>`:""}</div>
   <div class="tiles">
    <button class="tile" data-pop="wind"><span class="tk">${ICON.wind}Wind<i class="chev">›</i></span><b>${h.w.d==null?"n/a":`${Math.round(s.wx.ws[TI])} kn ${arrow(s.wx.wd[TI])} ${comp(s.wx.wd[TI])}`}</b><small>${h.w.d==null?"":`${h.w.word} · gusts ${Math.round(s.wx.wg[TI]||0)}`}</small></button>
    <button class="tile" data-pop="tide"${s.tide?"":" disabled"}><span class="tk">${ICON.tide}Tide<i class="chev">›</i></span><b>${tide==null?"n/a":`${tide.toFixed(1)} ft ${trend==="rising"?"↑":trend==="falling"?"↓":""}`}</b><small>${tide==null?"":`${trend[0].toUpperCase()+trend.slice(1)} · likes ${s.td}`}</small></button>
