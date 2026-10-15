@@ -542,7 +542,7 @@ function dirFactor(s,dir){let o=180;for(const [a,b] of s.w){const span=(b-a+360)
 const chopFactor=T=>clamp((T/PEAK-4)/5,0.3,1);
 function breaker(hft,T){if(!(hft>0)||!(T>=5))return 0;const H=hft*0.3048;return 0.39*Math.pow(9.81,0.2)*Math.pow(T*H*H,0.4)/0.3048*K_BREAK*chopFactor(T)}
 // Onshore wind sets a ceiling on the rating no matter how much swell there is.
-// e = wind speed (kn) scaled by how onshore it is: 0 at cross-offshore, full at 120 deg or more off offshore.
+// e = wind speed (kt) scaled by how onshore it is: 0 at cross-offshore, full at 120 deg or more off offshore.
 /* Two versions of the scoring can be switched between in the app to compare them. "current" is today's tuned version; "original" is how it was before today's tuning
    (stricter wind ceiling, steeper size curve, and the number shown is the raw score). */
 let MODEL="current";try{if(localStorage.getItem("swellchart.model")==="original")MODEL="original"}catch(e){}
@@ -773,7 +773,7 @@ const RAMP={
     d:[[6,[11,27,37]],[9,[30,64,44]],[12,[36,112,82]],[15,[32,150,150]],[18,[58,140,214]],[21,[150,110,224]]],
     v:[[6,[28,38,80]],[9,[40,110,190]],[12,[50,180,170]],[15,[150,205,80]],[18,[240,190,60]],[21,[235,90,70]]]},
   score:{u:"0 to 10",t:"Surf score",ticks:["Poor","P-F","Fair","F-G","Good","Epic"],min:0,max:10,get l(){return scoreStops()},get d(){return scoreStops()},get v(){return scoreStops()}},
-  wind:{u:"kn",t:"Wind speed",ticks:[0,5,10,15,20,30],max:30,
+  wind:{u:"kt",t:"Wind speed",ticks:[0,5,10,15,20,30],max:30,
     l:[[0,[244,246,240]],[5,[220,235,208]],[10,[241,221,140]],[15,[240,176,96]],[20,[227,122,74]],[30,[184,64,90]]],
     d:[[0,[11,27,37]],[5,[22,62,58]],[10,[88,104,36]],[15,[154,106,30]],[20,[184,80,42]],[30,[196,58,96]]],
     v:[[0,[28,38,80]],[5,[50,120,190]],[10,[60,185,150]],[15,[220,210,70]],[20,[240,140,60]],[30,[220,60,90]]]}};
@@ -856,8 +856,8 @@ function resize(){const r=mapEl.getBoundingClientRect();if(!r.width)return;V.W=r
 function probe(x,y){const el=$("probe");if(!el||!DATA)return;if(!isWater(x,y)){el.textContent="";return}
   const lo=LON(x),la=LAT(y),F=DATA.F,pos=`${la.toFixed(2)}°N ${(-lo).toFixed(2)}°W`;
   if(LAYER==="score"){spotField();const o=scoreAt(lo,la),d=(Math.atan2(-sample(F.WU[TI],lo,la),-sample(F.WV[TI],lo,la))*180/Math.PI+360)%360,ws=sample(F.WS[TI],lo,la);
-    el.textContent=o.near&&o.d<30?`${o.near.n} · ${o.near.h.face<1?"Flat":RT[o.near.h.cls].n+" "+o.near.v.toFixed(1)} · wind ${ws.toFixed(0)} kn from ${comp(d)}`:`${pos} · wind ${ws.toFixed(0)} kn from ${comp(d)}`}
-  else if(LAYER==="wind"){const d=(Math.atan2(-sample(F.WU[TI],lo,la),-sample(F.WV[TI],lo,la))*180/Math.PI+360)%360;el.textContent=`${pos} · ${sample(F.WS[TI],lo,la).toFixed(0)} kn from ${comp(d)}`}
+    el.textContent=o.near&&o.d<30?`${o.near.n} · ${o.near.h.face<1?"Flat":RT[o.near.h.cls].n+" "+o.near.v.toFixed(1)} · wind ${ws.toFixed(0)} kt from ${comp(d)}`:`${pos} · wind ${ws.toFixed(0)} kt from ${comp(d)}`}
+  else if(LAYER==="wind"){const d=(Math.atan2(-sample(F.WU[TI],lo,la),-sample(F.WV[TI],lo,la))*180/Math.PI+360)%360;el.textContent=`${pos} · ${sample(F.WS[TI],lo,la).toFixed(0)} kt from ${comp(d)}`}
   else{const d=(Math.atan2(-sample(F.U[TI],lo,la),-sample(F.V[TI],lo,la))*180/Math.PI+360)%360;el.textContent=`${pos} · ${sample(F.H[TI],lo,la).toFixed(1)} ft @ ${sample(F.P[TI],lo,la).toFixed(0)} s from ${comp(d)} ${Math.round(d)}°`}}
 function initMap(){
   if(!window.maplibregl){$("msg").hidden=false;$("msg").innerHTML="<b>Map unavailable</b>Check your connection and reload.";return false}
@@ -975,7 +975,7 @@ function listView(){const rows=DATA.spots.filter(inFilter);if(S.region==="local"
   ${rows.length||S.locWait?"":`<p class="note">${S.region==="fav"?"No favorites yet. Open a spot and tap the star.":"No spots here."}</p>`}<div class="rows">${rows.map(s=>{const h=s.hr[TI];
     if(!s.ok)return`<button class="row" data-spot="${s.idx}"><i class="dot" style="background:var(--line)"></i><span class="nm">${esc(s.n)}</span><span class="ft"></span><span class="sub">No wave data near this spot</span></button>`;
     return`<button class="row" data-spot="${s.idx}"><i class="dot" style="background:${rtCol(h.cls)}"></i><span class="nm">${esc(s.n)}${FAVS.has(s.n)?' <span class="fv" aria-label="Favorite">★</span>':""}</span><span class="ft">${faceText(h.face)}</span>
-    <span class="sub">${lm(s)}<b>${RT[h.cls].n}</b> · ${h.dom?`${comp(h.dom.d)} ${Math.round(h.dom.p)} s`:"no swell"} · ${h.w.d==null?"wind n/a":`${h.w.word.toLowerCase()} ${Math.round(s.wx.ws[TI])} kn`}</span></button>`}).join("")}</div></div>${outlook()}${foot()}`}
+    <span class="sub">${lm(s)}<b>${RT[h.cls].n}</b> · ${h.dom?`${comp(h.dom.d)} ${Math.round(h.dom.p)} s`:"no swell"} · ${h.w.d==null?"wind n/a":`${h.w.word.toLowerCase()} ${Math.round(s.wx.ws[TI])} kt`}</span></button>`}).join("")}</div></div>${outlook()}${foot()}`}
 function foot(){const mins=Math.round((Date.now()-DATA.at)/6e4),nb=DATA.buoys.filter(b=>b.ok).length;
   return`<div class="foot">Updated ${mins<1?"just now":mins+" min ago"} · ${nb} of ${BUOYS.length} buoys reporting${DATA.tidesOk?"":" · tides did not load, so ratings ignore tide"}.<button id="refresh">Refresh</button></div>`}
 function fcChart(s){const T=DATA.times,W=372,H=176,x0=24,bw=(W-x0-4)/T.length,x=i=>x0+i*bw,top=18,base=112,mx=Math.max(6,Math.ceil(Math.max(...s.hr.map(h=>h.face)))),y=v=>base-(v/mx)*(base-top);
@@ -1005,7 +1005,7 @@ function hourly(s){const T=DATA.times,cur=T[TI].slice(0,10),day=dayIdx().find(x=
     const h0=hourOf(k),h1=h0+n,label=step===1?h12(h0):`${h0%12||12}–${h1%12||12} ${h1<12?"AM":"PM"}`;
     const tide=step===1?(hm.tide==null?"\u2013":hm.tide.toFixed(1)):(s.hr[k].tide==null?"\u2013":`${s.hr[k].tide.toFixed(1)}\u2192${s.hr[grp[n-1]].tide.toFixed(1)}`);
     return`<button class="hrow${step===3?" w3":""}${grp.includes(TI)?" on":""}${grp.some(j=>s.wx.day[j])?"":" night"}" data-time="${grp.includes(TI)?TI:mid}" title="${RT[cls].n}"><span>${label}</span><span class="hs"><i class="dot" style="background:${rtCol(cls)}"></i>${faceText(face)}</span>
-    <span>${hm.dom?`${hm.dom.h.toFixed(1)} ft ${Math.round(hm.dom.p)} s ${comp(hm.dom.d)}`:"\u2013"}</span><span>${ws==null?"\u2013":`${Math.round(ws)} kn ${arrow(wd)}<small>${hm.w.word}</small>`}</span><span class="num">${tide}</span><span class="num"><b>${shown(rate).toFixed(1)}</b></span></button>`}).join("")}</div>`}
+    <span>${hm.dom?`${hm.dom.h.toFixed(1)} ft ${Math.round(hm.dom.p)} s ${comp(hm.dom.d)}`:"\u2013"}</span><span>${ws==null?"\u2013":`${Math.round(ws)} kt ${arrow(wd)}<small>${hm.w.word}</small>`}</span><span class="num">${tide}</span><span class="num"><b>${shown(rate).toFixed(1)}</b></span></button>`}).join("")}</div>`}
 function dayChart(s){const T=DATA.times,cur=T[TI].slice(0,10),ks=dayIdx().find(x=>x.d===cur).idx,n=ks.length,W=372,H=306,x0=4,bw=(W-8)/n,x=h=>x0+h*bw,xc=h=>x0+(h+0.5)*bw;
   const kj=ks.map(k=>spotKJ(s.hr[k])),mx=Math.max(20,...kj),top=10,base=74;let g="";
   ks.forEach((k,i)=>{if(s.wx.day[k]===0)g+=`<rect x="${x(i).toFixed(1)}" y="2" width="${(bw+.05).toFixed(2)}" height="${H-22}" fill="var(--night)"/>`});
@@ -1016,7 +1016,7 @@ function dayChart(s){const T=DATA.times,cur=T[TI].slice(0,10),ks=dayIdx().find(x
     const ws=s.wx.ws[k],wd=s.wx.wd[k];if(ws!=null)g+=`<g transform="translate(${xc(i)},146) rotate(${Math.round(wd+180)})"><path d="M0 -5.5 L3.8 4 L0 2 L-3.8 4 Z" fill="var(--ink)"/></g><text x="${xc(i)}" y="168" font-size="12" font-weight="600" text-anchor="middle" fill="var(--ink)">${Math.round(ws)}</text><text x="${xc(i)}" y="183" font-size="10" text-anchor="middle" fill="var(--muted)">${Math.round(s.wx.wg[k]||ws)}</text>`;
     g+=`<text x="${xc(i)}" y="${H-6}" font-size="10" text-anchor="middle" fill="var(--muted)">${h12(hourOf(k)).replace(" ","").toLowerCase()}</text>`}
   const wm=Math.max(15,...ks.map(k=>s.wx.wg[k]||0));let wa=`M${x(0)} 194`;ks.forEach((k,i)=>{wa+=`L${xc(i).toFixed(1)} ${(194-(s.wx.ws[k]||0)/wm*46).toFixed(1)}`});wa+=`L${x(n)} 194Z`;
-  g=`<path d="${wa}" fill="var(--map-ink)" opacity=".13"/>`+g+`<text x="${x0+8}" y="128" font-size="9.5" fill="var(--muted)">Wind/Gust (kn)</text>`;
+  g=`<path d="${wa}" fill="var(--map-ink)" opacity=".13"/>`+g+`<text x="${x0+8}" y="128" font-size="9.5" fill="var(--muted)">Wind/Gust (kt)</text>`;
   if(s.tide){const vals=ks.map(k=>s.tide[k]).filter(v=>v!=null),ex=s.hilo.filter(e=>e.t.slice(0,10)===cur),lo=Math.min(...vals,...ex.map(e=>e.v)),hi=Math.max(...vals,...ex.map(e=>e.v)),t0=244,t1=284,ty=v=>t1-(v-lo)/(hi-lo||1)*(t1-t0);
     let d="",pen=false;ks.forEach((k,i)=>{const v=s.tide[k];if(v==null){pen=false;return}d+=(pen?"L":"M")+x(i).toFixed(1)+" "+ty(v).toFixed(1);pen=true});
     g+=`<text x="${x0+8}" y="222" font-size="9.5" fill="var(--muted)">Tide (ft)</text><path d="${d}" fill="none" stroke="var(--map-ink)" stroke-width="1.6"/>`;
@@ -1047,7 +1047,7 @@ const DIRW={N:"north",NNE:"north",NE:"northeast",ENE:"east",E:"east",ESE:"east",
 /* Rule-of-thumb wetsuit by water temperature in degrees F (the usual surf-shop charts). */
 function suitFor(f){return f>=75?"Boardshorts":f>=70?"Spring suit \u00b7 2 mm":f>=65?"3/2 mm fullsuit":f>=60?"4/3 mm fullsuit":f>=55?"4/3 mm + booties":f>=50?"5/4 mm + booties, hood":"6/5 mm hooded, gloves"}
 function summary(s,h,tide,trend,sst){const out=[],ws=s.wx.ws[TI],wd=s.wx.wd[TI];
-  if(ws!=null)out.push(ws<4?`Light ${DIRW[comp(wd)]} wind`:`${Math.round(ws)} kn ${h.w.word.toLowerCase()} wind`);
+  if(ws!=null)out.push(ws<4?`Light ${DIRW[comp(wd)]} wind`:`${Math.round(ws)} kt ${h.w.word.toLowerCase()} wind`);
   if(tide!=null)out.push(`${tide<1.5?"low":tide<4?"mid":"high"} tide ${trend}`.trim());
   if(sst!=null)out.push(`${Math.round(sst*9/5+32)}° water`);
   const t=out.join(", ");return t?t[0].toUpperCase()+t.slice(1)+".":""}
@@ -1076,7 +1076,7 @@ const sessionName=h=>h<8?"Dawn patrol":h<11?"Morning":h<14?"Midday":h<17?"Aftern
 function winCard(s,w){const k=w.peakIdx,h=s.hr[k],p=tparts(DATA.times[w.startIdx]),ws=s.wx.ws[k];
   const tide=h.tide,nx=s.tide&&s.tide[Math.min(k+1,s.tide.length-1)],trend=tide==null||nx==null?"":nx>tide+0.05?"rising":nx<tide-0.05?"falling":"slack";
   const r=TIDE_RANGE[s.td],zone=tide!=null&&r&&tide>=r[0]&&tide<=r[1];
-  const l1=[h.dom?`${h.dom.h.toFixed(1)} ft @ ${Math.round(h.dom.p)} s ${comp(h.dom.d)}`:"",ws==null||h.w.d==null?"":`${h.w.word} ${Math.round(ws)} kn`].filter(Boolean).join(" · ");
+  const l1=[h.dom?`${h.dom.h.toFixed(1)} ft @ ${Math.round(h.dom.p)} s ${comp(h.dom.d)}`:"",ws==null||h.w.d==null?"":`${h.w.word} ${Math.round(ws)} kt`].filter(Boolean).join(" · ");
   const l2=tide==null?"":`${tide.toFixed(1)} ft${trend?", "+trend:""}${zone?` <span class="z">· in the zone</span>`:""}`;
   return`<button class="bwc" data-time="${w.startIdx}" style="--rc:${rtCol(h.cls)}"><i></i><div class="t">${DOW[p.dow]} ${MON[p.m-1]} ${p.d} · ${winRange(w)}<small>${sessionName(hourOf(w.startIdx))}</small></div><div class="f">${faceText(h.face)}</div><div class="p"><span class="pill${RT[h.cls].dk?" dk":""}">${RT[h.cls].n}</span></div><div class="c">${l1}${l1&&l2?"<br>":""}${l2}</div></button>`}
 function bestWindowsView(s){
@@ -1127,9 +1127,9 @@ function whyScore(s){if(!s.ok)return"";const i=TI,h=s.hr[i],hd=`<p class="lab" s
    size:{inp:`${h.face.toFixed(1)} ft face · ideal ${lo}–${hi} ft`,src:"forecast model",
      fm:h.face<lo?`Below the ideal range, so 0.2 + ${SZ.a} × (${h.face.toFixed(1)} − 1) ÷ (${lo} − 1)`:h.face<=hi?`Inside the ideal range, so ${SZ.b} + ${+(1-SZ.b).toFixed(2)} × (${h.face.toFixed(1)} − ${lo}) ÷ (${hi} − ${lo})`:`Above the ideal range, so 1 − ${SZ.d} × (${h.face.toFixed(1)} − ${hi}) ÷ ${hi}, never below ${SZ.m}`},
    period:{inp:dom?`${Math.round(dom.p)} s peak period`:"no swell",src:"forecast model",fm:`0.55 + 0.45 × period score ${per.toFixed(2)}. Period score is (period − 6) ÷ 8 kept between 0 and 1, times 0.8, plus 0.2.`},
-   wind:{inp:ws==null?"no wind data":`${Math.round(ws)} kn ${w.word.toLowerCase()}`,src:"4 wind models: highest on daytime onshore, else median",fm:ws==null?"No wind data, so wind is not applied.":`0.25 + 0.75 × wind quality ${w.q.toFixed(2)}. Quality drops from 1 as wind passes 4 kn, faster when it is onshore.`},
+   wind:{inp:ws==null?"no wind data":`${Math.round(ws)} kt ${w.word.toLowerCase()}`,src:"4 wind models: highest on daytime onshore, else median",fm:ws==null?"No wind data, so wind is not applied.":`0.25 + 0.75 × wind quality ${w.q.toFixed(2)}. Quality drops from 1 as wind passes 4 kt, faster when it is onshore.`},
    tide:{inp:tide==null?"no tide data":`${tide.toFixed(1)} ft · likes ${s.td}`,src:"NOAA tide predictions",fm:tide==null||!tr?"No tide data, so tide is not applied.":off===0?`Inside this spot's best band (${tr[0]} to ${tr[1]} ft), so no penalty.`:`${off.toFixed(1)} ft outside the best band (${tr[0]} to ${tr[1]} ft), so 1 − 0.1 × ${off.toFixed(1)}, never below 0.7.`},
-   cap:{inp:cap>=10?"No cap, not blown out":`Capped at ${shown(cap).toFixed(1)}`,src:"4 wind models: highest on daytime onshore, else median",fm:ws==null?"No wind data.":`Effective onshore wind is ${e.toFixed(1)} kn (speed × how onshore). ${CUR?`Up to 3 kn there is no cap. The ceiling then slopes down in a straight line to ${shown(4.9).toFixed(1)} at 6 kn. ${[[8,3.8],[10,2.9],[12,2.3],[15,1.8]].map(([k,c])=>`At ${k} kn it cannot pass ${shown(c).toFixed(1)}`).join(". ")}. Above that it keeps falling toward 1.`:`Up to 4 kn there is no cap; at 6 kn the score cannot pass 4; at 8 kn, 2.8; at 10 kn, 1.9; above that, 1.`}`}};
+   cap:{inp:cap>=10?"No cap, not blown out":`Capped at ${shown(cap).toFixed(1)}`,src:"4 wind models: highest on daytime onshore, else median",fm:ws==null?"No wind data.":`Effective onshore wind is ${e.toFixed(1)} kt (speed × how onshore). ${CUR?`Up to 3 kt there is no cap. The ceiling then slopes down in a straight line to ${shown(4.9).toFixed(1)} at 6 kt. ${[[8,3.8],[10,2.9],[12,2.3],[15,1.8]].map(([k,c])=>`At ${k} kt it cannot pass ${shown(c).toFixed(1)}`).join(". ")}. Above that it keeps falling toward 1.`:`Up to 4 kt there is no cap; at 6 kt the score cannot pass 4; at 8 kt, 2.8; at 10 kt, 1.9; above that, 1.`}`}};
   const fmtF=x=>Math.round(x.f*100)+"%";
   const rows=FR.map(x=>{const d=D[x.k],on=WHY.has(x.k),bad=x.loss>=0.3,drag=x===big&&x.loss>=0.3;
     return`<details class="wy${bad?" bad":""}${drag?" drag":""}" data-why="${x.k}"${on?" open":""}><summary><span class="nm">${NM[x.k]}</span><span class="f">${fmtF(x)}</span><span class="in">${d.inp}</span><span class="bar"><i style="width:${Math.round(clamp(x.f,0,1)*100)}%"></i></span></summary>
@@ -1161,21 +1161,21 @@ async function loadObs(s){const k=s.fp,c=OBS[k];if(c&&Date.now()-c.at<6e5)return
 /* Compares the nearest station with the wind the app uses right now. Returns a short note, or "" when they agree or there is no data. */
 function windFlag(s){const o=OBS[s.fp];if(!o||!o.st||!o.st.length||Math.abs(TI-NOWI)>1)return"";
   const ob=o.st[0],used=s.wx.ws[NOWI];if(used==null)return"";const d=ob.kn-used;
-  if(d>=3)return`Station ${ob.id} reads ${Math.round(ob.kn)} kn, ${Math.round(d)} kn above the ${Math.round(used)} kn used here. The forecast may be low.`;
-  if(d<=-3)return`Station ${ob.id} reads ${Math.round(ob.kn)} kn, ${Math.round(-d)} kn below the ${Math.round(used)} kn used here. The forecast may be high.`;return""}
+  if(d>=3)return`Station ${ob.id} reads ${Math.round(ob.kn)} kt, ${Math.round(d)} kt above the ${Math.round(used)} kt used here. The forecast may be low.`;
+  if(d<=-3)return`Station ${ob.id} reads ${Math.round(ob.kn)} kt, ${Math.round(-d)} kt below the ${Math.round(used)} kt used here. The forecast may be high.`;return""}
 function windCheckBody(s){const i=TI,w=s.wx,o=OBS[s.fp],now=Math.abs(TI-NOWI)<=1;
-  const rows=WMODELS.map(([m,l])=>{const v=w.wm&&w.wm[m]&&w.wm[m][i];return v?`<div class="wcr"><span>${l}</span><span>${Math.round(v[0])} kn</span><span>${arrow(v[1])} ${comp(v[1])}</span></div>`:""}).join("");
+  const rows=WMODELS.map(([m,l])=>{const v=w.wm&&w.wm[m]&&w.wm[m][i];return v?`<div class="wcr"><span>${l}</span><span>${Math.round(v[0])} kt</span><span>${arrow(v[1])} ${comp(v[1])}</span></div>`:""}).join("");
   const used=w.ws[i],med=w.wmed&&w.wmed[i];
   let obRows="",note="";
   if(!now)note="Move the timeline to Now to compare with live station readings.";
   else if(!o||(o.busy&&!o.st.length))note="Checking nearby stations…";
   else if(o.err)note=o.err;
-  else{obRows=o.st.map(t=>`<div class="wcr obs"><span>${esc(t.id)}<i>${t.mi.toFixed(1)} mi</i></span><span>${Math.round(t.kn)} kn${t.gust!=null&&t.gust>t.kn+1?` g${Math.round(t.gust)}`:""}</span><span>${t.dir==null?"–":arrow(t.dir)+" "+comp(t.dir)}</span></div>`).join("");
+  else{obRows=o.st.map(t=>`<div class="wcr obs"><span>${esc(t.id)}<i>${t.mi.toFixed(1)} mi</i></span><span>${Math.round(t.kn)} kt${t.gust!=null&&t.gust>t.kn+1?` g${Math.round(t.gust)}`:""}</span><span>${t.dir==null?"–":arrow(t.dir)+" "+comp(t.dir)}</span></div>`).join("");
     note=`Observed ${Math.round(o.st[0].age)} min ago, from weather.gov. Airport stations sit a little inland, so the beach itself is often a bit windier.`}
   const fl=now?windFlag(s):"";
   return`${fl?`<p class="wflag">${esc(fl)}</p>`:""}<div class="wcr hd"><span>Source</span><span>Speed</span><span>From</span></div>${obRows}${rows}
-  <div class="wcr used"><span>Median of 4</span><span>${med==null?"–":Math.round(med)+" kn"}</span><span></span></div>
-  <div class="wcr used"><span><b>Used by the app</b></span><span><b>${used==null?"–":Math.round(used)+" kn"}</b></span><span>${used!=null&&med!=null&&used>med+0.4?"highest":"median"}</span></div>
+  <div class="wcr used"><span>Median of 4</span><span>${med==null?"–":Math.round(med)+" kt"}</span><span></span></div>
+  <div class="wcr used"><span><b>Used by the app</b></span><span><b>${used==null?"–":Math.round(used)+" kt"}</b></span><span>${used!=null&&med!=null&&used>med+0.4?"highest":"median"}</span></div>
   <p class="wcn">${esc(note)}</p>`}
 function windCheck(s){if(!s.ok||!s.wx.wm)return"";
   const el=`<div class="wx wck" id="wxchk"><p class="lab" style="margin:0 0 8px">Wind check · ${fmt(TI)}</p><div id="wxchkb">${windCheckBody(s)}</div></div>`;
@@ -1228,7 +1228,7 @@ function popRender(center){const s=S.sel!=null&&DATA?DATA.spots[S.sel]:null;if(!
   if(POP.k==="wind"){tt="Wind";
     seg=`<div class="seg2 pseg" role="group" aria-label="Wind view"><button data-flip="0" aria-pressed="${!POP.flip}">By hour</button><button data-flip="1" aria-pressed="${POP.flip}">Check</button></div>`;
     const ws=s.wx.ws[TI],wd=s.wx.wd[TI],h=s.hr[TI];
-    html=POP.flip?windCheck(s):`<div class="prd"><span>${fmt(TI)}</span>${ws==null?"<b>n/a</b>":`<b>${Math.round(ws)} kn</b> ${arrow(wd)} ${comp(wd)}<span>gusts ${Math.round(s.wx.wg[TI]||ws)}</span><span>${h.w.word}</span>`}</div>
+    html=POP.flip?windCheck(s):`<div class="prd"><span>${fmt(TI)}</span>${ws==null?"<b>n/a</b>":`<b>${Math.round(ws)} kt</b> ${arrow(wd)} ${comp(wd)}<span>gusts ${Math.round(s.wx.wg[TI]||ws)}</span><span>${h.w.word}</span>`}</div>
       <div class="pscroll">${windChartSvg(s)}</div><p class="pnote">Wind in knots over gusts. Orange means the wind is hurting the surface. Swipe sideways for the week, tap an hour to jump to it.</p>`}
   else if(POP.k==="tide"){tt="Tide";
     if(!s.tide)html=`<p class="pnote">No tide data for this spot.</p>`;
@@ -1250,7 +1250,7 @@ function detail(s){const h=s.hr[TI];
    <div class="hchips"><span class="hpill${RT[h.cls].dk?" dk":""}"><i></i>${RT[h.cls].n}</span>${h.face<1?"":`<span class="hchip"><b>${faceText(h.face)}</b></span>${dom?`<span class="hchip">${Math.round(dom.p)} s</span><span class="hchip">${comp(dom.d)} ${Math.round(dom.d)}\u00b0</span>`:""}`}</div>
    <p class="hline">${summary(s,h,tide,trend,sst)}</p>${nb?`<p class="hbuoy">${esc(nb.b.n)} · ${nb.d.hs[nb.d.hs.length-1].toFixed(1)} ft · ${Math.round(nb.d.tp[nb.d.tp.length-1])} s · ${ageText(nb.d)}</p>`:""}</div>
   <div class="tiles">
-   <button class="tile" data-pop="wind"><span class="tk">${ICON.wind}Wind<i class="chev">›</i></span><b>${h.w.d==null?"n/a":`${Math.round(s.wx.ws[TI])} kn ${arrow(s.wx.wd[TI])} ${comp(s.wx.wd[TI])}`}</b><small>${h.w.d==null?"":`${h.w.word} · gusts ${Math.round(s.wx.wg[TI]||0)}`}</small></button>
+   <button class="tile" data-pop="wind"><span class="tk">${ICON.wind}Wind<i class="chev">›</i></span><b>${h.w.d==null?"n/a":`${Math.round(s.wx.ws[TI])} kt ${arrow(s.wx.wd[TI])} ${comp(s.wx.wd[TI])}`}</b><small>${h.w.d==null?"":`${Math.round(s.wx.wg[TI]||s.wx.ws[TI]||0)} kt`}</small><small>${h.w.d==null?"":h.w.word}</small></button>
    <button class="tile" data-pop="tide"${s.tide?"":" disabled"}><span class="tk">${ICON.tide}Tide<i class="chev">›</i></span><b>${tide==null?"n/a":`${tide.toFixed(1)} ft ${trend==="rising"?"↑":trend==="falling"?"↓":""}`}</b><small>${tide==null?"":`${trend[0].toUpperCase()+trend.slice(1)} · likes ${s.td}`}</small></button>
    <div class="tile"><span class="tk">${ICON.temp}Water</span><b>${sst==null?"n/a":`${Math.round(sst*9/5+32)}°F`}</b><small>${sst==null?"":suitFor(sst*9/5+32)}</small></div>
    <button class="tile" data-pop="wx"${s.wx&&s.wx.tp&&s.wx.tp[TI]!=null?"":" disabled"}><span class="tk">${ICON.sun}Weather<i class="chev">›</i></span><b>${s.wx&&s.wx.tp&&s.wx.tp[TI]!=null?Math.round(s.wx.tp[TI])+"°F":"n/a"}</b><small>${s.wx&&s.wx.tp&&s.wx.tp[TI]!=null?skyOf(s.wx,TI).t:""}</small></button>
@@ -1277,7 +1277,7 @@ function howView(){return`<div class="det"><h2>How spots are rated</h2>
   <p class="note" style="color:var(--ink)">Every hour, each spot is scored on four things. They multiply, so flat water never rates well.</p>
   <dl class="kv" style="grid-template-columns:1fr">
   <div><dt>Size</dt><dd><small>Breaking height from each swell's height and period. Short chop under 9 s is marked down, swell outside the spot's window is cut, and a local gain adjusts for spots that focus or shelter swell.</small></dd></div>
-  <div><dt>Wind</dt><dd><small>Under 4 kn is glassy. Offshore costs little, onshore costs a lot. Onshore also caps the rating: ${CUR?"about 6 kn limits a spot to Fair, 10 kn to Poor to fair, 15 kn to Poor.":"about 6 kn limits a spot to Fair, 10 kn to Poor."}</small></dd></div>
+  <div><dt>Wind</dt><dd><small>Under 4 kt is glassy. Offshore costs little, onshore costs a lot. Onshore also caps the rating: ${CUR?"about 6 kt limits a spot to Fair, 10 kt to Poor to fair, 15 kt to Poor.":"about 6 kt limits a spot to Fair, 10 kt to Poor."}</small></dd></div>
   <div><dt>Period</dt><dd><small>Longer is better, from 6 s (weak) to 14 s and up (full marks).</small></dd></div>
   <div><dt>Tide</dt><dd><small>A small penalty outside the tide the spot likes.</small></dd></div></dl>
   <div class="wins">${RT.map((r,c)=>`<div class="win" style="grid-template-columns:130px 1fr">${rlab(c)}<span class="m">${(CUR?["Faces under 1 ft","Score below 2","2 to 4","4 to 6","6 to 7.5","7.5 to 9","Above 9"]:["Faces under 1 ft","Score below 2","2 to 3.5","3.5 to 5","5 to 6.5","6.5 to 8.8","Above 8.8"])[c]}</span></div>`).join("")}</div>
