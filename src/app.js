@@ -440,7 +440,7 @@ function peekRender(){const pk=$("peek");if(!DATA){pk.hidden=true;return}
   if(phone()&&SH.snap==="peek"){const b=SH.px.peek;sheetCalc();if(SH.px.peek!==b)setSnap("peek",true)}}
 function select(k){S.sel=k;S.tab="spots";render();$("body").scrollTop=0;colorMarks();placeMarks();
   if(k!=null&&phone()&&SH.snap==="peek")setSnap("half")}
-for(const t of ["spots","buoys","how"])$("tab-"+t).onclick=()=>{S.tab=t;S.sel=null;render();colorMarks()};
+for(const t of ["spots","best","cmp","buoys","how"])$("tab-"+t).onclick=()=>{S.tab=t;S.sel=null;render();colorMarks()};
 function swellLine(c){return c?`${c.h.toFixed(1)} ft @ ${Math.round(c.p)} s ${arrow(c.d)} ${comp(c.d)} ${Math.round(c.d)}°`:"No swell"}
 function outlook(){const r=DATA.ref,T=DATA.times;if(!r||!r.sh.some(v=>v!=null))return"";
   const W=372,H=92,x=i=>26+i*(W-32)/(T.length-1),mx=Math.max(4,...r.sh.map(v=>v||0),...r.s2h.map(v=>v||0)),y=v=>H-22-(v/mx)*(H-34);
@@ -467,6 +467,64 @@ function listView(){const rows=DATA.spots.filter(inFilter);if(S.region==="local"
     <span class="sub">${lm(s)}<b>${RT[h.cls].n}</b> · ${h.dom?`${comp(h.dom.d)} ${Math.round(h.dom.p)} s`:"no swell"} · ${h.w.d==null?"wind n/a":`${h.w.word.toLowerCase()} ${Math.round(s.wx.ws[TI])} kt`}</span></button>`}).join("")}</div></div>${outlook()}${foot()}`}
 function foot(){const mins=Math.round((Date.now()-DATA.at)/6e4),nb=DATA.buoys.filter(b=>b.ok).length;
   return`<div class="foot">Updated ${mins<1?"just now":mins+" min ago"} · ${nb} of ${BUOYS.length} buoys reporting${DATA.tidesOk?"":" · tides did not load, so ratings ignore tide"}.<button id="refresh">Refresh</button></div>`}
+
+/* ---------- Best tab: each spot's best stretch in the chosen range ---------- */
+const BEST=(()=>{const o={range:"3d",scope:"local"};try{Object.assign(o,JSON.parse(localStorage.getItem("swellchart.best")||"{}"))}catch(e){}if(!["today","3d","wknd"].includes(o.range))o.range="3d";if(!["fav","local","all"].includes(o.scope))o.scope="local";return o})();
+const saveBest=()=>{try{localStorage.setItem("swellchart.best",JSON.stringify(BEST))}catch(e){}};
+const BRANGE={today:"Today","3d":"Next 3 days",wknd:"Weekend"},BSCOPE={fav:"★ Favs",local:"Local",all:"All"};
+function bestScope(sc){BEST.scope=sc;saveBest();
+  if(sc!=="local"||S.loc){if(sc==="local")computeLocal();render();return}
+  S.locWait=true;render();const done=()=>{S.locWait=false;computeLocal();render()};
+  if(!navigator.geolocation){S.loc={...HOME,gps:false};done();return}
+  navigator.geolocation.getCurrentPosition(p=>{S.loc={la:p.coords.latitude,lo:p.coords.longitude,gps:true};done()},()=>{S.loc={...HOME,gps:false};done()},{timeout:6000,maximumAge:6e5})}
+const bestDays=()=>{const t=laNow().date,ds=dayIdx().filter(x=>x.d>=t);
+  return BEST.range==="today"?ds.slice(0,1):BEST.range==="wknd"?ds.filter(x=>{const w=tparts(DATA.times[x.idx[0]]).dow;return w===0||w===6}):ds.slice(0,3)};
+// The best run of 2 or more daylight hours at Fair to good or better, judged by its average score.
+function bestWindow(s,days){let best=null;
+  for(const {idx} of days){let run=[];const close=()=>{if(run.length>=2){const m=run.reduce((t,k)=>t+s.hr[k].rate,0)/run.length;if(!best||m>best.m+1e-9||(Math.abs(m-best.m)<1e-9&&run.length>best.ks.length))best={ks:run,m}}run=[]};
+    for(const k of idx){if(k>=NOWI&&s.wx.day[k]&&s.hr[k].cls>=4)run.push(k);else close()}close()}
+  return best}
+const spanText=(a,b)=>{const r=h=>h%12||12,p=h=>h%24<12?"AM":"PM";return p(a)===p(b)?`${r(a)}–${r(b)} ${p(a)}`:`${r(a)} ${p(a)}–${r(b)} ${p(b)}`};
+function bestView(){const days=bestDays(),today=laNow().date;
+  const inScope=s=>BEST.scope==="all"||(BEST.scope==="fav"?FAVS.has(s.n):LOCSET.has(s.n));
+  const items=[];if(!S.locWait)for(const s of DATA.spots){if(!s.ok||!inScope(s))continue;const w=bestWindow(s,days);if(w)items.push({s,w})}
+  items.sort((a,b)=>b.w.m-a.w.m);
+  const info=S.locWait?"Finding your location…":BEST.scope==="local"?(S.loc&&S.loc.gps?"15 spots nearest to you":`15 spots nearest ${HOME.n}${S.loc&&S.loc.far?" (you are far from SoCal)":" (location off)"}`):BEST.scope==="fav"?`${FAVS.size} favorite${FAVS.size===1?"":"s"}`:"All spots";
+  const empty=S.locWait?"":!days.length?`<p class="note">${BEST.range==="wknd"?"No weekend days in this forecast yet.":"No forecast days left."}</p>`:items.length?"":`<p class="note">${BEST.scope==="fav"&&!FAVS.size?"No favorites yet. Open a spot and tap the star.":"No stretch of Fair to good or better in this range. Try a longer range or a wider list."}</p>`;
+  return`<div style="display:flex;flex-direction:column;gap:8px"><div class="chips three" role="group" aria-label="Which spots">${Object.entries(BSCOPE).map(([k,n])=>`<button data-bscope="${k}" aria-pressed="${BEST.scope===k}">${n}</button>`).join("")}</div>
+  <div class="chips three" role="group" aria-label="When">${Object.entries(BRANGE).map(([k,n])=>`<button data-brange="${k}" aria-pressed="${BEST.range===k}">${n}</button>`).join("")}</div>
+  <div class="steprow" style="margin-top:2px"><span class="lab">${info} · stretches of 2+ hours at Fair to good or better</span></div>
+  ${empty}<div class="bcards">${items.map(({s,w})=>{const ks=w.ks,pk=ks.reduce((a,k)=>s.hr[k].rate>s.hr[a].rate?k:a,ks[0]),mid=ks[Math.floor(ks.length/2)],hm=s.hr[mid],face=ks.reduce((t,k)=>t+s.hr[k].face,0)/ks.length,cls=clsOf(face,w.m),ws=s.wx.ws[mid],p=tparts(DATA.times[ks[0]]),d=DATA.times[ks[0]].slice(0,10);
+    const dist=BEST.scope==="local"&&LOCSET.has(s.n)?`${LOCSET.get(s.n).toFixed(LOCSET.get(s.n)<10?1:0)} mi · `:"";
+    return`<button class="bcard" data-best="${s.idx}:${pk}" style="--rc:${rtCol(cls)}"><span class="bring" style="--p:${Math.round(shown(w.m)*10)}"><b>${shown(w.m).toFixed(1)}</b></span>
+      <span class="bm"><span class="bn">${esc(s.n)}${FAVS.has(s.n)?' <span class="fv" aria-label="Favorite">★</span>':""}</span><span class="bs">${dist}${faceText(face)} · ${hm.dom?`${Math.round(hm.dom.p)} s ${comp(hm.dom.d)}`:"no swell"} · ${hm.w.d==null||ws==null?"wind n/a":`${Math.round(ws)} kt ${hm.w.word.toLowerCase()}`}</span></span>
+      <span class="bt"><b>${d===today?"Today":DOW[p.dow]} ${spanText(hourOf(ks[0]),hourOf(ks[ks.length-1])+1)}</b>${RT[cls].n}</span></button>`}).join("")}</div>
+  <p class="note" style="margin-top:2px">Tap a card to open that spot at its best hour.</p></div>${foot()}`}
+
+/* ---------- Compare tab: up to three spots side by side at the timeline hour ---------- */
+let CMP=[],CMPINIT=false;try{CMP=JSON.parse(localStorage.getItem("swellchart.cmp")||"[]");if(!Array.isArray(CMP))CMP=[]}catch(e){CMP=[]}
+const saveCmp=()=>{try{localStorage.setItem("swellchart.cmp",JSON.stringify(CMP))}catch(e){}};
+function cmpView(){const ok=DATA.spots.filter(s=>s.ok);
+  CMP=CMP.filter(n=>ok.some(s=>s.n===n)).slice(0,3);
+  if(!CMP.length&&!CMPINIT){const fv=ok.filter(s=>FAVS.has(s.n));CMP=(fv.length>=2?fv:[...ok].sort((a,b)=>b.hr[TI].rate-a.hr[TI].rate)).slice(0,3).map(s=>s.n)}
+  CMPINIT=true;const cols=CMP.map(n=>ok.find(s=>s.n===n)),cur=DATA.times[TI].slice(0,10),day=dayIdx().find(x=>x.d===cur);
+  const star=(vals,i)=>cols.length>1&&vals[i]!=null&&vals[i]===Math.max(...vals.filter(v=>v!=null))?" best":"";
+  const rates=cols.map(s=>s.hr[TI].rate),faces=cols.map(s=>s.hr[TI].face),qs=cols.map(s=>s.hr[TI].w.d==null?null:s.hr[TI].w.q);
+  const tideA=s=>{const a=s.hr[TI].tide,b=s.hr[Math.min(TI+1,s.hr.length-1)].tide;return a==null?"–":`${a.toFixed(1)} ft ${b==null||Math.abs(b-a)<0.005?"":b>a?"↑":"↓"}`};
+  const seg=s=>[[5,10],[10,14],[14,19]].map(([a,b])=>{const ks=day.idx.filter(k=>hourOf(k)>=a&&hourOf(k)<b);if(!ks.length)return`<i style="background:var(--line)"></i>`;const f=ks.reduce((t,k)=>t+s.hr[k].face,0)/ks.length,r=ks.reduce((t,k)=>t+s.hr[k].rate,0)/ks.length;return`<i style="background:${rtCol(clsOf(f,r))}"></i>`}).join("");
+  const row=(lab,fn)=>`<tr><td>${lab}</td>${cols.map((s,i)=>`<td>${fn(s,i)}</td>`).join("")}</tr>`;
+  const left=ok.filter(s=>!CMP.includes(s.n));
+  return`<div style="display:flex;flex-direction:column;gap:10px"><p class="lab">Spots (pick up to 3)</p>
+  <div class="csel">${cols.map(s=>`<button class="cchip" data-cmprm="${s.idx}" aria-label="Remove ${esc(s.n)}">${esc(s.n)} ✕</button>`).join("")}${cols.length<3?`<select id="cmpadd" class="cadd" aria-label="Add a spot"><option value="">+ Add spot</option>${left.map(s=>`<option value="${s.idx}">${esc(s.n)}</option>`).join("")}</select>`:""}</div>
+  <p class="lab">Time: <b style="color:var(--ink);font-weight:600">${fmt(TI)}</b> · follows the timeline</p>
+  ${cols.length?`<table class="cmp"><thead><tr><th></th>${cols.map(s=>`<th><button data-spot="${s.idx}">${esc(s.n)}</button></th>`).join("")}</tr></thead><tbody>
+  ${row("Score",(s,i)=>{const h=s.hr[TI];return`<div class="sc${star(rates,i)}"><i style="background:${rtCol(h.cls)}"></i>${shown(h.rate).toFixed(1)}</div><small>${RT[h.cls].n}</small>`})}
+  ${row("Size",(s,i)=>`<span class="v${star(faces,i)}">${faceText(s.hr[TI].face)}</span>`)}
+  ${row("Swell",s=>{const d=s.hr[TI].dom;return d?`${d.h.toFixed(1)} ft · ${Math.round(d.p)} s<small>${comp(d.d)}</small>`:"–"})}
+  ${row("Wind",(s,i)=>{const h=s.hr[TI],ws=s.wx.ws[TI];return h.w.d==null||ws==null?"–":`<span class="v${star(qs,i)}">${Math.round(ws)} kt</span><small>${h.w.word}</small>`})}
+  ${row("Tide",s=>tideA(s))}
+  ${row("Day",s=>`<div class="mini">${seg(s)}</div>`)}</tbody></table>
+  <p class="note">The gold star marks the best score, size and wind. Day bars are morning, midday and afternoon. Tap a name to open the spot.</p>`:`<p class="note">Pick two or three spots to compare them hour by hour.</p>`}</div>${foot()}`}
 function fcChart(s){const T=DATA.times,W=372,H=176,x0=24,bw=(W-x0-4)/T.length,x=i=>x0+i*bw,top=18,base=112,mx=Math.max(6,Math.ceil(Math.max(...s.hr.map(h=>h.face)))),y=v=>base-(v/mx)*(base-top);
   let g="";
   for(let i=0;i<T.length;i++){if(s.wx.day[i]===0)g+=`<rect x="${x(i).toFixed(1)}" y="${top}" width="${(bw+.05).toFixed(2)}" height="${H-top-14}" fill="var(--night)"/>`}
@@ -774,15 +832,20 @@ function howView(){return`<div class="det"><h2>How spots are rated</h2>
   <p class="note">Data: Open-Meteo, Scripps CDIP, NOAA CO-OPS, NWS. Map: OpenFreeMap, © OpenMapTiles, data from OpenStreetMap; terrain from Mapzen, USGS and NOAA; satellite imagery © Esri, Maxar, Earthstar Geographics.</p></div>`}
 let lastRender=0;
 function render(fromPlay){if(!DATA)return;const b=$("body"),keep=b.scrollTop,vh=b.clientHeight;
-  for(const t of ["spots","buoys","how"])$("tab-"+t).setAttribute("aria-selected",S.tab===t);
+  for(const t of ["spots","best","cmp","buoys","how"])$("tab-"+t).setAttribute("aria-selected",S.tab===t);
   /* Swapping the whole body briefly makes it shorter, which on some phones throws the scroll position back to the top (it showed when playing the timeline while scrolled down). A spacer keeps it tall enough for one frame so the position holds. */
-  b.innerHTML=(S.tab==="buoys"?buoyView():S.tab==="how"?howView():S.sel!=null?detail(DATA.spots[S.sel]):listView())+(keep>0?`<div id="slock" style="height:${keep+vh}px" aria-hidden="true"></div>`:"");
+  b.innerHTML=(S.tab==="buoys"?buoyView():S.tab==="how"?howView():S.sel!=null?detail(DATA.spots[S.sel]):S.tab==="best"?bestView():S.tab==="cmp"?cmpView():listView())+(keep>0?`<div id="slock" style="height:${keep+vh}px" aria-hidden="true"></div>`:"");
   b.scrollTop=keep;if(keep>0)requestAnimationFrame(()=>{const l=document.getElementById("slock");if(l)l.remove()});lastRender=Date.now();peekRender();if(POP.k)popRender();
   const ch=b.querySelector(".chips"),on=ch&&ch.querySelector('[aria-pressed="true"]');if(on)ch.scrollLeft=Math.max(0,on.offsetLeft-ch.offsetLeft-(ch.clientWidth-on.offsetWidth)/2)}
+$("body").addEventListener("change",e=>{if(e.target.id==="cmpadd"&&e.target.value!==""&&DATA){const n=DATA.spots[+e.target.value].n;if(!CMP.includes(n)&&CMP.length<3){CMP.push(n);saveCmp()}render()}});
 $("body").addEventListener("toggle",e=>{const k=e.target&&e.target.dataset&&e.target.dataset.why;if(!k)return;if(e.target.open)WHY.add(k);else WHY.delete(k)},true);
-$("body").addEventListener("click",e=>{const t=e.target.closest("[data-pop],[data-spot],[data-fav],[data-sort],[data-reg],[data-back],[data-time],[data-buoy],[data-step],[data-model],#refresh,#fc,[data-chart]");if(!t||!DATA)return;
+$("body").addEventListener("click",e=>{const t=e.target.closest("[data-pop],[data-spot],[data-best],[data-bscope],[data-brange],[data-cmprm],[data-fav],[data-sort],[data-reg],[data-back],[data-time],[data-buoy],[data-step],[data-model],#refresh,#fc,[data-chart]");if(!t||!DATA)return;
   if(t.dataset.pop){popOpen(t.dataset.pop)}
   else if(t.dataset.spot!=null){const k=+t.dataset.spot,s=DATA.spots[k];select(k);goTo(s.lo,s.la,11.5)}
+  else if(t.dataset.best){const [a,k]=t.dataset.best.split(":").map(Number),s=DATA.spots[a];setTime(k);select(a);goTo(s.lo,s.la,11.5)}
+  else if(t.dataset.bscope){bestScope(t.dataset.bscope)}
+  else if(t.dataset.brange){BEST.range=t.dataset.brange;saveBest();render()}
+  else if(t.dataset.cmprm!=null){CMP=CMP.filter(n=>n!==DATA.spots[+t.dataset.cmprm].n);saveCmp();render()}
   else if(t.dataset.model){try{localStorage.setItem("swellchart.model",t.dataset.model)}catch(e){}location.reload()}
   else if(t.dataset.step){S.step=+t.dataset.step;try{localStorage.setItem("swellchart.step",String(S.step))}catch(e){}render()}
   else if(t.dataset.reg){setRegion(t.dataset.reg)}
