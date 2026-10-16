@@ -34,7 +34,7 @@ function breaker(hft,T){if(!(hft>0)||!(T>=5))return 0;const H=hft*0.3048;return 
 // e = wind speed (kt) scaled by how onshore it is: 0 at cross-offshore, full at 120 deg or more off offshore.
 /* Two versions of the scoring can be switched between in the app to compare them. "current" is today's tuned version; "original" is how it was before today's tuning
    (stricter wind ceiling, steeper size curve, and the number shown is the raw score). */
-let MODEL="current";try{if(localStorage.getItem("swellchart.model")==="original")MODEL="original"}catch(e){}
+let MODEL="original";try{if(localStorage.getItem("swellchart.model2")==="current")MODEL="current"}catch(e){}
 const CUR=MODEL==="current";
 const WIND_CAP=CUR?[[3,10],[6,4.9],[8,3.8],[10,2.9],[12,2.3],[15,1.8],[20,1.3],[30,1]]:[[4,10],[6,4],[8,2.8],[10,1.9],[30,1]];
 const SZ=CUR?{a:0.5,b:0.7,d:0.5,m:0.5}:{a:0.4,b:0.6,d:0.55,m:0.45};
@@ -55,8 +55,8 @@ const CCOL=["#e07a4f","#e3b23c","#4fb3d9"];
 /* The score is stretched (SC_RAW to SC_SHOW) so the number reads naturally on a 0-10 scale; labels are chosen from that stretched number (see clsOf). */
 const SC_RAW=[0,2,3.5,5,6.5,8.8,10],SC_SHOW=CUR?[0,2,4,6,7.5,9,10]:SC_RAW;
 const shown=r=>{if(!(r>0))return 0;for(let i=1;i<SC_RAW.length;i++)if(r<=SC_RAW[i])return lerp(SC_SHOW[i-1],SC_SHOW[i],(r-SC_RAW[i-1])/(SC_RAW[i]-SC_RAW[i-1]));return 10};
-/* Labels and colours are decided on the number the person sees (the stretched score): Poor under 2, Poor to fair 2-4, Fair 4-5.5, Fair to good 5.5-7, Good 7-8.8, Epic 8.8+. Original keeps its own raw cutoffs. */
-const CLS_AT=CUR?[2,4,5.5,7,8.8]:[2,3.5,5,6.5,8.8];
+/* Labels and colours are decided on the number the person sees (the stretched score): Poor under 2, Poor to fair 2-4, Fair 4-5.5, Fair to good 5.5-7, Good 7-8.8, Epic 8.8+. Both versions use the same cutoffs. */
+const CLS_AT=[2,4,5.5,7,8.8];
 const clsOf=(face,rate)=>{if(face<1)return 0;const v=shown(rate);let c=1;for(const t of CLS_AT)if(v>=t)c++;return c};
 function rateHour(s,i){const cs=comps(s,i);let e=0,dom=null;for(const c of cs){e+=c.face*c.face;if(!dom||c.face>dom.face)dom=c}
   const face=Math.sqrt(e),w=windScore(s,s.wx.ws[i],s.wx.wd[i]),tide=s.tide?s.tide[i]:null;
@@ -270,7 +270,7 @@ const RAMP={
     v:[[0,[28,38,80]],[5,[50,120,190]],[10,[60,185,150]],[15,[220,210,70]],[20,[240,140,60]],[30,[220,60,90]]]}};
 /* Score layer: the same band colours the spots use, blended between band centres. */
 function hexRGB(h){h=(h||"").replace("#","");if(h.length===3)h=h.replace(/./g,"$&$&");const n=parseInt(h,16);return[n>>16&255,n>>8&255,n&255]}
-function scoreStops(){const c=k=>hexRGB(css("--r-"+k));return CUR?[[0,c("flat")],[1,c("poor")],[3,c("pf")],[4.75,c("fair")],[6.25,c("fg")],[7.9,c("good")],[9.4,c("epic")],[10,c("epic")]]:[[0,c("flat")],[1,c("poor")],[3,c("pf")],[5,c("fair")],[6.75,c("fg")],[8.25,c("good")],[9.5,c("epic")],[10,c("epic")]]}
+function scoreStops(){const c=k=>hexRGB(css("--r-"+k));return [[0,c("flat")],[1,c("poor")],[3,c("pf")],[4.75,c("fair")],[6.25,c("fg")],[7.9,c("good")],[9.4,c("epic")],[10,c("epic")]]}
 /* The ocean takes its colour from the spots' own scores for the selected hour. Each water point blends nearby spots (closer counts far more) and fades out away from the coast. */
 let SPX=null;
 function spotField(){SPX=[];for(const s of DATA.spots)if(s.ok){const h=s.hr[TI];SPX.push({lo:s.lo,la:s.la,v:h.face<1?0:shown(h.rate),n:s.n,h})}}
@@ -842,7 +842,7 @@ function howView(){return`<div class="det"><h2>How spots are rated</h2>
   <div><dt>Wind</dt><dd><small>Under 4 kt is glassy. Offshore costs little, onshore costs a lot. Onshore also caps the rating: ${CUR?"about 6 kt limits a spot to Fair, 10 kt to Poor to fair, 15 kt to Poor.":"about 6 kt limits a spot to Fair, 10 kt to Poor."}</small></dd></div>
   <div><dt>Period</dt><dd><small>Longer is better, from 6 s (weak) to 14 s and up (full marks).</small></dd></div>
   <div><dt>Tide</dt><dd><small>A small penalty outside the tide the spot likes.</small></dd></div></dl>
-  <div class="wins">${RT.map((r,c)=>`<div class="win" style="grid-template-columns:130px 1fr">${rlab(c)}<span class="m">${(CUR?["Faces under 1 ft","Score below 2","2 to 4","4 to 5.5","5.5 to 7","7 to 8.8","Above 8.8"]:["Faces under 1 ft","Score below 2","2 to 3.5","3.5 to 5","5 to 6.5","6.5 to 8.8","Above 8.8"])[c]}</span></div>`).join("")}</div>
+  <div class="wins">${RT.map((r,c)=>`<div class="win" style="grid-template-columns:130px 1fr">${rlab(c)}<span class="m">${["Faces under 1 ft","Score below 2","2 to 4","4 to 5.5","5.5 to 7","7 to 8.8","Above 8.8"][c]}</span></div>`).join("")}</div>
   <p class="note">Model estimates, not cam reports. Sandbars, kelp and local shadowing are invisible to it. Spot windows and gains are starting values to tune.</p>
   <p class="note">Data: Open-Meteo, Scripps CDIP, NOAA CO-OPS, NWS. Map: OpenFreeMap, © OpenMapTiles, data from OpenStreetMap; terrain from Mapzen, USGS and NOAA; satellite imagery © Esri, Maxar, Earthstar Geographics.</p></div>`}
 let lastRender=0;
@@ -861,7 +861,7 @@ $("body").addEventListener("click",e=>{const t=e.target.closest("[data-pop],[dat
   else if(t.dataset.bscope){bestScope(t.dataset.bscope)}
   else if(t.dataset.brange){BEST.range=t.dataset.brange;saveBest();render()}
   else if(t.dataset.cmprm!=null){CMP=CMP.filter(n=>n!==DATA.spots[+t.dataset.cmprm].n);saveCmp();render()}
-  else if(t.dataset.model){try{localStorage.setItem("swellchart.model",t.dataset.model)}catch(e){}location.reload()}
+  else if(t.dataset.model){try{localStorage.setItem("swellchart.model2",t.dataset.model)}catch(e){}location.reload()}
   else if(t.dataset.step){S.step=+t.dataset.step;try{localStorage.setItem("swellchart.step",String(S.step))}catch(e){}render()}
   else if(t.dataset.reg){setRegion(t.dataset.reg)}
   else if(t.dataset.fav!=null){const n=DATA.spots[+t.dataset.fav].n;if(FAVS.has(n))FAVS.delete(n);else FAVS.add(n);saveFavs();render();placeMarks()}
