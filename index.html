@@ -607,7 +607,7 @@ const waveKJ=(hft,T)=>{if(!(hft>0)||!(T>0))return 0;const H=hft*0.3048;return 0.
 const spotKJ=h=>h.cs.reduce((t,c)=>t+(c.p>=5?waveKJ(c.h,c.p)*c.df*c.df:0),0);
 const CCOL=["#e07a4f","#e3b23c","#4fb3d9"];
 /* The label bands are decided on the raw score (SC_RAW). The number shown to the person is stretched so each label reads as its own band on the 0-10 scale (SC_SHOW). */
-const SC_RAW=[0,2,3.5,5,6.5,8.8,10],SC_SHOW=CUR?[0,2,4,6,7.5,9,10]:SC_RAW;
+const SC_RAW=[0,2,3.5,5,6.5,8.8,10],SC_SHOW=CUR?[0,2,4,5.5,7,8.8,10]:SC_RAW;
 const shown=r=>{if(!(r>0))return 0;for(let i=1;i<SC_RAW.length;i++)if(r<=SC_RAW[i])return lerp(SC_SHOW[i-1],SC_SHOW[i],(r-SC_RAW[i-1])/(SC_RAW[i]-SC_RAW[i-1]));return 10};
 const clsOf=(face,rate)=>face<1?0:rate<2?1:rate<3.5?2:rate<5?3:rate<6.5?4:rate<8.8?5:6;
 function rateHour(s,i){const cs=comps(s,i);let e=0,dom=null;for(const c of cs){e+=c.face*c.face;if(!dom||c.face>dom.face)dom=c}
@@ -822,7 +822,7 @@ const RAMP={
     v:[[0,[28,38,80]],[5,[50,120,190]],[10,[60,185,150]],[15,[220,210,70]],[20,[240,140,60]],[30,[220,60,90]]]}};
 /* Score layer: the same band colours the spots use, blended between band centres. */
 function hexRGB(h){h=(h||"").replace("#","");if(h.length===3)h=h.replace(/./g,"$&$&");const n=parseInt(h,16);return[n>>16&255,n>>8&255,n&255]}
-function scoreStops(){const c=k=>hexRGB(css("--r-"+k));return[[0,c("flat")],[1,c("poor")],[3,c("pf")],[5,c("fair")],[6.75,c("fg")],[8.25,c("good")],[9.5,c("epic")],[10,c("epic")]]}
+function scoreStops(){const c=k=>hexRGB(css("--r-"+k));return CUR?[[0,c("flat")],[1,c("poor")],[3,c("pf")],[4.75,c("fair")],[6.25,c("fg")],[7.9,c("good")],[9.4,c("epic")],[10,c("epic")]]:[[0,c("flat")],[1,c("poor")],[3,c("pf")],[5,c("fair")],[6.75,c("fg")],[8.25,c("good")],[9.5,c("epic")],[10,c("epic")]]}
 /* The ocean takes its colour from the spots' own scores for the selected hour. Each water point blends nearby spots (closer counts far more) and fades out away from the coast. */
 let SPX=null;
 function spotField(){SPX=[];for(const s of DATA.spots)if(s.ok){const h=s.hr[TI];SPX.push({lo:s.lo,la:s.la,v:h.face<1?0:shown(h.rate),n:s.n,h})}}
@@ -1394,7 +1394,7 @@ function howView(){return`<div class="det"><h2>How spots are rated</h2>
   <div><dt>Wind</dt><dd><small>Under 4 kt is glassy. Offshore costs little, onshore costs a lot. Onshore also caps the rating: ${CUR?"about 6 kt limits a spot to Fair, 10 kt to Poor to fair, 15 kt to Poor.":"about 6 kt limits a spot to Fair, 10 kt to Poor."}</small></dd></div>
   <div><dt>Period</dt><dd><small>Longer is better, from 6 s (weak) to 14 s and up (full marks).</small></dd></div>
   <div><dt>Tide</dt><dd><small>A small penalty outside the tide the spot likes.</small></dd></div></dl>
-  <div class="wins">${RT.map((r,c)=>`<div class="win" style="grid-template-columns:130px 1fr">${rlab(c)}<span class="m">${(CUR?["Faces under 1 ft","Score below 2","2 to 4","4 to 6","6 to 7.5","7.5 to 9","Above 9"]:["Faces under 1 ft","Score below 2","2 to 3.5","3.5 to 5","5 to 6.5","6.5 to 8.8","Above 8.8"])[c]}</span></div>`).join("")}</div>
+  <div class="wins">${RT.map((r,c)=>`<div class="win" style="grid-template-columns:130px 1fr">${rlab(c)}<span class="m">${(CUR?["Faces under 1 ft","Score below 2","2 to 4","4 to 5.5","5.5 to 7","7 to 8.8","Above 8.8"]:["Faces under 1 ft","Score below 2","2 to 3.5","3.5 to 5","5 to 6.5","6.5 to 8.8","Above 8.8"])[c]}</span></div>`).join("")}</div>
   <p class="note">Model estimates, not cam reports. Sandbars, kelp and local shadowing are invisible to it. Spot windows and gains are starting values to tune.</p>
   <p class="note">Data: Open-Meteo, Scripps CDIP, NOAA CO-OPS, NWS. Map: OpenFreeMap, © OpenMapTiles, data from OpenStreetMap; terrain from Mapzen, USGS and NOAA; satellite imagery © Esri, Maxar, Earthstar Geographics.</p></div>`}
 let lastRender=0;
