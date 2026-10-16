@@ -58,12 +58,12 @@ const shown=r=>{if(!(r>0))return 0;for(let i=1;i<SC_RAW.length;i++)if(r<=SC_RAW[
 /* Labels and colours are decided on the number the person sees (the stretched score): Poor under 2, Poor to fair 2-4, Fair 4-5.5, Fair to good 5.5-7, Good 7-8.8, Epic 8.8+. Both versions use the same cutoffs. */
 const CLS_AT=[2,4,5.5,7,8.8];
 const clsOf=(face,rate)=>{if(face<1)return 0;const v=shown(rate);let c=1;for(const t of CLS_AT)if(v>=t)c++;return c};
-function rateHour(s,i){const cs=comps(s,i);let e=0,dom=null;for(const c of cs){e+=c.face*c.face;if(!dom||c.face>dom.face)dom=c}
-  const face=Math.sqrt(e),w=windScore(s,s.wx.ws[i],s.wx.wd[i]),tide=s.tide?s.tide[i]:null;
+function rateCore(s,cs,ws,wd,tide){let e=0,dom=null;for(const c of cs){e+=c.face*c.face;if(!dom||c.face>dom.face)dom=c}
+  const face=Math.sqrt(e),w=windScore(s,ws,wd);
   const per=dom?clamp((dom.p-6)/8,0,1)*0.8+0.2:0.2;
-  const rate=Math.min(windCap(s.wx.ws[i],w.d),10*sizeScore(face,s.sz[0],s.sz[1])*(0.25+0.75*w.q)*(0.55+0.45*per)*tideScore(s.td,tide));
-  const cls=clsOf(face,rate);
-  return{face,rate,cls,dom,w,tide,cs}}
+  const rate=Math.min(windCap(ws,w.d),10*sizeScore(face,s.sz[0],s.sz[1])*(0.25+0.75*w.q)*(0.55+0.45*per)*tideScore(s.td,tide));
+  return{face,rate,cls:clsOf(face,rate),dom,w,tide,cs}}
+function rateHour(s,i){return rateCore(s,comps(s,i),s.wx.ws[i],s.wx.wd[i],s.tide?s.tide[i]:null)}
 function faceText(f){if(f<1)return"Flat";const lo=Math.max(1,Math.round(f*0.85)),hi=Math.max(lo+1,Math.round(f*1.15));return`${lo}–${hi} ft`}
 
 /* ---------- geometry ---------- */
@@ -177,7 +177,7 @@ async function load(force){
     const fresh=!fc;
     const [f2,tides,buoys]=await Promise.all([fc||loadForecast(),loadTides(laNow().date),loadBuoys()]);
     if(fresh)try{localStorage.setItem(CACHE_KEY,JSON.stringify(f2))}catch(e){}
-    DATA=build(f2,tides,buoys);
+    DATA=build(f2,tides,buoys);SB.ov=null;
     NOWI=Math.max(0,DATA.times.indexOf(laNow().key));TI=NOWI;$("t").max=DATA.times.length-1;$("t").value=TI;
     $("msg").hidden=true;buildDays();makeMarks();setTime(TI);redraw();loadAlerts();
   }catch(e){
@@ -455,9 +455,9 @@ function peekRender(){const pk=$("peek");if(!DATA){pk.hidden=true;return}
   if(!s){pk.hidden=true;return}const h=s.hr[TI];SH.pk=s.idx;pk.hidden=false;
   pk.innerHTML=`<i class="dot" style="background:${s.ok?rtCol(h.cls):"var(--line)"}"></i><span class="pn"><small>${lab}</small><b>${esc(s.n)}</b></span><span class="pf"><b>${s.ok?faceText(h.face):""}</b><small>${s.ok?RT[h.cls].n:""}</small></span>`;
   if(phone()&&SH.snap==="peek"){const b=SH.px.peek;sheetCalc();if(SH.px.peek!==b)setSnap("peek",true)}}
-function select(k){S.sel=k;S.tab="spots";render();$("body").scrollTop=0;colorMarks();placeMarks();
+function select(k){S.sel=k;if(k!=null)S.last=k;S.tab="spots";render();$("body").scrollTop=0;colorMarks();placeMarks();
   if(k!=null&&phone()&&SH.snap==="peek")setSnap("half")}
-for(const t of ["spots","best","cmp","buoys","how"])$("tab-"+t).onclick=()=>{S.tab=t;S.sel=null;render();colorMarks()};
+for(const t of ["spots","best","cmp","sbox","buoys","how"])$("tab-"+t).onclick=e=>{S.tab=t;S.sel=null;if(t==="sbox")SB.dirty=true;render();colorMarks();try{e.currentTarget.scrollIntoView({inline:"center",block:"nearest"})}catch(_){}};
 function swellLine(c){return c?`${c.h.toFixed(1)} ft @ ${Math.round(c.p)} s ${arrow(c.d)} ${comp(c.d)} ${Math.round(c.d)}°`:"No swell"}
 function outlook(){const r=DATA.ref,T=DATA.times;if(!r||!r.sh.some(v=>v!=null))return"";
   const W=372,H=92,x=i=>26+i*(W-32)/(T.length-1),mx=Math.max(4,...r.sh.map(v=>v||0),...r.s2h.map(v=>v||0)),y=v=>H-22-(v/mx)*(H-34);
@@ -540,6 +540,67 @@ function cmpView(){const ok=DATA.spots.filter(s=>s.ok);
   ${row("Wind",(s,i)=>{const h=s.hr[TI],ws=s.wx.ws[TI];return h.w.d==null||ws==null?"–":`<span class="v">${Math.round(ws)} kt</span><small>${h.w.word}</small>`})}
   ${row("Tide",s=>tideA(s))}
   ${row("Day",s=>`<div class="mini">${seg(s)}</div>`)}</tbody></table>`:`<p class="note">Pick two or three spots to compare them hour by hour.</p>`}</div>${foot()}`}
+
+/* ---------- Swellbox: change the swell, wind and tide for a spot and see what it would score ---------- */
+const SB={spot:null,hr:null,real:null,ov:null,others:[],vec:[],dirty:true};
+const SBP=[{k:"h",n:"Height",min:0,max:12,st:0.1,g:"Swell",f:v=>v.toFixed(1)+" ft"},{k:"p",n:"Period",min:5,max:22,st:1,f:v=>Math.round(v)+" s"},{k:"d",n:"Direction",min:140,max:320,st:5,f:v=>comp(v)+" "+Math.round(v)+"°"},
+  {k:"ws",n:"Speed",min:0,max:30,st:1,g:"Wind",f:v=>Math.round(v)+" kt"},{k:"wd",n:"From",min:0,max:355,st:5,f:(v,o,s)=>`${comp(v)} · ${windScore(s,o.ws,v).word.replace("Cross-","x-")}`},
+  {k:"tide",n:"Height",min:-1.5,max:7,st:0.1,g:"Tide",f:v=>v.toFixed(1)+" ft"}];
+const rnd=(v,st)=>Math.round(v/st)*st;
+function sbRate(s,o){const cs=SB.others.slice();if(o.h>=0.15){const df=dirFactor(s,o.d);cs.unshift({k:"Primary swell",h:o.h,p:o.p,d:o.d,df,face:breaker(o.h,o.p)*df*s.g})}return rateCore(s,cs,o.ws,o.wd,s.tide?o.tide:null)}
+function sbLoad(){const s=DATA.spots[SB.spot];if(SB.hr==null){let b=TI;if(!(b>=NOWI&&s.wx.day[b])){b=NOWI;for(let k=NOWI;k<DATA.times.length;k++)if(s.wx.day[k]){b=k;break}}SB.hr=b}
+  const i=SB.hr,all=comps(s,i),pr=all.find(c=>c.k==="Primary swell");SB.others=all.filter(c=>c.k!=="Primary swell");
+  const q=(v,st,d)=>v==null?d:rnd(v,st),tv=s.tide&&s.tide[i]!=null?s.tide[i]:2.5;
+  SB.real={h:q(pr&&pr.h,0.1,0),p:q(pr&&pr.p,1,12),d:q(pr&&pr.d,5,200),ws:q(s.wx.ws[i],1,0),wd:q(s.wx.wd[i],5,0),tide:rnd(tv,0.1)};SB.ov={...SB.real};
+  SB.vec=[];for(let k=NOWI;k<DATA.times.length;k++){if(!s.wx.day[k])continue;const p=comps(s,k).find(c=>c.k==="Primary swell");SB.vec.push({k,h:p?p.h:0,p:p?p.p:0,d:p?p.d:0,ws:s.wx.ws[k]||0,wd:s.wx.wd[k]||0,tide:s.tide&&s.tide[k]!=null?s.tide[k]:2.5})}}
+function sbEnsure(){if(SB.spot==null||!DATA.spots[SB.spot]||!DATA.spots[SB.spot].ok){const ok=DATA.spots.filter(x=>x.ok),pick=S.last!=null&&DATA.spots[S.last]&&DATA.spots[S.last].ok?DATA.spots[S.last]:ok.find(x=>FAVS.has(x.n))||[...ok].sort((x,y)=>y.hr[TI].rate-x.hr[TI].rate)[0];SB.spot=pick.idx;SB.hr=null;SB.ov=null}
+  if(!SB.ov)sbLoad()}
+function sbSegs(s,p){const o=SB.ov,n=60,span=p.max-p.min,ok=[];for(let i=0;i<=n;i++){const v=p.min+span*i/n,r=sbRate(s,{...o,[p.k]:v});ok.push(r.cls>=5)}
+  let out="",i=0;while(i<=n){if(!ok[i]){i++;continue}let j=i;while(j+1<=n&&ok[j+1])j++;const f1=Math.max(0,(i-0.5)/n),f2=Math.min(1,(j+0.5)/n);out+=`<span style="left:calc(${f1} * (100% - 18px) + 9px);width:calc(${f2-f1} * (100% - 18px))"></span>`;i=j+1}return out}
+const sbPos=(p,v)=>`calc(${clamp((v-p.min)/(p.max-p.min),0,1).toFixed(4)} * (100% - 18px) + 9px)`;
+function sbHero(s){const real=s.hr[SB.hr],r=SBP.every(q=>SB.ov[q.k]===SB.real[q.k])?real:sbRate(s,SB.ov),sh=shown(r.rate),sr=shown(real.rate);
+  return`<div class="bring" style="--rc:${rtCol(r.cls)};--p:${Math.round(sh*10)}"><b>${sh.toFixed(1)}</b></div><div class="sbh"><span class="sbpill" style="background:${rtCol(r.cls)}">${r.face<1?"Flat":RT[r.cls].n}</span><b>${r.face<1?"Flat":faceText(r.face)}</b><small>Forecast for ${fmt(SB.hr)}: ${sr.toFixed(1)} · ${real.face<1?"Flat":RT[real.cls].n}</small></div>`}
+function sbHeat(s){const o=SB.ov,per=[9,10,11,12,13,14,15,16,17,18];let dirs=[];for(let d=150;d<=315;d+=5)if(dirFactor(s,d)>=0.3)dirs.push(d);
+  if(dirs.length>7){const t=[];for(let i=0;i<7;i++)t.push(dirs[Math.round(i*(dirs.length-1)/6)]);dirs=[...new Set(t)]}
+  const nd=dirs.reduce((b,d)=>Math.abs(d-o.d)<Math.abs(b-o.d)?d:b,dirs[0]),np=per.reduce((b,p)=>Math.abs(p-o.p)<Math.abs(b-o.p)?b:p,per[0]);
+  let h=`<div class="sbheat" style="grid-template-columns:58px repeat(${per.length},1fr)"><em></em>${per.map(p=>`<em>${p}${p===per[0]?" s":""}</em>`).join("")}`;
+  for(const d of dirs){h+=`<em>${comp(d)} ${d}</em>`;for(const p of per){const r=sbRate(s,{...o,d,p});h+=`<button data-hd="${d}" data-hp="${p}" class="${d===nd&&p===np?"cur":""}" style="background:${r.face<1?"var(--line)":rtCol(r.cls)}" aria-label="${comp(d)} ${d} degrees, ${p} seconds: ${r.face<1?"Flat":RT[r.cls].n}"></button>`}}
+  return h+"</div>"}
+function sbMatch(s){const o=SB.ov,V=SB.vec;if(!V.length)return"";
+  const dist=v=>{const a=[Math.abs(v.h-o.h)/1.5,Math.abs(v.p-o.p)/3,angDiff(v.d,o.d)/20],b=[Math.abs(v.ws-o.ws)/5,angDiff(v.wd,o.wd)/45],c=[s.tide?Math.abs(v.tide-o.tide)/1.5:0];
+    const g=x=>Math.sqrt(x.reduce((t,y)=>t+y*y,0));return{t:g([...a,...b,...c]),sw:Math.max(...a),wi:Math.max(...b),ti:c[0],a,b}};
+  const sc=V.map(v=>({v,d:dist(v)})).sort((x,y)=>x.d.t-y.d.t),picks=[];
+  for(const c of sc){if(picks.length>=3)break;if(picks.some(p=>Math.abs(p.v.k-c.v.k)<6))continue;picks.push(c)}
+  const byK=new Map(V.map(v=>[v.k,dist(v)]));
+  return picks.map(c=>{const lim=Math.max(1.2,c.d.t*1.5);let a=c.v.k,z=c.v.k;const same=k=>DATA.times[k]&&DATA.times[k].slice(0,10)===DATA.times[c.v.k].slice(0,10);
+    while(byK.has(a-1)&&same(a-1)&&byK.get(a-1).t<=lim)a--;while(byK.has(z+1)&&same(z+1)&&byK.get(z+1).t<=lim)z++;
+    const r=s.hr[c.v.k],sh=shown(r.rate),vv=c.v,d=c.d,bits=[];
+    const swOk=d.sw<=1,wiOk=d.wi<=1,tiOk=d.ti<=1;
+    if(swOk&&wiOk&&tiOk)bits.push("Close on everything");else{if(swOk)bits.push("Swell lines up");if(wiOk)bits.push("wind fits");if(tiOk&&s.tide)bits.push("tide fits");
+      if(!swOk){const m=d.a.indexOf(d.sw);bits.push(m===0?(vv.h<o.h?"swell is smaller":"swell is bigger"):m===1?(vv.p<o.p?"period is shorter":"period is longer"):`swell from ${comp(vv.d)}`)}
+      if(!wiOk){bits.push(d.b[0]>=d.b[1]?(vv.ws>o.ws?"wind is stronger":"wind is lighter"):`wind from ${comp(vv.wd)}`)}
+      if(!tiOk&&s.tide)bits.push(vv.tide>o.tide?"tide is higher":"tide is lower")}
+    const txt=bits.join(", ").replace(/^./,x=>x.toUpperCase());const p=tparts(DATA.times[a]),today=laNow().date;
+    return`<button class="sbm" data-best="${s.idx}:${c.v.k}"><span><b>${DATA.times[a].slice(0,10)===today?"Today":DOW[p.dow]} ${spanText(hourOf(a),hourOf(z)+1)}</b><small>${txt}</small></span><span class="sbn" style="color:${rtCol(r.cls)}">${sh.toFixed(1)}</span></button>`}).join("")}
+function sbPatch(){const s=DATA.spots[SB.spot],o=SB.ov;
+  $("sbhero").style.cssText="";$("sbhero").innerHTML=sbHero(s);
+  for(const p of SBP){const v=$("v-"+p.k);if(v)v.textContent=p.f(o[p.k],o,s);const g=$("g-"+p.k);if(g)g.innerHTML=sbSegs(s,p)}
+  $("sbheat").innerHTML=sbHeat(s);$("sbmatch").innerHTML=sbMatch(s)}
+function sbSync(){for(const p of SBP){const e=$("sb-"+p.k);if(e)e.value=SB.ov[p.k]}sbPatch()}
+function sbView(){sbEnsure();const s=DATA.spots[SB.spot],o=SB.ov,ok=DATA.spots.filter(x=>x.ok);
+  const hrs=[];for(let k=NOWI;k<Math.min(DATA.times.length,NOWI+96);k++)if(s.wx.day[k])hrs.push(k);if(!hrs.includes(SB.hr))hrs.push(SB.hr);hrs.sort((x,y)=>x-y);
+  let rows="",grp="";
+  for(const p of SBP){if(p.k==="tide"&&!s.tide)continue;if(p.g){rows+=`<p class="sbg3">${p.g}</p>`}
+    rows+=`<div class="sbrow"><span>${p.n}</span><div class="sbs"><span class="sbgs" id="g-${p.k}">${sbSegs(s,p)}</span><i class="sbt" style="left:${sbPos(p,SB.real[p.k])}"></i><input type="range" id="sb-${p.k}" min="${p.min}" max="${p.max}" step="${p.st}" value="${o[p.k]}" aria-label="${p.g?p.g+" ":""}${p.n}"></div><b id="v-${p.k}">${p.f(o[p.k],o,s)}</b></div>`}
+  return`<div id="sbox" style="display:flex;flex-direction:column;gap:14px">
+  <div class="sbsel"><select id="sbspot" aria-label="Spot">${ok.map(x=>`<option value="${x.idx}"${x.idx===SB.spot?" selected":""}>${esc(x.n)}</option>`).join("")}</select><label>Start from <select id="sbhr" aria-label="Start from">${hrs.map(k=>`<option value="${k}"${k===SB.hr?" selected":""}>${fmt(k)}</option>`).join("")}</select></label></div>
+  <div class="sbhero" id="sbhero">${sbHero(s)}</div>
+  <div class="sbctl">${rows}<button class="sbreset" data-sbreset="1">↺ Reset to forecast</button></div>
+  <p class="lab" style="margin-top:-4px">Gold tick: the forecast. Green stretch: where this spot scores Good or better with your other settings.${SB.others.length?" Secondary swell and wind chop from the forecast are included.":""}</p>
+  <p class="lab" style="margin-top:2px">Where it works: swell direction by period, wind and tide held. Tap a square to set it.</p>
+  <div id="sbheat">${sbHeat(s)}</div>
+  <p class="lab" style="margin-top:2px">When this setup shows up in the forecast</p>
+  <div id="sbmatch" class="sbms">${sbMatch(s)}</div></div>${foot()}`}
 function fcChart(s){const T=DATA.times,W=372,H=176,x0=24,bw=(W-x0-4)/T.length,x=i=>x0+i*bw,top=18,base=112,mx=Math.max(6,Math.ceil(Math.max(...s.hr.map(h=>h.face)))),y=v=>base-(v/mx)*(base-top);
   let g="";
   for(let i=0;i<T.length;i++){if(s.wx.day[i]===0)g+=`<rect x="${x(i).toFixed(1)}" y="${top}" width="${(bw+.05).toFixed(2)}" height="${H-top-14}" fill="var(--night)"/>`}
@@ -847,17 +908,22 @@ function howView(){return`<div class="det"><h2>How spots are rated</h2>
   <p class="note">Data: Open-Meteo, Scripps CDIP, NOAA CO-OPS, NWS. Map: OpenFreeMap, © OpenMapTiles, data from OpenStreetMap; terrain from Mapzen, USGS and NOAA; satellite imagery © Esri, Maxar, Earthstar Geographics.</p></div>`}
 let lastRender=0;
 function render(fromPlay){if(!DATA)return;const b=$("body"),keep=b.scrollTop,vh=b.clientHeight;
-  for(const t of ["spots","best","cmp","buoys","how"])$("tab-"+t).setAttribute("aria-selected",S.tab===t);
+  for(const t of ["spots","best","cmp","sbox","buoys","how"])$("tab-"+t).setAttribute("aria-selected",S.tab===t);
+  if(S.tab==="sbox"&&S.sel==null&&!SB.dirty&&b.querySelector("#sbox")){peekRender();if(POP.k)popRender();return}
   /* Swapping the whole body briefly makes it shorter, which on some phones throws the scroll position back to the top (it showed when playing the timeline while scrolled down). A spacer keeps it tall enough for one frame so the position holds. */
-  b.innerHTML=(S.tab==="buoys"?buoyView():S.tab==="how"?howView():S.sel!=null?detail(DATA.spots[S.sel]):S.tab==="best"?bestView():S.tab==="cmp"?cmpView():listView())+(keep>0?`<div id="slock" style="height:${keep+vh}px" aria-hidden="true"></div>`:"");
-  b.scrollTop=keep;if(keep>0)requestAnimationFrame(()=>{const l=document.getElementById("slock");if(l)l.remove()});lastRender=Date.now();peekRender();if(POP.k)popRender();
+  b.innerHTML=(S.tab==="buoys"?buoyView():S.tab==="how"?howView():S.sel!=null?detail(DATA.spots[S.sel]):S.tab==="best"?bestView():S.tab==="cmp"?cmpView():S.tab==="sbox"?sbView():listView())+(keep>0?`<div id="slock" style="height:${keep+vh}px" aria-hidden="true"></div>`:"");
+  if(S.tab==="sbox")SB.dirty=false;b.scrollTop=keep;if(keep>0)requestAnimationFrame(()=>{const l=document.getElementById("slock");if(l)l.remove()});lastRender=Date.now();peekRender();if(POP.k)popRender();
   const ch=b.querySelector(".chips"),on=ch&&ch.querySelector('[aria-pressed="true"]');if(on)ch.scrollLeft=Math.max(0,on.offsetLeft-ch.offsetLeft-(ch.clientWidth-on.offsetWidth)/2)}
-$("body").addEventListener("change",e=>{if(e.target.id==="cmpadd"&&e.target.value!==""&&DATA){const n=DATA.spots[+e.target.value].n;if(!CMP.includes(n)&&CMP.length<3){CMP.push(n);saveCmp()}render()}});
+$("body").addEventListener("input",e=>{const id=e.target.id;if(!DATA||!SB.ov||!id||!id.startsWith("sb-"))return;SB.ov[id.slice(3)]=+e.target.value;sbPatch()});
+$("body").addEventListener("change",e=>{if(e.target.id==="sbspot"){SB.spot=+e.target.value;SB.hr=null;sbLoad();SB.dirty=true;render();return}if(e.target.id==="sbhr"){SB.hr=+e.target.value;sbLoad();SB.dirty=true;render();return}
+  if(e.target.id==="cmpadd"&&e.target.value!==""&&DATA){const n=DATA.spots[+e.target.value].n;if(!CMP.includes(n)&&CMP.length<3){CMP.push(n);saveCmp()}render()}});
 $("body").addEventListener("toggle",e=>{const k=e.target&&e.target.dataset&&e.target.dataset.why;if(!k)return;if(e.target.open)WHY.add(k);else WHY.delete(k)},true);
-$("body").addEventListener("click",e=>{const t=e.target.closest("[data-pop],[data-spot],[data-best],[data-bscope],[data-brange],[data-cmprm],[data-fav],[data-sort],[data-reg],[data-back],[data-time],[data-buoy],[data-step],[data-model],#refresh,#fc,[data-chart]");if(!t||!DATA)return;
+$("body").addEventListener("click",e=>{const t=e.target.closest("[data-pop],[data-spot],[data-best],[data-sbreset],[data-hd],[data-bscope],[data-brange],[data-cmprm],[data-fav],[data-sort],[data-reg],[data-back],[data-time],[data-buoy],[data-step],[data-model],#refresh,#fc,[data-chart]");if(!t||!DATA)return;
   if(t.dataset.pop){popOpen(t.dataset.pop)}
   else if(t.dataset.spot!=null){const k=+t.dataset.spot,s=DATA.spots[k];select(k);goTo(s.lo,s.la,11.5)}
   else if(t.dataset.best){const [a,k]=t.dataset.best.split(":").map(Number),s=DATA.spots[a];setTime(k);select(a);goTo(s.lo,s.la,11.5)}
+  else if(t.dataset.sbreset!=null){sbLoad();SB.dirty=true;render()}
+  else if(t.dataset.hd!=null){SB.ov.d=+t.dataset.hd;SB.ov.p=+t.dataset.hp;sbSync()}
   else if(t.dataset.bscope){bestScope(t.dataset.bscope)}
   else if(t.dataset.brange){BEST.range=t.dataset.brange;saveBest();render()}
   else if(t.dataset.cmprm!=null){CMP=CMP.filter(n=>n!==DATA.spots[+t.dataset.cmprm].n);saveCmp();render()}

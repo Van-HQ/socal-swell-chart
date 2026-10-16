@@ -64,6 +64,29 @@ button{font:inherit;color:inherit;cursor:pointer}
 #pin.up .pbub{bottom:56px}#pin.dn .pbub{top:56px}#pin.l .pbub{left:-1px}#pin.r .pbub{right:-1px}
 .pbub b{display:block;font:600 19px/1.1 var(--f-ui)}.pbub small{display:block;color:var(--muted);font-size:12px;margin-top:3px}
 .px{position:absolute;right:7px;top:7px;width:22px;height:22px;border-radius:50%;border:0;padding:0;background:color-mix(in srgb,var(--ink) 16%,transparent);color:var(--ink);font-size:11px;line-height:22px}
+.sbsel{display:flex;gap:8px;align-items:center;justify-content:space-between}
+.sbsel select{font:600 14px/1.2 var(--f-ui);color:var(--ink);background:var(--raise);border:1px solid var(--line);border-radius:12px;padding:10px 10px;max-width:100%;min-width:0}
+.sbsel label{font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px;min-width:0}.sbsel label select{font-weight:500;font-size:13px;padding:8px 8px}
+#sbspot{flex:1;min-width:0}
+.sbhero{display:flex;gap:14px;align-items:center;background:var(--raise);border:1px solid var(--line);border-radius:16px;padding:12px 14px}
+.sbhero .bring{width:56px;height:56px;flex:none}.sbhero .bring:before{inset:5px}.sbhero .bring b{font-size:19px}
+.sbh{display:flex;flex-direction:column;align-items:flex-start;min-width:0}.sbh b{font:600 17px/1.2 var(--f-ui);margin-top:6px}.sbh small{color:var(--muted);font-size:12.5px;margin-top:3px}
+.sbpill{font-size:12px;padding:2px 9px;border-radius:999px;color:#fff;font-weight:500}
+.sbctl{display:flex;flex-direction:column;gap:12px}.sbg3{margin:2px 0 -4px;font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+.sbrow{display:grid;grid-template-columns:66px minmax(0,1fr) 78px;gap:10px;align-items:center;font-size:13.5px}.sbrow>span{color:var(--muted)}.sbrow>b{text-align:right;font-weight:600;font-size:13px;white-space:nowrap}
+.sbs{position:relative;height:18px}.sbs:before{content:"";position:absolute;left:0;right:0;top:7px;height:4px;border-radius:2px;background:color-mix(in srgb,var(--ink) 22%,transparent)}
+.sbgs{position:absolute;inset:0;pointer-events:none}.sbgs span{position:absolute;top:7px;height:4px;border-radius:2px;background:var(--r-good)}
+.sbt{position:absolute;top:-1px;width:2px;height:10px;margin-left:-1px;background:var(--gold);pointer-events:none}
+.sbs input{position:absolute;inset:0;width:100%;margin:0;height:18px;background:none;-webkit-appearance:none;appearance:none;touch-action:pan-y}
+.sbs input::-webkit-slider-runnable-track{height:18px;background:transparent}.sbs input::-moz-range-track{height:18px;background:transparent}
+.sbs input::-webkit-slider-thumb{-webkit-appearance:none;width:18px;height:18px;border-radius:50%;background:var(--ink);border:0;box-shadow:0 1px 4px rgba(0,0,0,.4)}
+.sbs input::-moz-range-thumb{width:18px;height:18px;border-radius:50%;background:var(--ink);border:0;box-shadow:0 1px 4px rgba(0,0,0,.4)}
+.sbreset{align-self:flex-start;font:500 12.5px/1 var(--f-ui);color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:7px 12px;background:none}
+.sbheat{display:grid;gap:2px;font-size:10.5px;color:var(--muted);align-items:center}.sbheat em{font-style:normal;white-space:nowrap}
+.sbheat button{height:22px;border:0;border-radius:4px;padding:0;min-width:0}.sbheat button.cur{outline:2px solid var(--ink);outline-offset:1px}
+.sbms{display:flex;flex-direction:column;gap:8px}
+.sbm{display:flex;justify-content:space-between;align-items:center;gap:10px;text-align:left;font:inherit;color:inherit;border:1px solid var(--line);background:var(--raise);border-radius:12px;padding:10px 12px;width:100%}
+.sbm b{font-weight:600}.sbm small{display:block;color:var(--muted);font-size:12.5px;margin-top:2px}.sbn{font:600 17px/1 var(--f-ui)}
 #marks{position:absolute;inset:0;pointer-events:none;z-index:3;overflow:hidden}
 .maphead,.legend,.zoom,.msg{z-index:4}
 .lall{width:100%;margin-top:6px;border:0;background:color-mix(in srgb,var(--ink) 8%,transparent);padding:10px;border-radius:10px;font:500 13.5px/1 var(--f-ui);color:var(--ink)}
@@ -412,6 +435,7 @@ button.tile:disabled{cursor:default;opacity:.6}
       <button role="tab" id="tab-spots" aria-selected="true">Spots</button>
       <button role="tab" id="tab-best" aria-selected="false">Best</button>
       <button role="tab" id="tab-cmp" aria-selected="false">Compare</button>
+      <button role="tab" id="tab-sbox" aria-selected="false">Swellbox</button>
       <button role="tab" id="tab-buoys" aria-selected="false">Buoys</button>
       <button role="tab" id="tab-how" aria-selected="false">Method</button>
     </div>
