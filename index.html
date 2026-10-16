@@ -55,6 +55,15 @@ button{font:inherit;color:inherit;cursor:pointer}
 .map{position:relative;overflow:hidden;background:var(--water);min-height:260px}
 #mapgl{position:absolute;inset:0;font:inherit}
 .map>canvas{position:absolute;inset:0;width:100%;height:100%;display:block;pointer-events:none}
+#pin{position:absolute;left:0;top:0;z-index:4;pointer-events:none}
+#pin[hidden]{display:none}
+.pdot{position:absolute;left:-8px;top:-8px;width:16px;height:16px;border-radius:50%;background:#fff;border:2px solid rgba(0,0,0,.45);box-shadow:0 0 0 4px rgba(255,255,255,.25)}
+.pline{position:absolute;left:-1px;width:2px;height:56px;background:rgba(255,255,255,.8)}
+#pin.up .pline{top:-56px}#pin.dn .pline{top:0}
+.pbub{position:absolute;pointer-events:auto;background:var(--glass);color:var(--ink);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);border-radius:12px;padding:8px 36px 8px 12px;white-space:nowrap;min-width:96px;box-shadow:0 2px 10px rgba(0,0,0,.25)}
+#pin.up .pbub{bottom:56px}#pin.dn .pbub{top:56px}#pin.l .pbub{left:-1px}#pin.r .pbub{right:-1px}
+.pbub b{display:block;font:600 19px/1.1 var(--f-ui)}.pbub small{display:block;color:var(--muted);font-size:12px;margin-top:3px}
+.px{position:absolute;right:7px;top:7px;width:22px;height:22px;border-radius:50%;border:0;padding:0;background:color-mix(in srgb,var(--ink) 16%,transparent);color:var(--ink);font-size:11px;line-height:22px}
 #marks{position:absolute;inset:0;pointer-events:none;z-index:3;overflow:hidden}
 .maphead,.legend,.zoom,.msg{z-index:4}
 .lall{width:100%;margin-top:6px;border:0;background:color-mix(in srgb,var(--ink) 8%,transparent);padding:10px;border-radius:10px;font:500 13.5px/1 var(--f-ui);color:var(--ink)}
@@ -377,6 +386,7 @@ button.tile:disabled{cursor:default;opacity:.6}
     <div class="map" id="map">
       <div id="mapgl"></div><canvas id="cField"></canvas><canvas id="cPart"></canvas>
       <div id="marks"></div>
+      <div id="pin" hidden><i class="pline"></i><i class="pdot"></i><div class="pbub"><b id="pbig"></b><small id="psm"></small><button class="px" id="px" aria-label="Remove pin">✕</button></div></div>
       <div class="maphead">
         <div class="brand glass"><h1>Swell</h1></div>
         <div class="seg glass" role="group" aria-label="Map layer">
@@ -882,7 +892,7 @@ function legend(){const R=RAMP[LAYER],st=R[look().ramp],lo=R.min||0,sc=LAYER==="
   g=sc?st.slice(1,7).map(([v,c],i)=>`rgb(${c.map(Math.round).join(",")}) ${(i/5*100).toFixed(0)}%`).join(","):st.map(([v,c])=>`rgb(${c.map(Math.round).join(",")}) ${((v-lo)/(R.max-lo)*100).toFixed(0)}%`).join(",");
   $("legend").innerHTML=`<b>${R.t}, ${R.u}</b><div class="bar" style="background:linear-gradient(90deg,${g})"></div><div class="tk">${R.ticks.map(t=>`<span>${t}${t===R.max&&!sc?"+":""}</span>`).join("")}</div><div class="probe" id="probe"></div>`}
 let pend=false,maskT=0;
-function redraw(){if(pend||!MAP)return;pend=true;requestAnimationFrame(()=>{pend=false;syncProj();buildMask();drawField();if(DATA){placeMarks();colorMarks()}
+function redraw(){if(pend||!MAP)return;pend=true;requestAnimationFrame(()=>{pend=false;syncProj();buildMask();drawField();if(DATA){placeMarks();colorMarks();pinPlace()}
   clearTimeout(maskT);maskT=setTimeout(()=>{readMask();if(REDUCED)drawStatic()},160)})}
 function viewChanged(){clearParticles();redraw()}
 function resize(){const r=mapEl.getBoundingClientRect();if(!r.width)return;V.W=r.width;V.H=r.height;V.dpr=Math.min(2,window.devicePixelRatio||1);if(MAP)MAP.resize();resetParticles();redraw()}
@@ -892,6 +902,18 @@ function probe(x,y){const el=$("probe");if(!el||!DATA)return;if(!isWater(x,y)){e
     el.textContent=o.near&&o.d<30?`${o.near.n} · ${o.near.h.face<1?"Flat":RT[o.near.h.cls].n+" "+o.near.v.toFixed(1)} · wind ${ws.toFixed(0)} kt from ${comp(d)}`:`${pos} · wind ${ws.toFixed(0)} kt from ${comp(d)}`}
   else if(LAYER==="wind"){const d=(Math.atan2(-sample(F.WU[TI],lo,la),-sample(F.WV[TI],lo,la))*180/Math.PI+360)%360;el.textContent=`${pos} · ${sample(F.WS[TI],lo,la).toFixed(0)} kt from ${comp(d)}`}
   else{const d=(Math.atan2(-sample(F.U[TI],lo,la),-sample(F.V[TI],lo,la))*180/Math.PI+360)%360;el.textContent=`${pos} · ${sample(F.H[TI],lo,la).toFixed(1)} ft @ ${sample(F.P[TI],lo,la).toFixed(0)} s from ${comp(d)} ${Math.round(d)}°`}}
+
+/* Map pin: tap open water to drop a pin that reads out whatever the active layer shows at that point. */
+let PIN=null,PINK="";
+function pinText(lo,la){const F=DATA.F,dir=(u,v)=>comp((Math.atan2(-sample(u,lo,la),-sample(v,lo,la))*180/Math.PI+360)%360);
+  if(LAYER==="wind")return[`${sample(F.WS[TI],lo,la).toFixed(0)} kt ${dir(F.WU[TI],F.WV[TI])}`,"Wind speed"];
+  if(LAYER==="period")return[`${sample(F.P[TI],lo,la).toFixed(0)} s`,`${sample(F.H[TI],lo,la).toFixed(1)} ft ${dir(F.U[TI],F.V[TI])}`];
+  if(LAYER==="score"){spotField();const o=scoreAt(lo,la);return[o.v.toFixed(1),o.near&&o.d<30?`Near ${o.near.n}`:"Open water"]}
+  return[`${sample(F.H[TI],lo,la).toFixed(1)} ft ${dir(F.U[TI],F.V[TI])}`,`Period ${sample(F.P[TI],lo,la).toFixed(0)} s`]}
+function pinPlace(){const el=$("pin");if(!el)return;if(!PIN||!DATA){el.hidden=true;return}
+  const x=X(PIN.lo),y=Y(PIN.la);if(x<-20||y<-20||x>V.W+20||y>V.H+20){el.hidden=true;return}
+  const [b,s]=pinText(PIN.lo,PIN.la),k=b+"|"+s;if(k!==PINK){PINK=k;$("pbig").textContent=b;$("psm").textContent=s}
+  el.hidden=false;el.className=(y<150?"dn ":"up ")+(x>V.W-170?"r":"l");el.style.transform=`translate(${x.toFixed(1)}px,${y.toFixed(1)}px)`}
 function initMap(){
   if(!window.maplibregl){$("msg").hidden=false;$("msg").innerHTML="<b>Map unavailable</b>Check your connection and reload.";return false}
   setupTerrain();
@@ -899,6 +921,7 @@ function initMap(){
   MAP=new maplibregl.Map({container:"mapgl",style:mapStyle(),bounds:FIT,fitBoundsOptions:{padding:camPad()},minZoom:6.5,maxZoom:15.5,maxBounds:[[-125,30],[-113.5,37]],dragRotate:false,pitchWithRotate:false,attributionControl:false,cooperativeGestures:touch});
   MAP.touchZoomRotate.disableRotation();MAP.keyboard.disableRotation();
   MAP.on("move",viewChanged);MAP.on("idle",()=>{depthDirty=true;redraw()});MAP.on("sourcedata",e=>{if(e.sourceId==="depths")depthDirty=true;if((e.sourceId==="omt"||e.sourceId==="depths")&&e.tile)redraw()});
+  MAP.on("click",e=>{if(!DATA||!isWater(e.point.x,e.point.y))return;PIN={lo:e.lngLat.lng,la:e.lngLat.lat};pinPlace()});$("px").onclick=()=>{PIN=null;pinPlace()};
   MAP.on("mousemove",e=>probe(e.point.x,e.point.y));MAP.on("mouseout",()=>{const el=$("probe");if(el)el.textContent=""});
   $("zin").onclick=()=>MAP.zoomIn();$("zout").onclick=()=>MAP.zoomOut();$("zfit").onclick=()=>MAP.fitBounds(FIT,{padding:camPad()});
   new ResizeObserver(resize).observe(mapEl);resize();return true}

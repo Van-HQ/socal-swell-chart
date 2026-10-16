@@ -338,7 +338,7 @@ function legend(){const R=RAMP[LAYER],st=R[look().ramp],lo=R.min||0,sc=LAYER==="
   g=sc?st.slice(1,7).map(([v,c],i)=>`rgb(${c.map(Math.round).join(",")}) ${(i/5*100).toFixed(0)}%`).join(","):st.map(([v,c])=>`rgb(${c.map(Math.round).join(",")}) ${((v-lo)/(R.max-lo)*100).toFixed(0)}%`).join(",");
   $("legend").innerHTML=`<b>${R.t}, ${R.u}</b><div class="bar" style="background:linear-gradient(90deg,${g})"></div><div class="tk">${R.ticks.map(t=>`<span>${t}${t===R.max&&!sc?"+":""}</span>`).join("")}</div><div class="probe" id="probe"></div>`}
 let pend=false,maskT=0;
-function redraw(){if(pend||!MAP)return;pend=true;requestAnimationFrame(()=>{pend=false;syncProj();buildMask();drawField();if(DATA){placeMarks();colorMarks()}
+function redraw(){if(pend||!MAP)return;pend=true;requestAnimationFrame(()=>{pend=false;syncProj();buildMask();drawField();if(DATA){placeMarks();colorMarks();pinPlace()}
   clearTimeout(maskT);maskT=setTimeout(()=>{readMask();if(REDUCED)drawStatic()},160)})}
 function viewChanged(){clearParticles();redraw()}
 function resize(){const r=mapEl.getBoundingClientRect();if(!r.width)return;V.W=r.width;V.H=r.height;V.dpr=Math.min(2,window.devicePixelRatio||1);if(MAP)MAP.resize();resetParticles();redraw()}
@@ -348,6 +348,18 @@ function probe(x,y){const el=$("probe");if(!el||!DATA)return;if(!isWater(x,y)){e
     el.textContent=o.near&&o.d<30?`${o.near.n} · ${o.near.h.face<1?"Flat":RT[o.near.h.cls].n+" "+o.near.v.toFixed(1)} · wind ${ws.toFixed(0)} kt from ${comp(d)}`:`${pos} · wind ${ws.toFixed(0)} kt from ${comp(d)}`}
   else if(LAYER==="wind"){const d=(Math.atan2(-sample(F.WU[TI],lo,la),-sample(F.WV[TI],lo,la))*180/Math.PI+360)%360;el.textContent=`${pos} · ${sample(F.WS[TI],lo,la).toFixed(0)} kt from ${comp(d)}`}
   else{const d=(Math.atan2(-sample(F.U[TI],lo,la),-sample(F.V[TI],lo,la))*180/Math.PI+360)%360;el.textContent=`${pos} · ${sample(F.H[TI],lo,la).toFixed(1)} ft @ ${sample(F.P[TI],lo,la).toFixed(0)} s from ${comp(d)} ${Math.round(d)}°`}}
+
+/* Map pin: tap open water to drop a pin that reads out whatever the active layer shows at that point. */
+let PIN=null,PINK="";
+function pinText(lo,la){const F=DATA.F,dir=(u,v)=>comp((Math.atan2(-sample(u,lo,la),-sample(v,lo,la))*180/Math.PI+360)%360);
+  if(LAYER==="wind")return[`${sample(F.WS[TI],lo,la).toFixed(0)} kt ${dir(F.WU[TI],F.WV[TI])}`,"Wind speed"];
+  if(LAYER==="period")return[`${sample(F.P[TI],lo,la).toFixed(0)} s`,`${sample(F.H[TI],lo,la).toFixed(1)} ft ${dir(F.U[TI],F.V[TI])}`];
+  if(LAYER==="score"){spotField();const o=scoreAt(lo,la);return[o.v.toFixed(1),o.near&&o.d<30?`Near ${o.near.n}`:"Open water"]}
+  return[`${sample(F.H[TI],lo,la).toFixed(1)} ft ${dir(F.U[TI],F.V[TI])}`,`Period ${sample(F.P[TI],lo,la).toFixed(0)} s`]}
+function pinPlace(){const el=$("pin");if(!el)return;if(!PIN||!DATA){el.hidden=true;return}
+  const x=X(PIN.lo),y=Y(PIN.la);if(x<-20||y<-20||x>V.W+20||y>V.H+20){el.hidden=true;return}
+  const [b,s]=pinText(PIN.lo,PIN.la),k=b+"|"+s;if(k!==PINK){PINK=k;$("pbig").textContent=b;$("psm").textContent=s}
+  el.hidden=false;el.className=(y<150?"dn ":"up ")+(x>V.W-170?"r":"l");el.style.transform=`translate(${x.toFixed(1)}px,${y.toFixed(1)}px)`}
 function initMap(){
   if(!window.maplibregl){$("msg").hidden=false;$("msg").innerHTML="<b>Map unavailable</b>Check your connection and reload.";return false}
   setupTerrain();
@@ -355,6 +367,7 @@ function initMap(){
   MAP=new maplibregl.Map({container:"mapgl",style:mapStyle(),bounds:FIT,fitBoundsOptions:{padding:camPad()},minZoom:6.5,maxZoom:15.5,maxBounds:[[-125,30],[-113.5,37]],dragRotate:false,pitchWithRotate:false,attributionControl:false,cooperativeGestures:touch});
   MAP.touchZoomRotate.disableRotation();MAP.keyboard.disableRotation();
   MAP.on("move",viewChanged);MAP.on("idle",()=>{depthDirty=true;redraw()});MAP.on("sourcedata",e=>{if(e.sourceId==="depths")depthDirty=true;if((e.sourceId==="omt"||e.sourceId==="depths")&&e.tile)redraw()});
+  MAP.on("click",e=>{if(!DATA||!isWater(e.point.x,e.point.y))return;PIN={lo:e.lngLat.lng,la:e.lngLat.lat};pinPlace()});$("px").onclick=()=>{PIN=null;pinPlace()};
   MAP.on("mousemove",e=>probe(e.point.x,e.point.y));MAP.on("mouseout",()=>{const el=$("probe");if(el)el.textContent=""});
   $("zin").onclick=()=>MAP.zoomIn();$("zout").onclick=()=>MAP.zoomOut();$("zfit").onclick=()=>MAP.fitBounds(FIT,{padding:camPad()});
   new ResizeObserver(resize).observe(mapEl);resize();return true}
