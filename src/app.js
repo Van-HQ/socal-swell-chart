@@ -52,10 +52,12 @@ function sizeScore(f,lo,hi){if(f<1)return 0;if(f<lo)return 0.2+SZ.a*(f-1)/Math.m
 const waveKJ=(hft,T)=>{if(!(hft>0)||!(T>0))return 0;const H=hft*0.3048;return 0.9*1025*9.81*9.81*H*H*T*T/(16*Math.PI)/1000};
 const spotKJ=h=>h.cs.reduce((t,c)=>t+(c.p>=5?waveKJ(c.h,c.p)*c.df*c.df:0),0);
 const CCOL=["#e07a4f","#e3b23c","#4fb3d9"];
-/* The label bands are decided on the raw score (SC_RAW). The number shown to the person is stretched so each label reads as its own band on the 0-10 scale (SC_SHOW). */
-const SC_RAW=[0,2,3.5,5,6.5,8.8,10],SC_SHOW=CUR?[0,2,4,5.5,7,8.8,10]:SC_RAW;
+/* The score is stretched (SC_RAW to SC_SHOW) so the number reads naturally on a 0-10 scale; labels are chosen from that stretched number (see clsOf). */
+const SC_RAW=[0,2,3.5,5,6.5,8.8,10],SC_SHOW=CUR?[0,2,4,6,7.5,9,10]:SC_RAW;
 const shown=r=>{if(!(r>0))return 0;for(let i=1;i<SC_RAW.length;i++)if(r<=SC_RAW[i])return lerp(SC_SHOW[i-1],SC_SHOW[i],(r-SC_RAW[i-1])/(SC_RAW[i]-SC_RAW[i-1]));return 10};
-const clsOf=(face,rate)=>face<1?0:rate<2?1:rate<3.5?2:rate<5?3:rate<6.5?4:rate<8.8?5:6;
+/* Labels and colours are decided on the number the person sees (the stretched score): Poor under 2, Poor to fair 2-4, Fair 4-5.5, Fair to good 5.5-7, Good 7-8.8, Epic 8.8+. Original keeps its own raw cutoffs. */
+const CLS_AT=CUR?[2,4,5.5,7,8.8]:[2,3.5,5,6.5,8.8];
+const clsOf=(face,rate)=>{if(face<1)return 0;const v=shown(rate);let c=1;for(const t of CLS_AT)if(v>=t)c++;return c};
 function rateHour(s,i){const cs=comps(s,i);let e=0,dom=null;for(const c of cs){e+=c.face*c.face;if(!dom||c.face>dom.face)dom=c}
   const face=Math.sqrt(e),w=windScore(s,s.wx.ws[i],s.wx.wd[i]),tide=s.tide?s.tide[i]:null;
   const per=dom?clamp((dom.p-6)/8,0,1)*0.8+0.2:0.2;
