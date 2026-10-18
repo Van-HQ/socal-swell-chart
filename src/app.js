@@ -668,7 +668,13 @@ const svgI=d=>`<svg width="15" height="15" viewBox="0 0 24 24" fill="none" strok
 const ICON={wind:svgI('<path d="M3 8h9a2.5 2.5 0 1 0-2.5-2.5M3 12h13a2.5 2.5 0 1 1-2.5 2.5M3 16h6"/>'),tide:svgI('<path d="M2 14c2.5 0 2.5-3 5-3s2.5 3 5 3 2.5-3 5-3 2.5 3 5 3M2 19c2.5 0 2.5-3 5-3s2.5 3 5 3 2.5-3 5-3 2.5 3 5 3M12 3v5m0-5-2 2m2-2 2 2"/>'),sun:svgI('<circle cx="12" cy="12" r="4"/><path d="M12 3v2m0 14v2M3 12h2m14 0h2M5.6 5.6 7 7m10 10 1.4 1.4M18.4 5.6 17 7M7 17l-1.4 1.4"/>'),temp:svgI('<path d="M12 4a2 2 0 0 0-2 2v8.3a4 4 0 1 0 4 0V6a2 2 0 0 0-2-2z"/>'),buoy:svgI('<path d="M12 3v4m-4 0h8l2 9H6zM3 20c2 0 2-1.5 4.5-1.5S10 20 12 20s2-1.5 4.5-1.5S19 20 21 20"/>')};
 const DIRW={N:"north",NNE:"north",NE:"northeast",ENE:"east",E:"east",ESE:"east",SE:"southeast",SSE:"south",S:"south",SSW:"south",SW:"southwest",WSW:"west",W:"west",WNW:"west",NW:"northwest",NNW:"north"};
 /* Rule-of-thumb wetsuit by water temperature in degrees F (the usual surf-shop charts). */
-function suitFor(f){return f>=75?"Boardshorts":f>=70?"Spring suit \u00b7 2 mm":f>=65?"3/2 mm fullsuit":f>=60?"4/3 mm fullsuit":f>=55?"4/3 mm + booties":f>=50?"5/4 mm + booties, hood":"6/5 mm hooded, gloves"}
+const SUITS=["Boardshorts","Spring suit \u00b7 2 mm","3/2 mm fullsuit","4/3 mm fullsuit","4/3 mm + booties","5/4 mm + booties, hood","6/5 mm hooded, gloves"],SUIT_AT=[75,70,65,60,55,50];
+/* Feels-like air temperature (Steadman apparent temperature, the Australian BoM version): air, humidity and wind. */
+function feelsF(tF,rh,ktw){if(tF==null||ktw==null)return null;const c=(tF-32)*5/9,e=(rh==null?50:rh)/100*6.105*Math.exp(17.27*c/(237.7+c)),a=c+0.33*e-0.70*(ktw*0.5144)-4;return a*9/5+32}
+/* Suit tier from water temperature, nudged one step thicker when the air feels cold, two when it feels very cold, one thinner when it feels hot. */
+function suitIdx(f){let i=SUIT_AT.findIndex(t=>f>=t);return i<0?SUITS.length-1:i}
+function suitFor(f,fl){let i=suitIdx(f),n=0;if(fl!=null){if(fl<45)n=2;else if(fl<55)n=1;else if(fl>=80&&i>0)n=-1}
+  i=Math.max(0,Math.min(SUITS.length-1,i+n));return{t:SUITS[i],n,base:SUITS[suitIdx(f)]}}
 function summary(s,h,tide,trend,sst){const out=[],ws=s.wx.ws[TI],wd=s.wx.wd[TI];
   if(ws!=null)out.push(ws<4?`Light ${DIRW[comp(wd)]} wind`:`${Math.round(ws)} kt ${h.w.word.toLowerCase()} wind`);
   if(tide!=null)out.push(`${tide<1.5?"low":tide<4?"mid":"high"} tide ${trend}`.trim());
@@ -875,7 +881,7 @@ function detail(s){const h=s.hr[TI];
   <div class="tiles">
    <button class="tile" data-pop="wind"><span class="tk">${ICON.wind}Wind<i class="chev">›</i></span><b>${h.w.d==null?"n/a":`${Math.round(s.wx.ws[TI])} kt ${arrow(s.wx.wd[TI])} ${comp(s.wx.wd[TI])}`}</b><small class="wg">${h.w.d==null?"":`${Math.round(s.wx.wg[TI]||s.wx.ws[TI]||0)} kt · ${h.w.word}`}</small></button>
    <button class="tile" data-pop="tide"${s.tide?"":" disabled"}><span class="tk">${ICON.tide}Tide<i class="chev">›</i></span><b>${tide==null?"n/a":`${tide.toFixed(1)} ft ${trend==="rising"?"↑":trend==="falling"?"↓":""}`}</b><small>${tide==null?"":`${trend[0].toUpperCase()+trend.slice(1)} · likes ${s.td}`}</small></button>
-   <div class="tile"><span class="tk">${ICON.temp}Water</span><b>${sst==null?"n/a":`${Math.round(sst*9/5+32)}°F`}</b><small>${sst==null?"":suitFor(sst*9/5+32)}</small></div>
+   <div class="tile"><span class="tk">${ICON.temp}Water</span><b>${sst==null?"n/a":`${Math.round(sst*9/5+32)}°F`}</b><small>${sst==null?"":(()=>{const w=s.wx,ok=w&&w.tp&&w.tp[TI]!=null,fl=ok?feelsF(w.tp[TI],w.rh&&w.rh[TI],w.ws&&w.ws[TI]):null,r=suitFor(sst*9/5+32,fl);return r.t+(r.n&&fl!=null?`<br><span style="font-size:clamp(10.5px,3.15vw,12.5px);opacity:.8">Air feels ${Math.round(fl)}°F, ${r.n>0?"go thicker":"go thinner"}</span>`:"")})()}</small></div>
    <button class="tile" data-pop="wx"${s.wx&&s.wx.tp&&s.wx.tp[TI]!=null?"":" disabled"}><span class="tk">${ICON.sun}Weather<i class="chev">›</i></span><b>${s.wx&&s.wx.tp&&s.wx.tp[TI]!=null?Math.round(s.wx.tp[TI])+"°F":"n/a"}</b><small>${s.wx&&s.wx.tp&&s.wx.tp[TI]!=null?skyOf(s.wx,TI).t:""}</small></button>
   </div>
   ${alertBanner(s.r)}
