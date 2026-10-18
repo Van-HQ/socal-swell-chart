@@ -35,11 +35,11 @@ const W=wx&&wx.map(x=>{const h=x.hourly;return{ws:pick(h.wind_speed_10m,i0,r1),w
 const base="https://thredds.cdip.ucsd.edu/thredds/dodsC/cdip/realtime/";
 const dods=(txt,name)=>{const m=new RegExp("\\n"+name+"\\[\\d+\\]\\n([^\\n]*)").exec(txt);return m?m[1].split(",").map(Number):[]};
 const B=await Promise.all(BUOYS.map(async b=>{try{
-  const dd=await (await fetch(`${base}${b.id}p1_rt.nc.dds?waveTime`,{headers:UA})).text();const n=+(/waveTime\s*=\s*(\d+)/.exec(dd)||[])[1];if(!n)throw 0;
+  const rr=await fetch(`${base}${b.id}p1_rt.nc.dds?waveTime`,{headers:UA});if(!rr.ok)throw new Error('dds '+rr.status);const dd=await rr.text();const n=+(/waveTime\s*=\s*(\d+)/.exec(dd)||[])[1];if(!n)throw 0;
   const a=Math.max(0,n-6),r=`[${a}:1:${n-1}]`;
-  const tx=await (await fetch(`${base}${b.id}p1_rt.nc.ascii?waveTime${r},waveHs${r},waveTp${r},waveDp${r}`,{headers:UA})).text();
+  const r2=await fetch(`${base}${b.id}p1_rt.nc.ascii?waveTime${r},waveHs${r},waveTp${r},waveDp${r}`,{headers:UA});if(!r2.ok)throw new Error('ascii '+r2.status);const tx=await r2.text();
   const t=dods(tx,"waveTime"),hs=dods(tx,"waveHs"),tp=dods(tx,"waveTp"),dp=dods(tx,"waveDp");if(!t.length)throw 0;
-  return{id:b.id,t,hs:hs.map(v=>r1(v*3.28084)),tp:tp.map(r1),dp:dp.map(r0)}}catch(e){return{id:b.id,t:null}}}));
+  return{id:b.id,t,hs:hs.map(v=>r1(v*3.28084)),tp:tp.map(r1),dp:dp.map(r0)}}catch(e){console.log(`::warning title=buoy ${b.id}::${e&&e.message||e}`);return{id:b.id,t:null}}}));
 const rec={v:1,run:hourKey+":00Z",leads:LEADS,fp:FP,spotFp,m:M,w:W,buoys:B};
 const day=hourKey.slice(0,10),hh=hourKey.slice(11,13);
 fs.mkdirSync(path.join(OUT,day),{recursive:true});
