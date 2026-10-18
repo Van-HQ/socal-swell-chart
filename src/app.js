@@ -21,7 +21,7 @@ const RT=[{k:"flat",n:"Flat",dk:0},{k:"poor",n:"Poor",dk:1},{k:"pf",n:"Poor to f
 const rtCol=c=>`var(--r-${RT[c].k})`;
 const chip=c=>`<span class="rt${RT[c].dk?" dk":""}" style="background:${rtCol(c)}">${RT[c].n}</span>`;
 const rlab=c=>`<span class="rl"><i class="dot" style="background:${rtCol(c)}"></i>${RT[c].n}</span>`;
-const K_BREAK=0.72;                      // calibration on the breaker-height estimate (tuned for peak period)
+const K_BREAK=0.68;                      // calibration on the breaker-height estimate (tuned for peak period)
 const PEAK=1.3;                         // Open-Meteo gives mean period; buoys and Surfline quote peak period, about 1.3x longer
 const TIDE_RANGE={low:[-2,2.5],"low-mid":[0,3.5],mid:[1.5,4.5],"mid-high":[2.5,6],high:[4,8]};
 function dirFactor(s,dir){let o=180;for(const [a,b] of s.w){const span=(b-a+360)%360,off=(dir-a+360)%360;if(off<=span)return 1;o=Math.min(o,angDiff(dir,a),angDiff(dir,b))}
