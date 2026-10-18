@@ -1,0 +1,41 @@
+# Builds the "how often is it this good here?" tables from Open-Meteo's historical archive and saves them to the "data" branch.
+# The archive has a daily request limit, so a full build can take a couple of days. Each point-year is cached, and this job
+# runs daily, so it simply picks up where it stopped. Once everything is cached, a run takes seconds.
+name: Build percentiles
+on:
+  schedule:
+    - cron: "17 9 * * *"
+  workflow_dispatch:
+  push:
+    paths: ["tools/percentiles/**", ".github/workflows/percentiles.yml"]
+permissions:
+  contents: write
+concurrency:
+  group: percentiles
+  cancel-in-progress: false
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          ref: data
+          path: datarepo
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Build tables
+        run: node tools/percentiles/build.mjs datarepo/data/percentiles
+      - name: Save to data branch
+        if: always()
+        working-directory: datarepo
+        run: |
+          git config user.name "swell-percentiles"
+          git config user.email "swell-percentiles@users.noreply.github.com"
+          git add -A data/percentiles
+          git diff --cached --quiet && { echo "nothing new"; exit 0; }
+          git commit -qm "percentiles $(date -u +%Y-%m-%dT%H:%MZ)"
+          for i in 1 2 3; do git push origin HEAD:data && exit 0; git pull --rebase origin data; done
+          exit 1
