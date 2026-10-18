@@ -332,6 +332,7 @@ button.tile:disabled{cursor:default;opacity:.6}
 .tile .chev{margin-left:auto;font-style:normal;font-size:17px;line-height:1;color:var(--muted)}
 .tile .tk svg{flex:none}
 .hbuoy{margin:5px 0 0;font-size:12.5px;color:var(--muted)}
+.hpct{margin:8px 0 0;font-size:12.5px;font-weight:600;color:var(--muted)}
 #pop{position:fixed;inset:0;z-index:50;background:rgba(0,0,0,.5);display:flex;align-items:flex-end;justify-content:center}
 #pop[hidden]{display:none}
 .popc{width:100%;max-width:460px;max-height:82vh;max-height:82dvh;display:flex;flex-direction:column;background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:20px 20px 0 0;padding:14px 16px calc(16px + env(safe-area-inset-bottom));box-shadow:0 -12px 40px rgba(0,0,0,.35)}
@@ -706,6 +707,14 @@ async function loadAlerts(){const reg={};for(const s of SPOTS){(reg[s.r]=reg[s.r
     const j=await getJSON(`https://api.weather.gov/alerts/active?point=${la.toFixed(3)},${lo.toFixed(3)}`);
     ALERTS[k]=(j.features||[]).map(f=>f.properties).filter(p=>ALERT_RE.test(p.event)).map(p=>({id:p.id,event:p.event,ends:p.ends||p.expires,by:p.senderName,text:(p.description||p.headline||"").replace(/\s*\n\s*/g," ").trim()}))}catch(e){ALERTS[k]=ALERTS[k]||[]}}));
   if(DATA)render()}
+/* How often is it this good here? Tables are built by tools/percentiles from Open-Meteo's historical archive and live on the data branch.
+   If they are missing or fail to load, the line simply does not appear. */
+const MONL=["January","February","March","April","May","June","July","August","September","October","November","December"];
+let PCT=null;
+async function loadPct(){try{const j=await getJSON("https://raw.githubusercontent.com/Van-HQ/socal-swell-chart/data/data/percentiles/percentiles.json");if(j&&j.models){PCT=j;if(DATA)render()}}catch(e){}}
+function pctText(s,h){if(!PCT||!h||h.face<1)return"";const row=PCT.models[MODEL]&&PCT.models[MODEL][s.n],mo=+DATA.times[TI].slice(5,7)-1,r=row&&row[mo];if(!r||r.n<200)return"";
+  const x=clamp(shown(h.rate)*2,0,20),k=Math.min(19,Math.floor(x)),p=Math.round(lerp(r.cdf[k],r.cdf[k+1],x-k));
+  return`${p>=99?"Better than nearly all":p<=1?"Among the worst":"Better than "+p+"% of"} ${MONL[mo]} daylight hours here`}
 function untilText(iso){if(!iso)return"";const d=new Date(iso);if(isNaN(d))return"";const p=Object.fromEntries(new Intl.DateTimeFormat("en-US",{timeZone:TZ,weekday:"short",hour:"numeric",hour12:true}).formatToParts(d).map(x=>[x.type,x.value]));return`Until ${p.weekday} ${p.hour} ${p.dayPeriod}`}
 const alertSvg='<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 2.5 20h19L12 3z"/><path d="M12 10v4.5M12 17.5v.1"/></svg>';
 /* Banner HTML for a region key, or for every region when none is given. Easy to move: call alertBanner() wherever it should sit. */
@@ -757,7 +766,7 @@ async function load(force){
     if(fresh)try{localStorage.setItem(CACHE_KEY,JSON.stringify(f2))}catch(e){}
     DATA=build(f2,tides,buoys);SB.ov=null;
     NOWI=Math.max(0,DATA.times.indexOf(laNow().key));TI=NOWI;$("t").max=DATA.times.length-1;$("t").value=TI;
-    $("msg").hidden=true;buildDays();makeMarks();setTime(TI);redraw();loadAlerts();
+    $("msg").hidden=true;buildDays();makeMarks();setTime(TI);redraw();loadAlerts();if(!PCT)loadPct();
   }catch(e){
     $("msg").innerHTML=`<b>Forecast unavailable</b>${esc(e.message||e)}. Check your connection. <br><button id="retry">Try again</button>`;
     $("retry").className="btn";$("retry").onclick=()=>load(true)}}
@@ -1455,6 +1464,7 @@ function detail(s){const h=s.hr[TI];
   <div class="hcard" style="--rc:${rtCol(h.cls)}"><button class="hstar" data-fav="${s.idx}" aria-pressed="${FAVS.has(s.n)}" aria-label="${FAVS.has(s.n)?"Remove from favorites":"Save to favorites"}">${FAVS.has(s.n)?"★":"☆"}</button>
    <div class="hctop"><div class="hring" style="--p:${h.face<1?0:Math.round(shown(h.rate)*10)}"><b>${h.face<1?"\u2013":shown(h.rate).toFixed(1)}</b></div><div><h2>${esc(s.n)}</h2><p class="hsub">${REG[s.r]} · ${esc(s.t)} · ${fmt(TI)}</p></div></div>
    <div class="hchips"><span class="hpill${RT[h.cls].dk?" dk":""}"><i></i>${RT[h.cls].n}</span>${h.face<1?"":`<span class="hchip"><b>${faceText(h.face)}</b></span>${dom?`<span class="hchip">${Math.round(dom.p)} s</span><span class="hchip">${comp(dom.d)} ${Math.round(dom.d)}\u00b0</span>`:""}`}</div>
+   ${(()=>{const t=pctText(s,h);return t?`<p class="hpct">${t}</p>`:""})()}
    <p class="hline">${summary(s,h,tide,trend,sst)}</p>${nb?`<p class="hbuoy">${esc(nb.b.n)} · ${nb.d.hs[nb.d.hs.length-1].toFixed(1)} ft · ${Math.round(nb.d.tp[nb.d.tp.length-1])} s · ${ageText(nb.d)}</p>`:""}</div>
   <div class="tiles">
    <button class="tile" data-pop="wind"><span class="tk">${ICON.wind}Wind<i class="chev">›</i></span><b>${h.w.d==null?"n/a":`${Math.round(s.wx.ws[TI])} kt ${arrow(s.wx.wd[TI])} ${comp(s.wx.wd[TI])}`}</b><small class="wg">${h.w.d==null?"":`${Math.round(s.wx.wg[TI]||s.wx.ws[TI]||0)} kt · ${h.w.word}`}</small></button>
