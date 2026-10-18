@@ -28,14 +28,14 @@ jobs:
       - name: Take snapshot
         run: |
           node tools/logger/log.mjs datarepo/data/log
-          find datarepo/data/log -type f | head
+          echo "::notice title=snapshot::$(find datarepo/data/log -type f | head -3 | tr '\n' ' ') | $(ls datarepo | tr '\n' ' ')"
       - name: Save to data branch
         working-directory: datarepo
         run: |
           git config user.name "swell-logger"
           git config user.email "swell-logger@users.noreply.github.com"
           git add -A data/log
-          git status --short | head
+          echo "::notice title=status::$(git status --short | head -3 | tr '\n' ' ') | $(git check-ignore -v data/log/x 2>&1)"
           git diff --cached --quiet && { echo "nothing new"; exit 0; }
           git commit -qm "log $(date -u +%Y-%m-%dT%H:%MZ)"
           for i in 1 2 3; do git push origin HEAD:data && exit 0; git pull --rebase origin data; done
