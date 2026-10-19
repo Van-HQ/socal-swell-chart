@@ -52,7 +52,7 @@ for(let k=0;k<FP.length;k++)for(const year of YEARS){const f=path.join(CACHE,`p$
   const d=JSON.parse(fs.readFileSync(f,"utf8"));
   for(const si in d)for(const model of MODELS){const t=((tot[si]=tot[si]||{})[model]=tot[si][model]||Array.from({length:12},()=>new Array(NB).fill(0)));
     d[si][model].forEach((row,mo)=>row.forEach((c,b)=>t[mo][b]+=c))}}
-const table={v:1,years:YEARS,pointsDone:done,pointsTotal:FP.length*YEARS.length,note:"cdf[k] = percent of daylight hours scoring below k*0.5 on the 0-10 score",models:{}};
+const table={v:2,years:YEARS,pointsDone:done,pointsTotal:FP.length*YEARS.length,note:"cdf[k] = percent of daylight hours scoring below k*0.5 on the 0-10 score",models:{}};
 for(const model of MODELS){table.models[model]={};
   for(const si in tot){const rows=tot[si][model].map(row=>{const n=row.reduce((a,b)=>a+b,0);if(!n)return null;
     const cdf=[];for(let k=0;k<=20;k++){let c=0;for(let b=0;b<Math.min(NB,k*2);b++)c+=row[b];cdf.push(Math.round(100*c/n))}return{n,cdf}});

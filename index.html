@@ -711,7 +711,7 @@ async function loadAlerts(){const reg={};for(const s of SPOTS){(reg[s.r]=reg[s.r
    If they are missing or fail to load, the line simply does not appear. */
 const MONL=["January","February","March","April","May","June","July","August","September","October","November","December"];
 let PCT=null;
-async function loadPct(){try{const j=await getJSON("https://raw.githubusercontent.com/Van-HQ/socal-swell-chart/data/data/percentiles/percentiles.json");if(j&&j.models){PCT=j;if(DATA)render()}}catch(e){}}
+async function loadPct(){try{const j=await getJSON("https://raw.githubusercontent.com/Van-HQ/socal-swell-chart/data/data/percentiles/percentiles.json");if(j&&j.models&&j.v>=2){PCT=j;if(DATA)render()}}catch(e){}}
 function pctText(s,h){if(!PCT||!h||h.face<1)return"";const row=PCT.models[MODEL]&&PCT.models[MODEL][s.n],mo=+DATA.times[TI].slice(5,7)-1,r=row&&row[mo];if(!r||r.n<200)return"";
   const x=clamp(shown(h.rate)*2,0,20),k=Math.min(19,Math.floor(x)),p=Math.round(lerp(r.cdf[k],r.cdf[k+1],x-k));
   return`${p>=99?"Better than nearly all":p<=1?"Among the worst":"Better than "+p+"% of"} ${MONL[mo]} daylight hours here`}
