@@ -332,6 +332,14 @@ button.tile:disabled{cursor:default;opacity:.6}
 .tile .chev{margin-left:auto;font-style:normal;font-size:17px;line-height:1;color:var(--muted)}
 .tile .tk svg{flex:none}
 .hbuoy{margin:5px 0 0;font-size:12.5px;color:var(--muted)}
+.dh{display:flex;justify-content:space-between;align-items:baseline;gap:8px}.dh b{font-size:16px}.dh span{color:var(--muted);font-size:12.5px}
+.dbars{position:relative;display:flex;align-items:flex-end;gap:4px;height:112px;padding-top:6px}
+.db{flex:1;border-radius:4px 4px 0 0;min-height:3px}.db.now{outline:2px solid var(--ink);outline-offset:1px}
+.db.L{background:var(--accent)}.db.M{background:var(--warn)}.db.S{background:var(--r-poor)}
+.dl{position:absolute;left:0;right:0;z-index:2;border-top:1px dashed rgba(154,157,163,.45);pointer-events:none}.dl i{position:absolute;left:0;top:-15px;font-style:normal;font-size:10.5px;color:var(--muted)}
+.dax{display:flex;gap:4px;margin-top:5px;color:var(--muted);font-size:11px}.dax span{flex:1;text-align:center}
+.dleg{display:flex;flex-wrap:wrap;gap:6px 12px;white-space:nowrap;margin-top:10px;font-size:12px;color:var(--muted)}.dleg i{display:inline-block;width:9px;height:9px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+.dleg i.L{background:var(--accent)}.dleg i.M{background:var(--warn)}.dleg i.S{background:var(--r-poor)}
 .hpct{margin:8px 0 0;font-size:12.5px;font-weight:600;color:var(--muted)}
 #pop{position:fixed;inset:0;z-index:50;background:rgba(0,0,0,.5);display:flex;align-items:flex-end;justify-content:center}
 #pop[hidden]{display:none}
@@ -1274,11 +1282,28 @@ function driftOf(s,h){if(!h||h.face<1||!h.dom)return null;const g=9.81,Hb=h.face
   const tf=/jetty|pier|breakwater|wedge|river/i.test(s.t)?0.6:/reef|point|cobble/i.test(s.t)?0.7:1;
   const v=1.17*Math.sqrt(g*Hb)*sb*Math.sqrt(1-sb*sb)*tf;
   return{v,lvl:v<0.25?0:v<0.5?1:2,txt:v<0.25?"light drift":v<0.5?"moderate drift":"strong drift, watch for rips"}}
+const DR_NM=["Light","Moderate","Strong"],DR_MAX=0.8;
+/* "Current" section: estimated sideways drift for each daylight hour of the selected day (see driftOf). */
+function driftSection(s){if(!s.ok)return"";const cd=DATA.times[TI].slice(0,10),day=dayIdx().find(x=>x.d===cd);if(!day)return"";
+  const ks=day.idx.filter(k=>s.wx.day[k]===1&&s.hr[k]);if(!ks.length)return"";
+  const dr=ks.map(k=>({k,d:driftOf(s,s.hr[k])})),some=dr.filter(x=>x.d);
+  const hl=k=>`${h12s(hourOf(k))}${ampm(hourOf(k))[0]}`,H=7;
+  const now=driftOf(s,s.hr[TI]);
+  if(!some.length)return`<div><p class="lab" style="margin-bottom:8px">Current</p><div class="wx"><p class="note" style="margin:0">Too small to push much sideways today.</p></div></div>`;
+  const top=some.reduce((a,b)=>b.d.v>a.d.v?b:a),mx=top.d.lvl,hrs=some.filter(x=>x.d.lvl===mx);
+  const take=mx===0?"Light drift all day.":`${DR_NM[mx]} drift${hrs.length===some.length?" all day":`, peaking around ${h12s(hourOf(top.k))} ${ampm(hourOf(top.k)).toUpperCase()}`}.`+(mx>=1?" Rips more likely near sandbars and channels.":"");
+  const y=v=>Math.max(3,v/DR_MAX*106),tick=(v,n)=>`<div class="dl" style="bottom:${v/DR_MAX*106}px"><i>${n}</i></div>`;
+  const bars=dr.map(x=>`<div class="db ${x.d?["L","M","S"][x.d.lvl]:""}${x.k===TI?" now":""}" style="height:${x.d?y(x.d.v):3}px" title="${hl(x.k)}: ${x.d?DR_NM[x.d.lvl].toLowerCase()+" ("+x.d.v.toFixed(2)+" m/s)":"flat"}"></div>`).join("");
+  const ax=dr.map(x=>`<span>${hourOf(x.k)%3===0?hl(x.k):""}</span>`).join("");
+  return`<div><p class="lab" style="margin-bottom:8px">Current</p><div class="wx"><div class="dh"><b>${now?DR_NM[now.lvl]+" drift":"Flat, no drift"}</b><span>${fmt(TI)}</span></div>
+   <p class="note" style="margin:2px 0 10px">${take}</p>
+   <div class="dbars">${tick(0.25,"Moderate")}${tick(0.5,"Strong")}${bars}</div><div class="dax">${ax}</div>
+   <div class="dleg"><span><i class="L"></i>Light</span><span><i class="M"></i>Moderate</span><span><i class="S"></i>Strong</span><span style="margin-left:auto">Outlined: selected</span></div>
+   <p class="note" style="margin:8px 0 0">Estimated from wave height and the angle the swell meets the beach. Not a direct rip measurement.</p></div></div>`}
 function summary(s,h,tide,trend,sst){const out=[],ws=s.wx.ws[TI],wd=s.wx.wd[TI];
   if(ws!=null)out.push(ws<4?`Light ${DIRW[comp(wd)]} wind`:`${Math.round(ws)} kt ${h.w.word.toLowerCase()} wind`);
   if(tide!=null)out.push(`${tide<1.5?"low":tide<4?"mid":"high"} tide ${trend}`.trim());
   if(sst!=null)out.push(`${Math.round(sst*9/5+32)}° water`);
-  const dr=driftOf(s,h);if(dr)out.push(dr.txt);
   const t=out.join(", ");return t?t[0].toUpperCase()+t.slice(1)+".":""}
 
 /* Best windows: 2-3 daylight hour runs inside one day, every hour Poor-to-fair or better, ranked by mean rate. */
@@ -1489,6 +1514,7 @@ function detail(s){const h=s.hr[TI];
   <div><p class="lab" style="margin-bottom:8px">Forecast</p>${dayCards(s)}</div>
   <div><p class="lab" style="margin-bottom:8px">Outlook · ${fmt(TI).split(" ")[0]}</p>${dayChart(s)}${modelSeg()}<div class="steprow"><div class="seg2" role="group" aria-label="Table interval"><button data-step="3" aria-pressed="${S.step===3}">3-hour</button><button data-step="1" aria-pressed="${S.step===1}">Hourly</button></div></div>${hourly(s)}</div>
   <div><p class="lab" style="margin-bottom:8px">Swell Breakdown · ${fmt(TI)}</p>${spectra(s)}</div>
+  ${driftSection(s)}
   <div><p class="lab" style="margin-bottom:8px">7 Day Forecast</p>${fcChart(s)}</div>
   ${bestWindowsView(s)}
   ${whyScore(s)}
