@@ -695,20 +695,20 @@ function driftOf(s,h){if(!h||h.face<1||!h.dom)return null;const g=9.81,Hb=h.face
   const tf=/jetty|pier|breakwater|wedge|river/i.test(s.t)?0.6:/reef|point|cobble/i.test(s.t)?0.7:1;
   const v=1.17*Math.sqrt(g*Hb)*sb*Math.sqrt(1-sb*sb)*tf;
   return{v,lvl:v<0.25?0:v<0.5?1:2,txt:v<0.25?"light drift":v<0.5?"moderate drift":"strong drift, watch for rips"}}
-const DR_NM=["Light","Moderate","Strong"],DR_MAX=0.8;
+const DR_NM=["Light","Moderate","Strong"],DR_MAX=0.8,drv=v=>(Math.floor(v*100)/100).toFixed(2);   // truncated, so 0.249 never shows as 0.25 next to a Light label
 /* "Current" section: estimated sideways drift for each daylight hour of the selected day (see driftOf). */
 function driftSection(s){if(!s.ok)return"";const cd=DATA.times[TI].slice(0,10),day=dayIdx().find(x=>x.d===cd);if(!day)return"";
   const ks=day.idx.filter(k=>s.wx.day[k]===1&&s.hr[k]);if(!ks.length)return"";
   const dr=ks.map(k=>({k,d:driftOf(s,s.hr[k])})),some=dr.filter(x=>x.d);
   const hl=k=>`${h12s(hourOf(k))}${ampm(hourOf(k))[0]}`,H=7;
   const now=driftOf(s,s.hr[TI]);
-  if(!some.length)return`<div><p class="lab" style="margin-bottom:8px">Current</p><div class="wx"><p class="note" style="margin:0">Too small to push much sideways today.</p></div></div>`;
+  if(!some.length)return`<div><p class="lab" style="margin-bottom:8px">Current</p><div><p class="note" style="margin:0">Too small to push much sideways today.</p></div></div>`;
   const top=some.reduce((a,b)=>b.d.v>a.d.v?b:a),mx=top.d.lvl,hrs=some.filter(x=>x.d.lvl===mx);
   const take=mx===0?"Light drift all day.":`${DR_NM[mx]} drift${hrs.length===some.length?" all day":`, peaking around ${h12s(hourOf(top.k))} ${ampm(hourOf(top.k)).toUpperCase()}`}.`+(mx>=1?" Rips more likely near sandbars and channels.":"");
   const y=v=>Math.max(3,v/DR_MAX*106),tick=(v,n)=>`<div class="dl" style="bottom:${v/DR_MAX*106}px"><i>${n}</i></div>`;
-  const bars=dr.map(x=>`<div class="db ${x.d?["L","M","S"][x.d.lvl]:""}${x.k===TI?" now":""}" style="height:${x.d?y(x.d.v):3}px" title="${hl(x.k)}: ${x.d?DR_NM[x.d.lvl].toLowerCase()+" ("+x.d.v.toFixed(2)+" m/s)":"flat"}"></div>`).join("");
+  const bars=dr.map(x=>`<div class="db ${x.d?["L","M","S"][x.d.lvl]:""}${x.k===TI?" now":""}" style="height:${x.d?y(x.d.v):3}px" title="${hl(x.k)}: ${x.d?DR_NM[x.d.lvl].toLowerCase()+" ("+drv(x.d.v)+" m/s)":"flat"}"></div>`).join("");
   const ax=dr.map(x=>`<span>${hourOf(x.k)%3===0?hl(x.k):""}</span>`).join("");
-  return`<div><p class="lab" style="margin-bottom:8px">Current</p><div class="wx"><div class="dh"><b>${now?DR_NM[now.lvl]+" drift":"Flat, no drift"}</b><span>${fmt(TI)}</span></div>
+  return`<div><p class="lab" style="margin-bottom:8px">Current</p><div><div class="dh"><b>${now?DR_NM[now.lvl]+" drift":"Flat, no drift"}${now?` <small>${drv(now.v)} m/s</small>`:""}</b><span>${fmt(TI)}</span></div>
    <p class="note" style="margin:2px 0 10px">${take}</p>
    <div class="dbars">${tick(0.25,"Moderate")}${tick(0.5,"Strong")}${bars}</div><div class="dax">${ax}</div>
    <div class="dleg"><span><i class="L"></i>Light</span><span><i class="M"></i>Moderate</span><span><i class="S"></i>Strong</span><span style="margin-left:auto">Outlined: selected</span></div>
