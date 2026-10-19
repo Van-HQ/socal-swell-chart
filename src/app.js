@@ -629,7 +629,8 @@ function dayCards(s){const T=DATA.times,cur=T[TI].slice(0,10),today=laNow().date
   return`<div class="dcards" role="group" aria-label="Forecast day">${dayIdx().map(({d,idx})=>{const p=tparts(T[idx[0]]),lit=idx.filter(k=>s.wx.day[k]),use=lit.length?lit:idx;
     const seg=[[5,10,"Morning"],[10,14,"Midday"],[14,19,"Afternoon"]].map(([a,b,nm])=>{const ks=idx.filter(k=>hourOf(k)>=a&&hourOf(k)<b);if(!ks.length)return`<i style="background:var(--line)"></i>`;
       const f=ks.reduce((t,k)=>t+s.hr[k].face,0)/ks.length,r=ks.reduce((t,k)=>t+s.hr[k].rate,0)/ks.length,c=clsOf(f,r);return`<i style="background:${rtCol(c)}" title="${nm}: ${RT[c].n}"></i>`}).join("");
-    const go=idx.find(k=>hourOf(k)===hNow)??idx[Math.min(idx.length-1,12)];
+    // Tapping a day jumps to 6 AM; for today, once 6 AM has passed, it jumps to the current hour instead.
+    const six=idx.find(k=>hourOf(k)===6),nowK=d===today?idx.find(k=>T[k]===laNow().key):null,go=(nowK!=null&&hourOf(nowK)>6?nowK:six)??idx[0];
     return`<button class="dcard" data-time="${go}" aria-pressed="${d===cur}"><span class="dn">${d===today?"Today":DOW[p.dow]+" "+p.d}</span><span class="dh">${faceText(use.reduce((a,k)=>a+s.hr[k].face,0)/use.length)}</span><span class="dseg">${seg}</span></button>`}).join("")}</div>`}
 function hourly(s){const T=DATA.times,cur=T[TI].slice(0,10),day=dayIdx().find(x=>x.d===cur),step=S.step,ks=day.idx.filter(k=>hourOf(k)>=5&&hourOf(k)<=20&&(step===1||((hourOf(k)-5)%3===0&&hourOf(k)<20)));
   const head=`<div class="hrow hhead${step===3?" w3":""}"><span>Time</span><span>Surf</span><span>Swell</span><span>Wind</span><span class="num">Tide</span><span class="num">Score</span></div>`;
