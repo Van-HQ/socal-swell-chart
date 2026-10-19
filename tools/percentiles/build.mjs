@@ -1,11 +1,11 @@
 // Builds "how often is it this good here?" tables from Open-Meteo's historical archive.
 // Every past daylight hour is scored with the app's own rating code, then counted into a histogram per spot and month.
 // Resumable: each (forecast point, year) result is cached as a small file, so a rate-limited run can simply be run again.
-// Usage: node tools/percentiles/build.mjs <data-dir>      env YEARS="2018,2019,..." (default 2018-2025)
+// Usage: node tools/percentiles/build.mjs <data-dir>      env YEARS="2018,2019,..." (default 2021-2025; the archive has no swell data before about October 2021)
 import fs from "node:fs";import path from "node:path";
 import {loadRating,loadSpots} from "./rating.mjs";
-const OUT=process.argv[2]||"pct-out",CACHE=path.join(OUT,"cache");fs.mkdirSync(CACHE,{recursive:true});
-const YEARS=(process.env.YEARS||"2018,2019,2020,2021,2022,2023,2024,2025").split(",").map(Number);
+const OUT=process.argv[2]||"pct-out",CACHE=path.join(OUT,"cache2");fs.rmSync(path.join(OUT,"cache"),{recursive:true,force:true});fs.mkdirSync(CACHE,{recursive:true});   // "cache" held results from before empty hours were skipped
+const YEARS=(process.env.YEARS||"2021,2022,2023,2024,2025").split(",").map(Number);
 const MODELS=["original","current"],R=Object.fromEntries(MODELS.map(m=>[m,loadRating(m)]));
 const {SPOTS}=loadSpots(),PEAK=R.original.PEAK;
 const FP=[],ix={},spotsOf=[];
@@ -36,6 +36,7 @@ async function oneYear(k,year){
   for(const si of spotsOf[k]){const s={...SPOTS[si],m};res[si]={};
     for(const model of MODELS){const hist=Array.from({length:12},()=>new Array(NB).fill(0));
       for(let i=0;i<n;i++){const hr=+h.time[i].slice(11,13);if(hr<6||hr>18)continue;     // daylight hours only (6 AM to 6:59 PM local)
+        if(h.swell_wave_height[i]==null&&h.wind_wave_height[i]==null)continue;     // the archive has no swell data for this hour: skip it, do not count it as flat
         const mo=+h.time[i].slice(5,7)-1,ws=w.wind_speed_10m[i],wd=w.wind_direction_10m[i];
         const c=R[model].comps(s,i),r=R[model].rateCore(s,c,ws,wd,null),v=r.face<1?0:R[model].shown(r.rate);
         hist[mo][Math.min(NB-1,Math.floor(v*4))]++}
