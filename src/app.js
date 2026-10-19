@@ -919,6 +919,8 @@ function howView(){return`<div class="det"><h2>How spots are rated</h2>
   <div><dt>Period</dt><dd><small>Longer is better, from 6 s (weak) to 14 s and up (full marks).</small></dd></div>
   <div><dt>Tide</dt><dd><small>A small penalty outside the tide the spot likes.</small></dd></div></dl>
   <div class="wins">${RT.map((r,c)=>`<div class="win" style="grid-template-columns:130px 1fr">${rlab(c)}<span class="m">${["Faces under 1 ft","Score below 2","2 to 4","4 to 5.5","5.5 to 7","7 to 8.8","Above 8.8"][c]}</span></div>`).join("")}</div>
+  <p class="lab" style="margin:14px 0 4px">"Better than X% of days"</p>
+  <p class="note">On a spot's page, this line says how the current score compares with every past daylight hour (6 AM to 7 PM) in the same month at that spot. It uses about five years of hourly history from Open-Meteo's archive (October 2021 to 2025; the archive has no swell data earlier), scored with the same formula and the same Original or Current model you are viewing. A high number means unusually good for the time of year; a low number means a typical or poor day. Limits: the archive's wind is smoother than the live forecast (it misses sea breezes), tide is left out, and five years is a short record, so treat it as a guide. The tables are rebuilt in GitHub Actions and the line is hidden if they cannot be loaded.</p>
   <p class="note">Model estimates, not cam reports. Sandbars, kelp and local shadowing are invisible to it. Spot windows and gains are starting values to tune.</p>
   <p class="note">Data: Open-Meteo, Scripps CDIP, NOAA CO-OPS, NWS. Map: OpenFreeMap, © OpenMapTiles, data from OpenStreetMap; terrain from Mapzen, USGS and NOAA; satellite imagery © Esri, Maxar, Earthstar Geographics.</p></div>`}
 let lastRender=0;
