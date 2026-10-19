@@ -710,7 +710,7 @@ function driftSection(s){if(!s.ok)return"";const cd=DATA.times[TI].slice(0,10),d
   return`<div><p class="lab" style="margin-bottom:8px">Current</p><div><div class="dh"><b>${now?DR_NM[now.lvl]+" rip":"Flat, no rip"}${now?` <small>${drv(now.v)} m/s</small>`:""}</b><span>${fmt(TI)}</span></div>
    <p class="note" style="margin:2px 0 10px">${take}</p>
    <div class="dstrip">${bars}</div><div class="dax">${ax}</div>
-   <div class="dleg"><span><i class="L"></i>Light</span><span><i class="M"></i>Moderate</span><span><i class="S"></i>Strong</span><span style="margin-left:auto">Outlined: selected</span></div>
+   <div class="dleg"><span><i class="L"></i>Light</span><span><i class="M"></i>Moderate</span><span><i class="S"></i>Strong</span></div>
    <p class="note" style="margin:8px 0 0">Estimated from wave height and the angle the swell meets the beach. Not a direct rip measurement.</p></div></div>`}
 function summary(s,h,tide,trend,sst){const out=[],ws=s.wx.ws[TI],wd=s.wx.wd[TI];
   if(ws!=null)out.push(ws<4?`Light ${DIRW[comp(wd)]} wind`:`${Math.round(ws)} kt ${h.w.word.toLowerCase()} wind`);
