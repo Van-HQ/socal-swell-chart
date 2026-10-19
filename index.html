@@ -1264,10 +1264,21 @@ function feelsF(tF,rh,ktw){if(tF==null||ktw==null)return null;const c=(tF-32)*5/
 function suitIdx(f){let i=SUIT_AT.findIndex(t=>f>=t);return i<0?SUITS.length-1:i}
 function suitFor(f,fl){let i=suitIdx(f),n=0;if(fl!=null){if(fl<45)n=2;else if(fl<55)n=1;else if(fl>=80&&i>0)n=-1}
   i=Math.max(0,Math.min(SUITS.length-1,i+n));return{t:SUITS[i],n,base:SUITS[suitIdx(f)]}}
+/* Sideways drift along the beach: the longshore current from breaking waves (Komar and Inman, 1970): V = 1.17 * sqrt(g*Hb) * sin(ab) * cos(ab).
+   Hb is the breaker height and ab the angle the waves hit the beach at breaking. The angle at breaking is the swell's angle to the shore, bent toward the beach
+   by shallow water (Snell's law, using wave speeds c = gT/2pi in deep water and sqrt(g*depth) at the break, depth taken as Hb/0.78).
+   Sandbar beaches get the full value. Jetties and piers block the along-shore flow and reefs and points focus it differently, so those are scaled down (a judgment call).
+   Rips are fed by this drift, but this is not a direct rip measurement. */
+function driftOf(s,h){if(!h||h.face<1||!h.dom)return null;const g=9.81,Hb=h.face*0.3048,T=h.dom.p,a0=Math.min(89,angDiff(h.dom.d,s.f))*Math.PI/180;
+  const c0=g*T/(2*Math.PI),cb=Math.sqrt(g*Hb/0.78),sb=Math.min(0.999,Math.sin(a0)*cb/c0);
+  const tf=/jetty|pier|breakwater|wedge|river/i.test(s.t)?0.6:/reef|point|cobble/i.test(s.t)?0.7:1;
+  const v=1.17*Math.sqrt(g*Hb)*sb*Math.sqrt(1-sb*sb)*tf;
+  return{v,lvl:v<0.25?0:v<0.5?1:2,txt:v<0.25?"light drift":v<0.5?"moderate drift":"strong drift, watch for rips"}}
 function summary(s,h,tide,trend,sst){const out=[],ws=s.wx.ws[TI],wd=s.wx.wd[TI];
   if(ws!=null)out.push(ws<4?`Light ${DIRW[comp(wd)]} wind`:`${Math.round(ws)} kt ${h.w.word.toLowerCase()} wind`);
   if(tide!=null)out.push(`${tide<1.5?"low":tide<4?"mid":"high"} tide ${trend}`.trim());
   if(sst!=null)out.push(`${Math.round(sst*9/5+32)}° water`);
+  const dr=driftOf(s,h);if(dr)out.push(dr.txt);
   const t=out.join(", ");return t?t[0].toUpperCase()+t.slice(1)+".":""}
 
 /* Best windows: 2-3 daylight hour runs inside one day, every hour Poor-to-fair or better, ranked by mean rate. */
@@ -1502,6 +1513,8 @@ function howView(){return`<div class="det"><h2>How spots are rated</h2>
   <div class="wins">${RT.map((r,c)=>`<div class="win" style="grid-template-columns:130px 1fr">${rlab(c)}<span class="m">${["Faces under 1 ft","Score below 2","2 to 4","4 to 5.5","5.5 to 7","7 to 8.8","Above 8.8"][c]}</span></div>`).join("")}</div>
   <p class="lab" style="margin:14px 0 4px">"Better than X% of sessions"</p>
   <p class="note">On a spot's page, this line says what share of past sessions in the same month at that spot scored lower than the current hour. The "averages" figure is the mean score for that month; if more than half of that month's sessions are flat, it says "typically flat" instead. A "session" here is any daylight hour (6 AM to 7 PM), pooled across the whole month, not just the same time of day. It uses about five years of hourly history from Open-Meteo's archive (October 2021 to 2025; the archive has no swell data earlier), scored with the same formula and the same Original or Current model you are viewing. A high number means unusually good for the time of year; around 50 means a typical day; a low number means a poor one. Limits: the archive's wind is smoother than the live forecast (it misses sea breezes), tide is left out, and five years is a short record, so treat it as a guide. The tables are rebuilt in GitHub Actions and the line is hidden if they cannot be loaded.</p>
+  <p class="lab" style="margin:14px 0 4px">Drift and rip currents</p>
+  <p class="note">The last words of a spot's summary line ("light drift", "moderate drift", "strong drift, watch for rips") estimate how hard the water pushes you sideways along the beach. It uses the standard longshore-current formula (Komar and Inman, 1970) from the breaker height and the angle the swell meets the shore, so bigger waves hitting at a steeper angle give more drift. Rips are fed by that sideways flow, but this does not measure rips directly. Jetties and piers block the flow, so those spots are scaled down by 40 percent and reefs and points by 30 percent, which is a judgment call. The Light, Moderate and Strong cutoffs (0.25 and 0.5 m/s) are rules of thumb too. Sandbars, channels and tide, which decide where a rip actually forms, are not modeled. Always check the lifeguards' and NWS rip current statements.</p>
   <p class="note">Model estimates, not cam reports. Sandbars, kelp and local shadowing are invisible to it. Spot windows and gains are starting values to tune.</p>
   <p class="note">Data: Open-Meteo, Scripps CDIP, NOAA CO-OPS, NWS. Map: OpenFreeMap, © OpenMapTiles, data from OpenStreetMap; terrain from Mapzen, USGS and NOAA; satellite imagery © Esri, Maxar, Earthstar Geographics.</p></div>`}
 let lastRender=0;
