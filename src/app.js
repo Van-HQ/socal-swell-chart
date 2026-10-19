@@ -705,12 +705,11 @@ function driftSection(s){if(!s.ok)return"";const cd=DATA.times[TI].slice(0,10),d
   if(!some.length)return`<div><p class="lab" style="margin-bottom:8px">Current</p><div><p class="note" style="margin:0">Too small to push much sideways today.</p></div></div>`;
   const top=some.reduce((a,b)=>b.d.v>a.d.v?b:a),mx=top.d.lvl,hrs=some.filter(x=>x.d.lvl===mx);
   const take=mx===0?"Light drift all day.":`${DR_NM[mx]} drift${hrs.length===some.length?" all day":`, peaking around ${h12s(hourOf(top.k))} ${ampm(hourOf(top.k)).toUpperCase()}`}.`+(mx>=1?" Rips more likely near sandbars and channels.":"");
-  const y=v=>Math.max(3,v/DR_MAX*106),tick=(v,n)=>`<div class="dl" style="bottom:${v/DR_MAX*106}px"><i>${n}</i></div>`;
-  const bars=dr.map(x=>`<div class="db ${x.d?["L","M","S"][x.d.lvl]:""}${x.k===TI?" now":""}" style="height:${x.d?y(x.d.v):3}px" title="${hl(x.k)}: ${x.d?DR_NM[x.d.lvl].toLowerCase()+" ("+drv(x.d.v)+" m/s)":"flat"}"></div>`).join("");
+  const bars=dr.map(x=>`<div class="dc ${x.d?["L","M","S"][x.d.lvl]:"F"}${x.k===TI?" now":""}" title="${hl(x.k)}: ${x.d?DR_NM[x.d.lvl].toLowerCase()+" ("+drv(x.d.v)+" m/s)":"flat"}"></div>`).join("");
   const ax=dr.map(x=>`<span>${hourOf(x.k)%3===0?hl(x.k):""}</span>`).join("");
   return`<div><p class="lab" style="margin-bottom:8px">Current</p><div><div class="dh"><b>${now?DR_NM[now.lvl]+" drift":"Flat, no drift"}${now?` <small>${drv(now.v)} m/s</small>`:""}</b><span>${fmt(TI)}</span></div>
    <p class="note" style="margin:2px 0 10px">${take}</p>
-   <div class="dbars">${tick(0.25,"Moderate")}${tick(0.5,"Strong")}${bars}</div><div class="dax">${ax}</div>
+   <div class="dstrip">${bars}</div><div class="dax">${ax}</div>
    <div class="dleg"><span><i class="L"></i>Light</span><span><i class="M"></i>Moderate</span><span><i class="S"></i>Strong</span><span style="margin-left:auto">Outlined: selected</span></div>
    <p class="note" style="margin:8px 0 0">Estimated from wave height and the angle the swell meets the beach. Not a direct rip measurement.</p></div></div>`}
 function summary(s,h,tide,trend,sst){const out=[],ws=s.wx.ws[TI],wd=s.wx.wd[TI];
