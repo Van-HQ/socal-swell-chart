@@ -13,11 +13,12 @@ SPOTS.forEach((s,si)=>{const k=Math.round(s.la/0.05)+"_"+Math.round(s.lo/0.05);i
 const UA={"User-Agent":"swell-chart-percentiles/1.0 (github.com/Van-HQ/socal-swell-chart)"};
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 let stop=false;
-async function getJSON(u){for(let i=0;i<5;i++){
+async function getJSON(u){let limited=0;for(let i=0;i<5;i++){
   const r=await fetch(u,{headers:UA}).catch(()=>null);
   if(r&&r.ok)return r.json();
   const txt=r?await r.text().catch(()=>""):"network error";
-  if(r&&r.status===429){ if(/daily/i.test(txt)){stop=true;throw new Error("daily limit reached")} await sleep(65000);continue }
+  // Rate limit: one minute-long pause covers the per-minute limit. A second 429 means the hourly or daily limit, so stop and let the next scheduled run continue.
+  if(r&&r.status===429){if(++limited>=2){stop=true;throw new Error("rate limit: "+txt.slice(0,120))}await sleep(65000);continue}
   if(r&&r.status>=400&&r.status<500)throw new Error(r.status+" "+txt.slice(0,160));
   await sleep(3000*(i+1))}
   throw new Error("gave up on "+u.slice(0,90))}

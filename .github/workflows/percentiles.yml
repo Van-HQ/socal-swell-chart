@@ -1,10 +1,10 @@
 # Builds the "how often is it this good here?" tables from Open-Meteo's historical archive and saves them to the "data" branch.
-# The archive has a daily request limit, so a full build can take a couple of days. Each point-year is cached, and this job
-# runs daily, so it simply picks up where it stopped. Once everything is cached, a run takes seconds.
+# The archive has a daily request limit, so a full build can take a few days. Each point-year is cached, and this job
+# runs hourly, so it simply picks up where it stopped. Once everything is cached, a run takes seconds.
 name: Build percentiles
 on:
   schedule:
-    - cron: "17 9 * * *"
+    - cron: "17 * * * *"
   workflow_dispatch:
   push:
     paths: ["tools/percentiles/**", ".github/workflows/percentiles.yml"]
@@ -16,7 +16,7 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 180
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
       - uses: actions/checkout@v4
