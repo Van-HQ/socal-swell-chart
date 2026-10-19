@@ -1,9 +1,10 @@
 # Hourly snapshot of the forecast and the real buoy readings, saved to the "data" branch (not main, so the site is not redeployed).
+# GitHub often delays or skips scheduled runs, so this fires every 15 minutes and only saves if the current hour is not logged yet.
 # One small file per run at data/log/YYYY-MM-DD/HH.json (UTC). Later we compare "what was forecast" with "what the buoys measured".
 name: Hourly log
 on:
   schedule:
-    - cron: "7 * * * *"
+    - cron: "*/15 * * * *"
   workflow_dispatch:
   push:
     paths: ["tools/logger/**", ".github/workflows/log.yml"]
@@ -26,7 +27,9 @@ jobs:
         with:
           node-version: 22
       - name: Take snapshot
-        run: node tools/logger/log.mjs datarepo/data/log
+        run: |
+          H=$(date -u +%F/%H)
+          if [ -f "datarepo/data/log/$H.json" ] && [ "${{ github.event_name }}" = "schedule" ]; then echo "already logged $H"; else node tools/logger/log.mjs datarepo/data/log; fi
       - name: Save to data branch
         working-directory: datarepo
         run: |
