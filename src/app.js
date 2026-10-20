@@ -407,7 +407,7 @@ $("play").onclick=()=>{if(!DATA)return;const on=!playT;$("play").setAttribute("a
 
 /* ---------- panel ---------- */
 const S={tab:"spots",sel:null,region:"best",step:3,look:"night",loc:null,locWait:false};
-const REG={all:"All",sb:"Santa Barbara",vc:"Ventura",la:"Los Angeles",oc:"Orange County",sd:"San Diego"};
+const REG={all:"All",sb:"SB",vc:"VC",la:"LA",oc:"OC",sd:"SD"};
 const CHIPS={fav:"\u2605 Favs",best:"Best",local:"Local",all:"All"};
 // Favorites and list preferences are kept in this browser only.
 const FAVS=new Set();try{for(const n of JSON.parse(localStorage.getItem("swellchart.favs")||"[]"))FAVS.add(n)}catch(e){}
@@ -607,7 +607,7 @@ function sbView(){sbEnsure();const s=DATA.spots[SB.spot],o=SB.ov,ok=DATA.spots.f
   return`<div id="sbox" style="display:flex;flex-direction:column;gap:14px">
   <div class="sbsel"><select id="sbspot" aria-label="Spot">${ok.map(x=>`<option value="${x.idx}"${x.idx===SB.spot?" selected":""}>${esc(x.n)}</option>`).join("")}</select><label>Start from <select id="sbhr" aria-label="Start from">${sbHrOpts(hrs)}</select></label></div>
   <div class="sbhero" id="sbhero">${sbHero(s)}</div>
-  <div class="sbctl">${rows}<button class="sbreset" data-sbreset="1">↺ Reset to forecast</button></div>
+  <div class="sbctl">${rows}<button class="sbreset" data-sbreset="1" aria-label="Reset to forecast" title="Reset to forecast">↺</button></div>
   <p class="lab" style="margin-top:-4px">Gold tick = forecast. Green = Good or better.</p>
   <p class="lab" style="margin-top:2px">Swell direction and period. Tap a square to set it.</p>
   <div id="sbheat">${sbHeat(s)}</div>
