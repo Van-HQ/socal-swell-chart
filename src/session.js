@@ -8,8 +8,8 @@ function ssOpts(list,sel){return list.map(k=>`<option value="${k}"${k===sel?" se
 function ssOpen(){const s=DATA.spots[S.sel];if(!s||!s.ok)return;const {dl}=ssHours(s);if(!dl.length)return;
   SS.s=s;SS.a=dl.includes(TI)?TI:dl[0];SS.b=dl.filter(k=>k>=SS.a)[Math.min(2,dl.filter(k=>k>=SS.a).length-1)];
   let el=document.getElementById("ss");if(!el){el=document.createElement("div");el.id="ss";document.body.appendChild(el)}
-  el.hidden=false;el.innerHTML=`<div class="ssbox"><div class="sssel"><label>From <select id="ssa" aria-label="Session start"></select></label><label>To <select id="ssb" aria-label="Session end"></select></label></div>
-   <canvas id="ssc" aria-label="Session report preview"></canvas>
+  el.hidden=false;el.innerHTML=`<div class="ssbox"><div class="ssshape"><div class="sssel"><label>From <select id="ssa" aria-label="Session start"></select></label><label>To <select id="ssb" aria-label="Session end"></select></label></div>
+   <canvas id="ssc" aria-label="Session report preview"></canvas></div>
    <div class="ssbtn"><button id="ssx" class="ssg">Close</button><button id="sssave" class="ssp">Save image</button></div></div>`;
   ssFill();ssDraw();
   el.onclick=e=>{if(e.target===el)ssClose()};
