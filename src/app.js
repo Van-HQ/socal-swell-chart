@@ -598,13 +598,14 @@ function sbPatch(){const s=DATA.spots[SB.spot],o=SB.ov;
   for(const p of SBP){const v=$("v-"+p.k);if(v)v.textContent=p.f(o[p.k],o,s);const g=$("g-"+p.k);if(g)g.innerHTML=sbSegs(s,p)}
   $("sbheat").innerHTML=sbHeat(s);$("sbmatch").innerHTML=sbMatch(s)}
 function sbSync(){for(const p of SBP){const e=$("sb-"+p.k);if(e)e.value=SB.ov[p.k]}sbPatch()}
+function sbHrOpts(hrs){let o="",d="";for(const k of hrs){const dd=DATA.times[k].slice(0,10);if(dd!==d){if(d)o+="</optgroup>";d=dd;o+=`<optgroup label="${fmt(k).split(" ").slice(0,1)[0]}">`}o+=`<option value="${k}"${k===SB.hr?" selected":""}>${fmt(k)}</option>`}return o+(d?"</optgroup>":"")}
 function sbView(){sbEnsure();const s=DATA.spots[SB.spot],o=SB.ov,ok=DATA.spots.filter(x=>x.ok);
-  const hrs=[];for(let k=NOWI;k<Math.min(DATA.times.length,NOWI+96);k++)if(s.wx.day[k])hrs.push(k);if(!hrs.includes(SB.hr))hrs.push(SB.hr);hrs.sort((x,y)=>x-y);
+  const hrs=[];for(let k=0;k<DATA.times.length;k++)if(s.wx.day[k])hrs.push(k);if(!hrs.includes(SB.hr))hrs.push(SB.hr);hrs.sort((x,y)=>x-y);
   let rows="",grp="";
   for(const p of SBP){if(p.k==="tide"&&!s.tide)continue;if(p.g){rows+=`<p class="sbg3">${p.g}</p>`}
     rows+=`<div class="sbrow"><span>${p.n}</span><div class="sbs"><span class="sbgs" id="g-${p.k}">${sbSegs(s,p)}</span><i class="sbt" style="left:${sbPos(p,SB.real[p.k])}"></i><input type="range" id="sb-${p.k}" min="${p.min}" max="${p.max}" step="${p.st}" value="${o[p.k]}" aria-label="${p.g?p.g+" ":""}${p.n}"></div><b id="v-${p.k}">${p.f(o[p.k],o,s)}</b></div>`}
   return`<div id="sbox" style="display:flex;flex-direction:column;gap:14px">
-  <div class="sbsel"><select id="sbspot" aria-label="Spot">${ok.map(x=>`<option value="${x.idx}"${x.idx===SB.spot?" selected":""}>${esc(x.n)}</option>`).join("")}</select><label>Start from <select id="sbhr" aria-label="Start from">${hrs.map(k=>`<option value="${k}"${k===SB.hr?" selected":""}>${fmt(k)}</option>`).join("")}</select></label></div>
+  <div class="sbsel"><select id="sbspot" aria-label="Spot">${ok.map(x=>`<option value="${x.idx}"${x.idx===SB.spot?" selected":""}>${esc(x.n)}</option>`).join("")}</select><label>Start from <select id="sbhr" aria-label="Start from">${sbHrOpts(hrs)}</select></label></div>
   <div class="sbhero" id="sbhero">${sbHero(s)}</div>
   <div class="sbctl">${rows}<button class="sbreset" data-sbreset="1">↺ Reset to forecast</button></div>
   <p class="lab" style="margin-top:-4px">Gold tick = forecast. Green = Good or better.</p>
