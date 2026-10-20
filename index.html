@@ -331,7 +331,7 @@ table.cmp small{display:block;color:var(--muted);font-size:12px}
 table.cmp .sc{display:flex;align-items:center;gap:6px;font-weight:600;font-size:15px}.sc i{width:9px;height:9px;border-radius:50%;flex:none}
 table.cmp .gstar{color:var(--gold);font-size:14px;margin-left:5px}
 table.cmp .v{font-weight:600}
-table.cmp .cstrip{display:flex;gap:1px;margin-top:5px}.cstrip i{flex:1;height:10px;border-radius:2px}.cstrip i.L{background:var(--accent)}.cstrip i.M{background:var(--warn)}.cstrip i.S{background:var(--r-poor)}.cstrip i.F{background:var(--line)}.cstrip i.now{outline:1.5px solid var(--ink);outline-offset:0}
+table.cmp .cstrip{display:flex;gap:2px;margin-top:5px}.cstrip i{flex:1;height:5px;border-radius:3px}.cstrip i.L{background:var(--accent)}.cstrip i.M{background:var(--warn)}.cstrip i.S{background:var(--r-poor)}.cstrip i.F{background:var(--line)}.cstrip i.now{box-shadow:0 0 0 1px var(--bg),0 0 0 2px var(--muted)}
 table.cmp .mini{display:flex;gap:2px;margin-top:5px}.mini i{flex:1;height:5px;border-radius:3px}
 button.tile{text-align:left;font:inherit;color:inherit;cursor:pointer;width:100%;-webkit-tap-highlight-color:transparent}
 button.tile:active{background:color-mix(in srgb,var(--ink) 8%,var(--raise))}
@@ -1143,7 +1143,7 @@ function cmpView(){const ok=DATA.spots.filter(s=>s.ok);
   ${row("Swell",s=>{const d=s.hr[TI].dom;return d?`${d.h.toFixed(1)} ft · ${Math.round(d.p)} s<small>${comp(d.d)}</small>`:"–"})}
   ${row("Wind",(s,i)=>{const h=s.hr[TI],ws=s.wx.ws[TI];return h.w.d==null||ws==null?"–":`<span class="v">${Math.round(ws)} kt</span><small>${h.w.word}</small>`})}
   ${row("Tide",s=>tideA(s))}
-  ${row("Rip",s=>{const d=driftOf(s,s.hr[TI]);const ks=day?day.idx.filter(k=>s.wx.day[k]===1&&s.hr[k]):[];return`<span class="v">${d?DR_NM[d.lvl]:"Flat"}</span>${d?`<small>${drv(d.v)} m/s</small>`:""}${ks.length?`<div class="cstrip">${ks.map(k=>{const x=driftOf(s,s.hr[k]);return`<i class="${x?["L","M","S"][x.lvl]:"F"}${k===TI?" now":""}"></i>`}).join("")}</div>`:""}`})}
+  ${row("Rip",s=>{const d=driftOf(s,s.hr[TI]);const slot=([x,y])=>{const ks=day?day.idx.filter(k=>hourOf(k)>=x&&hourOf(k)<y&&s.hr[k]):[];if(!ks.length)return`<i class="F"></i>`;const m=Math.max(...ks.map(k=>{const q=driftOf(s,s.hr[k]);return q?q.v:-1}));const q=m<0?null:{lvl:m<0.25?0:m<0.5?1:2},cur=ks.includes(TI);return`<i class="${q?["L","M","S"][q.lvl]:"F"}${cur?" now":""}"></i>`};return`<span class="v">${d?DR_NM[d.lvl]:"Flat"}</span>${d?`<small>${drv(d.v)} m/s</small>`:""}<div class="cstrip">${[[5,10],[10,14],[14,19]].map(slot).join("")}</div>`})}
   ${row("Day",s=>`<div class="mini">${seg(s)}</div>`)}</tbody></table>`:`<p class="note">Pick two or three spots to compare them hour by hour.</p>`}</div>${foot()}`}
 
 /* ---------- Swellbox: change the swell, wind and tide for a spot and see what it would score ---------- */

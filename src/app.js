@@ -549,7 +549,7 @@ function cmpView(){const ok=DATA.spots.filter(s=>s.ok);
   ${row("Swell",s=>{const d=s.hr[TI].dom;return d?`${d.h.toFixed(1)} ft · ${Math.round(d.p)} s<small>${comp(d.d)}</small>`:"–"})}
   ${row("Wind",(s,i)=>{const h=s.hr[TI],ws=s.wx.ws[TI];return h.w.d==null||ws==null?"–":`<span class="v">${Math.round(ws)} kt</span><small>${h.w.word}</small>`})}
   ${row("Tide",s=>tideA(s))}
-  ${row("Rip",s=>{const d=driftOf(s,s.hr[TI]);const ks=day?day.idx.filter(k=>s.wx.day[k]===1&&s.hr[k]):[];return`<span class="v">${d?DR_NM[d.lvl]:"Flat"}</span>${d?`<small>${drv(d.v)} m/s</small>`:""}${ks.length?`<div class="cstrip">${ks.map(k=>{const x=driftOf(s,s.hr[k]);return`<i class="${x?["L","M","S"][x.lvl]:"F"}${k===TI?" now":""}"></i>`}).join("")}</div>`:""}`})}
+  ${row("Rip",s=>{const d=driftOf(s,s.hr[TI]);const slot=([x,y])=>{const ks=day?day.idx.filter(k=>hourOf(k)>=x&&hourOf(k)<y&&s.hr[k]):[];if(!ks.length)return`<i class="F"></i>`;const m=Math.max(...ks.map(k=>{const q=driftOf(s,s.hr[k]);return q?q.v:-1}));const q=m<0?null:{lvl:m<0.25?0:m<0.5?1:2},cur=ks.includes(TI);return`<i class="${q?["L","M","S"][q.lvl]:"F"}${cur?" now":""}"></i>`};return`<span class="v">${d?DR_NM[d.lvl]:"Flat"}</span>${d?`<small>${drv(d.v)} m/s</small>`:""}<div class="cstrip">${[[5,10],[10,14],[14,19]].map(slot).join("")}</div>`})}
   ${row("Day",s=>`<div class="mini">${seg(s)}</div>`)}</tbody></table>`:`<p class="note">Pick two or three spots to compare them hour by hour.</p>`}</div>${foot()}`}
 
 /* ---------- Swellbox: change the swell, wind and tide for a spot and see what it would score ---------- */
