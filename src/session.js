@@ -87,3 +87,7 @@ function ssDraw(){const s=SS.s,c=document.getElementById("ssc");if(!c)return;con
   tx("Swell",24,828,font(700,14));tx(`Forecast · Generated ${new Date().toLocaleString("en-US",{timeZone:TZ,month:"short",day:"numeric",hour:"numeric",minute:"2-digit"})}`,W-24,828,font(400,12),MUT,"right");
   clearTimeout(SS.t);SS.blob=null;SS.t=setTimeout(()=>c.toBlob(b=>{SS.blob=b},"image/png"),150)}
 document.body.addEventListener("click",e=>{if(e.target.closest("[data-ss]"))ssOpen()});
+
+/* Installed (home screen) copies can keep an old page for days. When the app comes back to the foreground, check whether a newer build is published and reload if so. */
+let UPD=0;document.addEventListener("visibilitychange",async()=>{if(document.visibilityState!=="visible"||Date.now()-UPD<3e5)return;UPD=Date.now();
+  try{const r=await fetch(location.pathname+"?v="+Date.now(),{cache:"no-store"}),m=/const BUILD="(\d+)"/.exec(await r.text());if(m&&m[1]!==BUILD)location.reload()}catch(e){}});
