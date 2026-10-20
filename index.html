@@ -325,6 +325,7 @@ table.cmp small{display:block;color:var(--muted);font-size:12px}
 table.cmp .sc{display:flex;align-items:center;gap:6px;font-weight:600;font-size:15px}.sc i{width:9px;height:9px;border-radius:50%;flex:none}
 table.cmp .gstar{color:var(--gold);font-size:14px;margin-left:5px}
 table.cmp .v{font-weight:600}
+table.cmp .cstrip{display:flex;gap:1px;margin-top:5px}.cstrip i{flex:1;height:10px;border-radius:2px}.cstrip i.L{background:var(--accent)}.cstrip i.M{background:var(--warn)}.cstrip i.S{background:var(--r-poor)}.cstrip i.F{background:var(--line)}.cstrip i.now{outline:1.5px solid var(--ink);outline-offset:0}
 table.cmp .mini{display:flex;gap:2px;margin-top:5px}.mini i{flex:1;height:5px;border-radius:3px}
 button.tile{text-align:left;font:inherit;color:inherit;cursor:pointer;width:100%;-webkit-tap-highlight-color:transparent}
 button.tile:active{background:color-mix(in srgb,var(--ink) 8%,var(--raise))}
@@ -1073,7 +1074,7 @@ function listView(){const rows=DATA.spots.filter(inFilter);if(S.region==="local"
   const lm=s=>S.region==="local"&&LOCSET.has(s.n)?`${LOCSET.get(s.n).toFixed(LOCSET.get(s.n)<10?1:0)} mi \u00b7 `:"";
   const info=S.region==="local"?(S.locWait?"Finding your location\u2026":S.loc&&S.loc.gps?"15 nearest to you":`15 nearest to ${HOME.n}${S.loc&&S.loc.far?" (you are far from SoCal)":" (location off)"}`):S.region==="fav"?`${rows.length} favorite${rows.length===1?"":"s"}`:S.region==="all"?`${rows.length} spots, north to south`:`${rows.length} spots, best first`;
   return`<div style="display:flex;flex-direction:column;gap:8px"><div class="chips three" role="group" aria-label="Spot list">${Object.entries(CHIPS).map(([k,n])=>`<button data-reg="${k}" aria-pressed="${S.region===k}">${n}</button>`).join("")}</div>${modelSeg()}
-  <div class="steprow" style="margin-top:2px"><span class="lab">${info}</span></div>
+  ${S.loc&&S.loc.gps&&BEST.scope==="local"?"":`<div class="steprow" style="margin-top:2px"><span class="lab">${info}</span></div>`}
   ${alertBanner(null)}
   ${rows.length||S.locWait?"":`<p class="note">${S.region==="fav"?"No favorites yet. Open a spot and tap the star.":"No spots here."}</p>`}<div class="rows">${rows.map(s=>{const h=s.hr[TI];
     if(!s.ok)return`<button class="row" data-spot="${s.idx}"><i class="dot" style="background:var(--line)"></i><span class="nm">${esc(s.n)}</span><span class="ft"></span><span class="sub">No wave data near this spot</span></button>`;
@@ -1107,7 +1108,7 @@ function bestView(){const days=bestDays(),today=laNow().date;
   const empty=S.locWait?"":!days.length?`<p class="note">${BEST.range==="wknd"?"No weekend days in this forecast yet.":"No forecast days left."}</p>`:items.length?"":`<p class="note">${BEST.scope==="fav"&&!FAVS.size?"No favorites yet. Open a spot and tap the star.":"No stretch of Fair to good or better in this range. Try a longer range or a wider list."}</p>`;
   return`<div style="display:flex;flex-direction:column;gap:8px"><div class="chips three" role="group" aria-label="Which spots">${Object.entries(BSCOPE).map(([k,n])=>`<button data-bscope="${k}" aria-pressed="${BEST.scope===k}">${n}</button>`).join("")}</div>
   <div class="chips three" role="group" aria-label="When">${Object.entries(BRANGE).map(([k,n])=>`<button data-brange="${k}" aria-pressed="${BEST.range===k}">${n}</button>`).join("")}</div>
-  <div class="steprow" style="margin-top:2px"><span class="lab">${info} · stretches of 2+ hours at Fair to good or better</span></div>
+  <div class="steprow" style="margin-top:2px"><span class="lab">${info}</span></div>
   ${empty}<div class="bcards">${items.map(({s,w})=>{const ks=w.ks,pk=ks.reduce((a,k)=>s.hr[k].rate>s.hr[a].rate?k:a,ks[0]),mid=ks[Math.floor(ks.length/2)],hm=s.hr[mid],face=ks.reduce((t,k)=>t+s.hr[k].face,0)/ks.length,cls=clsOf(face,w.m),ws=s.wx.ws[mid],p=tparts(DATA.times[ks[0]]),d=DATA.times[ks[0]].slice(0,10);
     const dist=BEST.scope==="local"&&LOCSET.has(s.n)?`${LOCSET.get(s.n).toFixed(LOCSET.get(s.n)<10?1:0)} mi · `:"";
     return`<button class="bcard" data-best="${s.idx}:${pk}" style="--rc:${rtCol(cls)}"><span class="bring" style="--p:${Math.round(shown(w.m)*10)}"><b>${shown(w.m).toFixed(1)}</b></span>
@@ -1136,6 +1137,7 @@ function cmpView(){const ok=DATA.spots.filter(s=>s.ok);
   ${row("Swell",s=>{const d=s.hr[TI].dom;return d?`${d.h.toFixed(1)} ft · ${Math.round(d.p)} s<small>${comp(d.d)}</small>`:"–"})}
   ${row("Wind",(s,i)=>{const h=s.hr[TI],ws=s.wx.ws[TI];return h.w.d==null||ws==null?"–":`<span class="v">${Math.round(ws)} kt</span><small>${h.w.word}</small>`})}
   ${row("Tide",s=>tideA(s))}
+  ${row("Rip",s=>{const d=driftOf(s,s.hr[TI]);const ks=day?day.idx.filter(k=>s.wx.day[k]===1&&s.hr[k]):[];return`<span class="v">${d?DR_NM[d.lvl]:"Flat"}</span>${d?`<small>${drv(d.v)} m/s</small>`:""}${ks.length?`<div class="cstrip">${ks.map(k=>{const x=driftOf(s,s.hr[k]);return`<i class="${x?["L","M","S"][x.lvl]:"F"}${k===TI?" now":""}"></i>`}).join("")}</div>`:""}`})}
   ${row("Day",s=>`<div class="mini">${seg(s)}</div>`)}</tbody></table>`:`<p class="note">Pick two or three spots to compare them hour by hour.</p>`}</div>${foot()}`}
 
 /* ---------- Swellbox: change the swell, wind and tide for a spot and see what it would score ---------- */
@@ -1193,10 +1195,10 @@ function sbView(){sbEnsure();const s=DATA.spots[SB.spot],o=SB.ov,ok=DATA.spots.f
   <div class="sbsel"><select id="sbspot" aria-label="Spot">${ok.map(x=>`<option value="${x.idx}"${x.idx===SB.spot?" selected":""}>${esc(x.n)}</option>`).join("")}</select><label>Start from <select id="sbhr" aria-label="Start from">${hrs.map(k=>`<option value="${k}"${k===SB.hr?" selected":""}>${fmt(k)}</option>`).join("")}</select></label></div>
   <div class="sbhero" id="sbhero">${sbHero(s)}</div>
   <div class="sbctl">${rows}<button class="sbreset" data-sbreset="1">↺ Reset to forecast</button></div>
-  <p class="lab" style="margin-top:-4px">Gold tick: the forecast. Green stretch: where this spot scores Good or better with your other settings.${SB.others.length?" Secondary swell and wind chop from the forecast are included.":""}</p>
-  <p class="lab" style="margin-top:2px">Where it works: swell direction by period, wind and tide held. Tap a square to set it.</p>
+  <p class="lab" style="margin-top:-4px">Gold tick = forecast. Green = Good or better.</p>
+  <p class="lab" style="margin-top:2px">Swell direction and period. Tap a square to set it.</p>
   <div id="sbheat">${sbHeat(s)}</div>
-  <p class="lab" style="margin-top:2px">When this setup shows up in the forecast</p>
+  <p class="lab" style="margin-top:2px">Upcoming matches</p>
   <div id="sbmatch" class="sbms">${sbMatch(s)}</div></div>${foot()}`}
 function fcChart(s){const T=DATA.times,W=372,H=176,x0=24,bw=(W-x0-4)/T.length,x=i=>x0+i*bw,top=18,base=112,mx=Math.max(6,Math.ceil(Math.max(...s.hr.map(h=>h.face)))),y=v=>base-(v/mx)*(base-top);
   let g="";
