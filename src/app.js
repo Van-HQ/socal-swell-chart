@@ -910,11 +910,11 @@ function popRender(center){const s=S.sel!=null&&DATA?DATA.spots[S.sel]:null;if(!
   const ps=b.querySelector(".pscroll");if(ps)ps.scrollLeft=center?Math.max(0,(TI+.5)*PW-ps.clientWidth/2):sx;
   b.scrollTop=center?0:sc}
 function detail(s){const h=s.hr[TI];
-  if(!s.ok)return`<div class="det"><button class="back" data-back="1">← All spots</button><h2>${esc(s.n)}</h2><p class="note">No wave data close enough to rate this spot.</p></div>`;
+  if(!s.ok)return`<div class="det"><button class="back" data-back="1"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>All spots</button><h2>${esc(s.n)}</h2><p class="note">No wave data close enough to rate this spot.</p></div>`;
   const tide=h.tide,nx=s.tide&&s.tide[Math.min(TI+1,s.tide.length-1)],trend=tide==null||nx==null?"":nx>tide+0.05?"rising":nx<tide-0.05?"falling":"slack";
   const nb=BUOYS.map((b,k)=>({b,d:DATA.buoys[k]})).filter(o=>o.d.ok).sort((a,c)=>dist2(a.b,s)-dist2(c.b,s))[0];
   const sst=s.m.sst[TI],dom=h.dom;
-  return`<div class="det"><button class="back" data-back="1">← All spots</button>
+  return`<div class="det"><button class="back" data-back="1"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>All spots</button>
   <div class="hcard" style="--rc:${rtCol(h.cls)}"><button class="hstar" data-fav="${s.idx}" aria-pressed="${FAVS.has(s.n)}" aria-label="${FAVS.has(s.n)?"Remove from favorites":"Save to favorites"}">${FAVS.has(s.n)?"★":"☆"}</button>
    <div class="hctop"><div class="hring" style="--p:${h.face<1?0:Math.round(shown(h.rate)*10)}"><b>${h.face<1?"\u2013":shown(h.rate).toFixed(1)}</b></div><div><h2>${esc(s.n)}</h2><p class="hsub">${REG[s.r]} · ${esc(s.t)} · ${fmt(TI)}</p></div></div>
    <div class="hchips"><span class="hpill${RT[h.cls].dk?" dk":""}"><i></i>${RT[h.cls].n}</span>${h.face<1?"":`<span class="hchip"><b>${faceText(h.face)}</b></span>${dom?`<span class="hchip">${Math.round(dom.p)} s</span><span class="hchip">${comp(dom.d)} ${Math.round(dom.d)}\u00b0</span>`:""}`}</div>
