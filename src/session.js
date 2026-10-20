@@ -1,7 +1,7 @@
 /* ---------- Save Session: draws a tall (iPhone-size) report card for a chosen window of one day and saves/shares it as a PNG ---------- */
 const SS={s:null,a:0,b:0,blob:null,t:0};
 const ssCss=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
-function ssHours(s){const cur=DATA.times[TI].slice(0,10),day=dayIdx().find(x=>x.d===cur);return{day,dl:day.idx.filter(k=>s.wx.day[k]===1&&s.hr[k])}}
+function ssHours(s){const cur=DATA.times[TI].slice(0,10),day=dayIdx().find(x=>x.d===cur);return{day,dl:day.idx.filter(k=>hourOf(k)>=5&&hourOf(k)<=21&&s.hr[k])}}
 function ssLabel(a,b){const ha=hourOf(a),hb=hourOf(b),ap=h=>h<12?"AM":"PM",n=h=>h%12||12;
   return a===b?`${n(ha)} ${ap(ha)}`:ap(ha)===ap(hb)?`${n(ha)}–${n(hb)} ${ap(hb)}`:`${n(ha)} ${ap(ha)}–${n(hb)} ${ap(hb)}`}
 function ssOpts(list,sel){return list.map(k=>`<option value="${k}"${k===sel?" selected":""}>${h12(hourOf(k))}</option>`).join("")}
