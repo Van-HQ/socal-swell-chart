@@ -934,7 +934,8 @@ function detail(s){const h=s.hr[TI];
   <div><p class="lab" style="margin-bottom:8px">7 Day Forecast</p>${fcChart(s)}</div>
   ${bestWindowsView(s)}
   ${whyScore(s)}
-  <p class="note">${esc(s.note)} Faces ${comp(s.f)}. Accepts swell from ${s.w.map(([a,b])=>`${comp(a)} to ${comp(b)}`).join(" and ")}; ideal faces ${s.sz[0]}–${s.sz[1]} ft.</p></div>`}
+  <p class="note">${esc(s.note)} Faces ${comp(s.f)}. Accepts swell from ${s.w.map(([a,b])=>`${comp(a)} to ${comp(b)}`).join(" and ")}; ideal faces ${s.sz[0]}–${s.sz[1]} ft.</p>
+  <button class="savess" data-ss="1">Save Session</button></div>`}
 const buoyAge=d=>(Date.now()/1000-d.t[d.t.length-1])/60;
 function ageText(d){const m=Math.max(0,Math.round(buoyAge(d)));return m<90?`${m} min ago`:`${Math.round(m/60)} h ago`}
 function buoyView(){return`<p class="note">Live buoys, north to south. Harvest and San Nicolas see new swell first.</p><div class="rows">${BUOYS.map((b,k)=>{const d=DATA.buoys[k];
