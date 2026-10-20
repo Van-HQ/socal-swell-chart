@@ -46,34 +46,44 @@ function ssDraw(){const s=SS.s,c=document.getElementById("ssc");if(!c)return;con
   ctx.font=font(700,13);const nm=RT[cls].n,pw=ctx.measureText(nm).width+24;rr(146,138,pw,24,12);ctx.fillStyle=col;ctx.fill();tx(nm,146+pw/2,155,font(700,13),RT[cls].dk?"#fff":"#10130f","center");
   tx(face<1?"Flat":faceText(face),146,196,font(700,32));
   if(n>1&&face>=1){const mn=Math.min(...ks.map(k=>shown(s.hr[k].rate))),mx=Math.max(...ks.map(k=>shown(s.hr[k].rate)));if(mn.toFixed(1)!==mx.toFixed(1))tx(`Best at ${h12(hourOf(pk))} · ${mn.toFixed(1)} to ${mx.toFixed(1)}`,146,218,font(400,13),MUT)}
-  // outlook
-  const card=(y,h,lab)=>{rr(24,y,W-48,h,18);ctx.fillStyle=CARD;ctx.fill();ctx.strokeStyle=LINE;ctx.lineWidth=1;ctx.stroke();try{ctx.letterSpacing="0.8px"}catch(e){}tx(lab,40,y+26,font(600,11.5),MUT);try{ctx.letterSpacing="0px"}catch(e){}};
-  ctx.save();
-  card(246,206,"OUTLOOK");
-  const dk=day.idx.filter(k=>s.hr[k]),cw=(W-80)/dk.length,x0=40,top=294,base=414,mxf=Math.max(6,...dk.map(k=>s.hr[k].face));
-  dk.forEach((k,i)=>{if(s.wx.day[k]===0){ctx.fillStyle="rgba(0,0,0,.30)";ctx.fillRect(x0+i*cw,top-8,cw+.3,base-top+16)}});
-  dk.forEach((k,i)=>{const h=s.hr[k],bh=Math.max(3,h.face/mxf*(base-top)),on=k>=SS.a&&k<=SS.b;ctx.globalAlpha=on?1:.5;ctx.fillStyle=ssCss("--r-"+RT[h.cls].k)||"#888";rr(x0+i*cw+1,base-bh,cw-2,bh,2.5);ctx.fill()});ctx.globalAlpha=1;
-  const i0=dk.indexOf(ks[0]),i1=dk.indexOf(ks[n-1]);if(i0>=0){rr(x0+i0*cw-1,top-8,(i1-i0+1)*cw+2,base-top+16,6);ctx.strokeStyle="rgba(255,255,255,.75)";ctx.lineWidth=1.5;ctx.stroke()}
-  dk.forEach((k,i)=>{const hh=hourOf(k);if(hh%6===0)tx(h12s(hh)+ampm(hh)[0],x0+i*cw+cw/2,436,font(400,11),MUT,"center")});
+  // outlook: same layout as the spot page chart (wave energy bars + rating strip, wind with arrows and gusts, tide with high/low labels)
+  const INKC="#ecedef",card=(y,h,lab)=>{rr(24,y,W-48,h,20);ctx.fillStyle=CARD;ctx.fill();ctx.strokeStyle=LINE;ctx.lineWidth=1;ctx.stroke();try{ctx.letterSpacing="0.8px"}catch(e){}tx(lab,42,y+28,font(600,11.5),MUT);try{ctx.letterSpacing="0px"}catch(e){}};
+  const hasT=!!s.tide,OH=hasT?398:270,OY=244;card(OY,OH,"OUTLOOK");
+  const dk=day.idx.filter(k=>s.hr[k]),n2=dk.length,X0=42,CW=(W-84)/n2,xi=i=>X0+i*CW,xc=i=>X0+(i+.5)*CW,i0=dk.indexOf(ks[0]),i1=dk.indexOf(ks[n-1]);
+  const top=OY+52,bot=OY+OH-34,kj=dk.map(k=>spotKJ(s.hr[k])),mxk=Math.max(20,...kj),base=OY+112;
+  dk.forEach((k,i)=>{if(s.wx.day[k]===0){ctx.fillStyle="rgba(0,0,0,.30)";ctx.fillRect(xi(i),top-6,CW+.3,bot-top+12)}});
+  if(i0>=0){rr(xi(i0)-1,top-6,(i1-i0+1)*CW+2,bot-top+12,6);ctx.fillStyle="rgba(255,255,255,.07)";ctx.fill();ctx.strokeStyle="rgba(255,255,255,.7)";ctx.lineWidth=1.3;ctx.stroke()}
+  dk.forEach((k,i)=>{const on=k>=SS.a&&k<=SS.b,bh=Math.max(2,kj[i]/mxk*(base-top-4)),rc=ssCss("--r-"+RT[s.hr[k].cls].k)||"#888";ctx.globalAlpha=on?1:.62;ctx.fillStyle=rc;rr(xi(i)+1,base-bh,CW-2,bh,2);ctx.fill();ctx.globalAlpha=1;ctx.fillStyle=rc;ctx.fillRect(xi(i),base+22,CW+.3,4)});
+  tx("kJ",X0+2,base+14,font(400,10),MUT);
+  for(let i=3;i<n2;i+=3){const k=dk[i],hh=hourOf(k);tx(String(Math.round(kj[i])),xc(i),base+14,font(400,10.5),INKC,"center");
+    tx(`${h12s(hh)}${ampm(hh)}`,xc(i),OY+OH-14,font(400,10.5),MUT,"center")}
+  // wind
+  const wy=base+50;tx("Wind/Gust (kt)",X0+2,wy,font(400,10),MUT);
+  const wm=Math.max(15,...dk.map(k=>s.wx.wg[k]||0)),wb=wy+78;ctx.beginPath();ctx.moveTo(xi(0),wb);dk.forEach((k,i)=>ctx.lineTo(xc(i),wb-(s.wx.ws[k]||0)/wm*38));ctx.lineTo(xi(n2),wb);ctx.closePath();ctx.fillStyle="rgba(176,180,185,.14)";ctx.fill();
+  for(let i=3;i<n2;i+=3){const k=dk[i],w=s.wx.ws[k],wd=s.wx.wd[k];if(w==null)continue;
+    ctx.save();ctx.translate(xc(i),wy+18);ctx.rotate((Math.round(wd+180))*Math.PI/180);ctx.beginPath();ctx.moveTo(0,-6);ctx.lineTo(4,4.3);ctx.lineTo(0,2.2);ctx.lineTo(-4,4.3);ctx.closePath();ctx.fillStyle=INKC;ctx.fill();ctx.restore();
+    tx(String(Math.round(w)),xc(i),wy+42,font(600,12.5),INKC,"center");tx(String(Math.round(s.wx.wg[k]||w)),xc(i),wy+57,font(400,10.5),MUT,"center")}
+  // tide
+  if(hasT){const ty0=wb+24;tx("Tide (ft)",X0+2,ty0,font(400,10),MUT);
+    const cur=DATA.times[SS.a].slice(0,10),ex=(s.hilo||[]).filter(e=>e.t.slice(0,10)===cur),vals=dk.map(k=>s.tide[k]).filter(v=>v!=null);
+    if(vals.length){const lo=Math.min(...vals,...ex.map(e=>e.v)),hi=Math.max(...vals,...ex.map(e=>e.v)),t0=ty0+36,t1=ty0+72,yy=v=>t1-(v-lo)/(hi-lo||1)*(t1-t0);
+      ctx.beginPath();let pen=false;dk.forEach((k,i)=>{const v=s.tide[k];if(v==null){pen=false;return}pen?ctx.lineTo(xc(i),yy(v)):ctx.moveTo(xc(i),yy(v));pen=true});ctx.strokeStyle="rgba(176,180,185,.95)";ctx.lineWidth=1.6;ctx.stroke();
+      for(const e of ex){const hh=+e.t.slice(11,13)+(+e.t.slice(14,16))/60,xx=X0+hh*CW+CW/2,px=Math.max(X0+22,Math.min(W-42-22,xx)),py=yy(e.v),hiT=e.v>(lo+hi)/2;
+        if(hiT){ctx.strokeStyle="rgba(176,180,185,.55)";ctx.lineWidth=.8;ctx.beginPath();ctx.moveTo(xx,py);ctx.lineTo(xx,t1+6);ctx.stroke();
+          tx(e.t.slice(11,16),px,py-16,font(600,10.5),INKC,"center");tx(`${e.v.toFixed(1)} ft`,px,py-4,font(400,10.5),MUT,"center")}
+        else{ctx.strokeStyle="rgba(176,180,185,.55)";ctx.lineWidth=.8;ctx.beginPath();ctx.moveTo(xx,py);ctx.lineTo(xx,py+5);ctx.stroke();
+          tx(e.t.slice(11,16),px,py+17,font(600,10.5),INKC,"center");tx(`${e.v.toFixed(1)} ft`,px,py+29,font(400,10.5),MUT,"center")}}}}
   // conditions
-  card(468,152,"CONDITIONS");
-  const ws=ks.reduce((t,k)=>t+(s.wx.ws[k]||0),0)/n,d=hm.dom,tide=hm.tide,nx=s.tide&&s.tide[Math.min(mid+1,s.tide.length-1)],tr=tide==null||nx==null?"":nx>tide+0.05?"↓".replace("↓","↑"):nx<tide-0.05?"↓":"";
+  const CY=OY+OH+18;card(CY,140,"CONDITIONS");
+  const ws=ks.reduce((t,k)=>t+(s.wx.ws[k]||0),0)/n,d=hm.dom,tide=hm.tide,nx=s.tide&&s.tide[Math.min(mid+1,s.tide.length-1)];
   const trw=tide==null||nx==null?"":nx>tide+0.05?"rising":nx<tide-0.05?"falling":"slack";
   const sst=s.m.sst[mid],wxo=s.wx,fl=wxo&&wxo.tp&&wxo.tp[mid]!=null?feelsF(wxo.tp[mid],wxo.rh&&wxo.rh[mid],wxo.ws&&wxo.ws[mid]):null,suit=sst==null?null:suitFor(sst*9/5+32,fl);
-  const cell=(x,y,k,v,sub)=>{tx(k,x,y,font(400,12),MUT);ctx.font=font(600,17);tx(v,x,y+22,font(600,17));if(sub){const w=ctx.measureText(v).width;tx(sub,x+w+6,y+22,font(400,12.5),MUT)}};
-  cell(40,524,"Swell",d?`${d.h.toFixed(1)} ft`:"n/a",d?`${Math.round(d.p)} s ${comp(d.d)}`:"");
-  cell(210,524,"Wind",hm.w.d==null?"n/a":`${Math.round(ws)} kt`,hm.w.d==null?"":hm.w.word.toLowerCase());
-  cell(40,582,"Tide",tide==null?"n/a":`${tide.toFixed(1)} ft`,trw);
-  cell(210,582,"Water",sst==null?"n/a":`${Math.round(sst*9/5+32)}°`,suit?suit.t:"");
-  // rip
-  card(636,120,"RIP");
-  const dr=dl.map(k=>({k,v:driftOf(s,s.hr[k])})),pv=ks.map(k=>driftOf(s,s.hr[k])).filter(Boolean),top2=pv.length?pv.reduce((a,b)=>b.v>a.v?b:a):null;
-  tx(top2?`${DR_NM[top2.lvl]}`:"Flat",40,684,font(600,17));if(top2){ctx.font=font(600,17);tx(`${drv(top2.v)} m/s`,40+ctx.measureText(DR_NM[top2.lvl]).width+8,684,font(400,12.5),MUT)}
-  const sw=(W-80-(dr.length-1)*3)/dr.length,rc=["#35c4c9",ssCss("--warn")||"#e8a05a",ssCss("--r-poor")||"#c9553f"];
-  dr.forEach((o,i)=>{ctx.fillStyle=o.v?rc[o.v.lvl]:"#2d2f32";rr(40+i*(sw+3),700,sw,14,4);ctx.fill();if(ks.includes(o.k)){ctx.strokeStyle="rgba(255,255,255,.8)";ctx.lineWidth=1.5;rr(40+i*(sw+3)-1,699,sw+2,16,5);ctx.stroke()}});
-  dr.forEach((o,i)=>{const hh=hourOf(o.k);if(hh%3===1||i===0)tx(h12s(hh)+ampm(hh)[0],40+i*(sw+3)+sw/2,734,font(400,11),MUT,"center")});
+  const cell=(x,y,k,v,sub)=>{tx(k,x,y,font(400,12),MUT);tx(v,x,y+23,font(600,17));if(sub){ctx.font=font(600,17);const w=ctx.measureText(v).width;tx(sub,x+w+6,y+23,font(400,12.5),MUT)}};
+  cell(42,CY+54,"Swell",d?`${d.h.toFixed(1)} ft`:"n/a",d?`${Math.round(d.p)} s ${comp(d.d)}`:"");
+  cell(212,CY+54,"Wind",hm.w.d==null?"n/a":`${Math.round(ws)} kt`,hm.w.d==null?"":`${comp(s.wx.wd[mid])} ${hm.w.word.toLowerCase()}`);
+  cell(42,CY+100,"Tide",tide==null?"n/a":`${tide.toFixed(1)} ft`,trw);
+  cell(212,CY+100,"Water",sst==null?"n/a":`${Math.round(sst*9/5+32)}\u00b0`,suit?suit.t:"");
   // footer
-  tx("Swell",24,822,font(700,14));tx(`Forecast · Generated ${new Date().toLocaleString("en-US",{timeZone:TZ,month:"short",day:"numeric",hour:"numeric",minute:"2-digit"})}`,W-24,822,font(400,12),MUT,"right");
-  ctx.restore();
+  tx("Swell",24,828,font(700,14));tx(`Forecast · Generated ${new Date().toLocaleString("en-US",{timeZone:TZ,month:"short",day:"numeric",hour:"numeric",minute:"2-digit"})}`,W-24,828,font(400,12),MUT,"right");
   clearTimeout(SS.t);SS.blob=null;SS.t=setTimeout(()=>c.toBlob(b=>{SS.blob=b},"image/png"),150)}
 document.body.addEventListener("click",e=>{if(e.target.closest("[data-ss]"))ssOpen()});
