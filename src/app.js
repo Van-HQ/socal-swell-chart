@@ -36,7 +36,7 @@ function breaker(hft,T){if(!(hft>0)||!(T>=5))return 0;const H=hft*0.3048;return 
    (stricter wind ceiling, steeper size curve, and the number shown is the raw score). */
 let MODEL="original";try{if(localStorage.getItem("swellchart.model2")==="current")MODEL="current"}catch(e){}
 const CUR=MODEL==="current";
-const WIND_CAP=CUR?[[3,10],[6,4.9],[8,3.8],[10,2.9],[12,2.3],[15,1.8],[20,1.3],[30,1]]:[[4,10],[6,4],[8,2.8],[10,1.9],[30,1]];
+const WIND_CAP=CUR?[[3,10],[6,4.9],[8,3.8],[10,2.9],[12,2.3],[15,1.8],[20,1.3],[30,1]]:[[4,10],[6,4.5],[8,3.4],[10,2.3],[12,1.8],[30,1]];
 const SZ=CUR?{a:0.5,b:0.7,d:0.5,m:0.5}:{a:0.4,b:0.6,d:0.55,m:0.45};
 function windCap(ws,d){if(ws==null||d==null)return 10;const e=ws*clamp((d-70)/50,0,1);if(e<=WIND_CAP[0][0])return 10;
   for(let i=1;i<WIND_CAP.length;i++)if(e<=WIND_CAP[i][0]){const a=WIND_CAP[i-1],b=WIND_CAP[i];return lerp(a[1],b[1],(e-a[0])/(b[0]-a[0]))}return 1}
@@ -798,7 +798,7 @@ function whyScore(s){if(!s.ok)return"";const i=TI,h=s.hr[i],hd=`<p class="lab" s
    period:{inp:dom?`${Math.round(dom.p)} s peak period`:"no swell",src:"forecast model",fm:`0.55 + 0.45 × period score ${per.toFixed(2)}. Period score is (period − 6) ÷ 8 kept between 0 and 1, times 0.8, plus 0.2.`},
    wind:{inp:ws==null?"no wind data":`${Math.round(ws)} kt ${w.word.toLowerCase()}`,src:"4 wind models: highest on daytime onshore, else median",fm:ws==null?"No wind data, so wind is not applied.":`0.25 + 0.75 × wind quality ${w.q.toFixed(2)}. Quality drops from 1 as wind passes 4 kt, faster when it is onshore.`},
    tide:{inp:tide==null?"no tide data":`${tide.toFixed(1)} ft · likes ${s.td}`,src:"NOAA tide predictions",fm:tide==null||!tr?"No tide data, so tide is not applied.":off===0?`Inside this spot's best band (${tr[0]} to ${tr[1]} ft), so no penalty.`:`${off.toFixed(1)} ft outside the best band (${tr[0]} to ${tr[1]} ft), so 1 − 0.1 × ${off.toFixed(1)}, never below 0.7.`},
-   cap:{inp:cap>=10?"No cap, not blown out":`Capped at ${shown(cap).toFixed(1)}`,src:"4 wind models: highest on daytime onshore, else median",fm:ws==null?"No wind data.":`Effective onshore wind is ${e.toFixed(1)} kt (speed × how onshore). ${CUR?`Up to 3 kt there is no cap. The ceiling then slopes down in a straight line to ${shown(4.9).toFixed(1)} at 6 kt. ${[[8,3.8],[10,2.9],[12,2.3],[15,1.8]].map(([k,c])=>`At ${k} kt it cannot pass ${shown(c).toFixed(1)}`).join(". ")}. Above that it keeps falling toward 1.`:`Up to 4 kt there is no cap; at 6 kt the score cannot pass 4; at 8 kt, 2.8; at 10 kt, 1.9; above that, 1.`}`}};
+   cap:{inp:cap>=10?"No cap, not blown out":`Capped at ${shown(cap).toFixed(1)}`,src:"4 wind models: highest on daytime onshore, else median",fm:ws==null?"No wind data.":`Effective onshore wind is ${e.toFixed(1)} kt (speed × how onshore). ${CUR?`Up to 3 kt there is no cap. The ceiling then slopes down in a straight line to ${shown(4.9).toFixed(1)} at 6 kt. ${[[8,3.8],[10,2.9],[12,2.3],[15,1.8]].map(([k,c])=>`At ${k} kt it cannot pass ${shown(c).toFixed(1)}`).join(". ")}. Above that it keeps falling toward 1.`:`Up to 4 kt there is no cap; at 6 kt the score cannot pass 4.5; at 8 kt, 3.4; at 10 kt, 2.3; at 12 kt, 1.8; above that it keeps falling toward 1.`}`}};
   // Waterfall, fixed order: each factor's bar shows the points it took off the 10 (the loss share). One color, the rating color.
   const col=rtCol(h.cls),GN={size:"Size",period:"Period",wind:"Wind",tide:"Tide",cap:"Wind cap"},mxl=Math.max(...F.map(x=>x.loss));let cum=10;
   const rows=F.map(x=>{const keep=Math.max(0,cum-x.loss),z=x.loss<0.05,d=D[x.k],on=WHY.has(x.k),big2=!z&&x.loss===mxl&&x.loss>=0.3,gain=shown(x.wo)-sh;
@@ -950,7 +950,7 @@ function howView(){return`<div class="det"><h2>How spots are rated</h2>
   <p class="note" style="color:var(--ink)">Every hour, each spot is scored on four things. They multiply, so flat water never rates well.</p>
   <dl class="kv" style="grid-template-columns:1fr">
   <div><dt>Size</dt><dd><small>Breaking height from each swell's height and period. Short chop under 9 s is marked down, swell outside the spot's window is cut, and a local gain adjusts for spots that focus or shelter swell.</small></dd></div>
-  <div><dt>Wind</dt><dd><small>Under 4 kt is glassy. Offshore costs little, onshore costs a lot. Onshore also caps the rating: ${CUR?"about 6 kt limits a spot to Fair, 10 kt to Poor to fair, 15 kt to Poor.":"about 6 kt limits a spot to Fair, 10 kt to Poor."}</small></dd></div>
+  <div><dt>Wind</dt><dd><small>Under 4 kt is glassy. Offshore costs little, onshore costs a lot. Onshore also caps the rating: ${CUR?"about 6 kt limits a spot to Fair, 10 kt to Poor to fair, 15 kt to Poor.":"about 6 kt limits a spot to Fair, 10 kt to Poor to fair, 12 kt and up to Poor."}</small></dd></div>
   <div><dt>Period</dt><dd><small>Longer is better, from 6 s (weak) to 14 s and up (full marks).</small></dd></div>
   <div><dt>Tide</dt><dd><small>A small penalty outside the tide the spot likes.</small></dd></div></dl>
   <div class="wins">${RT.map((r,c)=>`<div class="win" style="grid-template-columns:130px 1fr">${rlab(c)}<span class="m">${["Faces under 1 ft","Score below 2","2 to 4","4 to 5.5","5.5 to 7","7 to 8.8","Above 8.8"][c]}</span></div>`).join("")}</div>
