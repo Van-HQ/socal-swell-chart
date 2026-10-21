@@ -4,7 +4,7 @@
 // Usage: node tools/percentiles/build.mjs <data-dir>      env YEARS="2018,2019,..." (default 2021-2025; the archive has no swell data before about October 2021)
 import fs from "node:fs";import path from "node:path";
 import {loadRating,loadSpots} from "./rating.mjs";
-const OUT=process.argv[2]||"pct-out",CACHE=path.join(OUT,"cache2");fs.rmSync(path.join(OUT,"cache"),{recursive:true,force:true});fs.mkdirSync(CACHE,{recursive:true});   // "cache" held results from before empty hours were skipped
+const OUT=process.argv[2]||"pct-out",CACHE=path.join(OUT,"cache3");for(const old of ["cache","cache2"])fs.rmSync(path.join(OUT,old),{recursive:true,force:true});fs.mkdirSync(CACHE,{recursive:true});   // older cache folders held results scored before empty hours were skipped (cache) or before the wind cap was eased on 2026-10-20 (cache2); cache3 is the current scoring. Bump the folder name whenever the rating formula changes.
 const YEARS=(process.env.YEARS||"2021,2022,2023,2024,2025").split(",").map(Number);
 const MODELS=["original","current"],R=Object.fromEntries(MODELS.map(m=>[m,loadRating(m)]));
 const {SPOTS}=loadSpots(),PEAK=R.original.PEAK;
