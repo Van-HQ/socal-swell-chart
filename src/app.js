@@ -714,7 +714,7 @@ function driftSection(s){if(!s.ok)return"";const cd=DATA.times[TI].slice(0,10),d
    <p class="note" style="margin:2px 0 10px">${take}</p>
    <div class="dstrip">${bars}</div><div class="dax">${ax}</div>
    <div class="dleg"><span><i class="L"></i>Light</span><span><i class="M"></i>Moderate</span><span><i class="S"></i>Strong</span></div>
-   <p class="note" style="margin:8px 0 0">Estimated from wave height and the angle the swell meets the beach. Not a direct rip measurement.</p></div></div>`}
+   <p class="note" style="font-size:12px;margin-top:6px">Estimated from wave height and the angle the swell meets the beach. Not a direct rip measurement.</p></div></div>`}
 function summary(s,h,tide,trend,sst){const out=[],ws=s.wx.ws[TI],wd=s.wx.wd[TI];
   if(ws!=null)out.push(ws<4?`Light ${DIRW[comp(wd)]} wind`:`${Math.round(ws)} kt ${h.w.word.toLowerCase()} wind`);
   if(tide!=null)out.push(`${tide<1.5?"low":tide<4?"mid":"high"} tide ${trend}`.trim());
@@ -755,7 +755,7 @@ function bestWindowsView(s){
     const w=bestWindows(s,1,[idx[0]])[0];if(!w||w.weak||s.hr[w.peakIdx].cls<2)continue;const p=tparts(DATA.times[w.startIdx]),c=s.hr[w.peakIdx].cls;
     rows.push(`<button class="bwr" data-time="${w.startIdx}"><b>${DOW[p.dow]}</b><span>${winRange(w)}</span><span class="r"><i class="dot" style="background:${rtCol(c)}"></i>${RT[c].n}</span></button>`)}
   return`<div><p class="lab" style="margin-bottom:8px">${top[0].weak?"Best Windows (flat week)":"Best Windows"}</p><div class="bw">${top.map(w=>winCard(s,w)).join("")}</div></div>`+
-    (rows.length?`<div><p class="lab" style="margin-bottom:4px">Other days</p><div class="bwd">${rows.join("")}</div></div>`:"")}
+    (rows.length?`<div><p class="lab" style="margin-bottom:4px">Other options</p><div class="bwd">${rows.join("")}</div></div>`:"")}
 /* Weather card: temperature, sky, rain, 3-hour strip, sunrise/sunset and UV for the selected day. */
 const wxI=(p,c)=>`<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${p}</svg>`;
 const SKY={sun:wxI('<circle cx="12" cy="12" r="4.2"/><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M4.9 19.1l1.8-1.8M17.3 6.7l1.8-1.8"/>',"#e7c14a"),
