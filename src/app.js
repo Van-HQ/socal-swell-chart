@@ -392,7 +392,7 @@ matchMedia("(prefers-color-scheme: dark)").addEventListener("change",themeChange
 new MutationObserver(themeChanged).observe(document.documentElement,{attributes:true,attributeFilter:["data-theme"]});
 
 /* ---------- time ---------- */
-function buildDays(){const T=DATA.times;let h="",i=0;while(i<T.length){const p=tparts(T[i]);let n=0;while(i+n<T.length&&T[i+n].slice(0,10)===T[i].slice(0,10))n++;h+=`<span style="flex:${n}">${DOW[p.dow]}<i> ${p.d}</i></span>`;i+=n}$("days").innerHTML=h}
+function buildDays(){shadeBar();const T=DATA.times;let h="",i=0;while(i<T.length){const p=tparts(T[i]);let n=0;while(i+n<T.length&&T[i+n].slice(0,10)===T[i].slice(0,10))n++;h+=`<span style="flex:${n}">${DOW[p.dow]}<i> ${p.d}</i></span>`;i+=n}$("days").innerHTML=h}
 function fmt(i,long){const p=tparts(DATA.times[i]);return long?`${DOW[p.dow]} ${MON[p.m-1]} ${p.d}, ${h12(p.h)}`:`${DOW[p.dow]} ${h12(p.h)}`}
 function setTime(i,fromPlay){TI=clamp(i,0,DATA.times.length-1);$("t").value=TI;$("when").textContent=fmt(TI,true);
   const d=TI-NOWI;$("whensub").textContent=d===0?"Now":d>0?`${d} h from now`:`${-d} h ago`;
@@ -403,7 +403,7 @@ let playT=0;
 const PLAYI='<svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor" aria-hidden="true"><path d="M7 4v16l14-8z"/></svg>',PAUSEI='<svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor" aria-hidden="true"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>';
 $("play").innerHTML=PLAYI;
 $("play").onclick=()=>{if(!DATA)return;const on=!playT;$("play").setAttribute("aria-pressed",on);$("play").innerHTML=on?PAUSEI:PLAYI;$("play").setAttribute("aria-label",on?"Pause":"Play");$("play").title=on?"Pause":"Play";
-  if(on)playT=setInterval(()=>setTime(TI>=DATA.times.length-1?NOWI:TI+1,true),900);else{clearInterval(playT);playT=0}};
+  if(on)playT=setInterval(playStep,playMs());else{clearInterval(playT);playT=0}};
 
 /* ---------- panel ---------- */
 const S={tab:"spots",sel:null,region:"best",step:3,look:"night",loc:null,locWait:false};
