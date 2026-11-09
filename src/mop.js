@@ -24,6 +24,15 @@ async function mopRun(){
     const refs=[...x.querySelectorAll("catalogRef")].map(d=>d.getAttribute("name"));
     if(!ds.length){mlog(false,"The catalog has no files directly in it. Sub-folders: "+(refs.slice(0,15).join(", ")||"none")+". The layout needs a closer look.");throw 0}
     mlog(true,ds.length+" files found. Examples: "+ds.slice(0,6).map(d=>d.n).join(", "));
+    /* The files turned out to be regional grids, not per-beach sites, so this step only reports how the grid files are laid out. */
+    const fcs=ds.filter(d=>/forecast/i.test(d.n));
+    mlog(true,"Forecast files: "+fcs.map(d=>d.n).join(", "));
+    const g=fcs.find(d=>/^OC/i.test(d.n))||fcs[0];
+    mlog(true,"Layout of "+g.n+": "+(await mopGet(`${MOPB}dodsC/${g.u}.dds`)).replace(/\s+/g," ").slice(0,1800));
+    const das=await mopGet(`${MOPB}dodsC/${g.u}.das`).catch(()=>"");
+    const gl=/NC_GLOBAL\s*\{([\s\S]*?)\n\s*\}/.exec(das);
+    mlog(true,"About it: "+((gl?gl[1]:das).replace(/\s+/g," ").slice(0,1500)||"nothing returned"));
+    throw 0;
     let c=ds.filter(d=>/forecast/i.test(d.n));if(!c.length)c=ds;
     const pre=c.filter(d=>/^(OC|LA)/i.test(d.n));if(pre.length>=10)c=pre;
     c.sort((a,b)=>a.n<b.n?-1:a.n>b.n?1:0);
