@@ -471,14 +471,13 @@ button.tile:disabled{cursor:default;opacity:.6}
       <button role="tab" id="tab-sbox" aria-selected="false">Swellbox</button>
       <button role="tab" id="tab-buoys" aria-selected="false">Buoys</button>
       <button role="tab" id="tab-how" aria-selected="false">Method</button>
-      <button role="tab" id="tab-mop" aria-selected="false">Test</button>
     </div>
     <div class="body" id="body"></div>
   </aside>
 </div>
 <script>
 const LAND=[[-1213009,357000,31,-29,108,-152,0,-169,180,0,180,-84,180,-51,180,-34,216,-152,36,17,-36,51,72,17,180,-51,108,-85,144,-236,108,-34,288,-506,360,-321,288,-287,324,-287,252,0,180,-34,180,-118,360,34,216,-152,72,-135,108,-152,36,-338,72,34,72,-68,108,-219,36,-34,72,-68,-108,-34,-36,-84,-108,-17,-36,51,36,202,-72,152,-72,-320,-180,-439,-72,-136,-36,-236,108,-152,108,-101,252,-220,612,-236,252,-186,72,-17,36,51,0,84,36,51,252,-17,180,-17,108,-50,180,-152,72,-34,144,0,36,-51,72,-50,108,-321,36,-338,-36,-388,-72,-338,-252,-692,-36,-254,36,-84,144,34,72,-68,72,-152,72,-84,108,-34,72,-101,-36,-136,-36,-253,-72,-371,-108,-237,108,-152,108,-169,144,-219,-36,-253,-72,-203,-180,-304,-108,-270,-36,-152,0,-118,108,-118,144,-102,252,17,180,0,216,-135,216,-51,252,-135,180,-304,180,-405,180,-84,108,84,180,0,1332,169,1224,17,360,34,432,-135,540,33,144,-50,144,33,180,-118,72,0,72,-17,144,-84,36,-34,72,-17,72,17,108,0,108,-17,216,-135,108,-17,108,-118,36,17,216,0,108,-51,0,34,36,34,0,34,36,17,36,0,252,16,36,17,144,-17,360,-118,108,-34,108,-50,108,-17,144,0,36,34,36,17,72,33,0,17,36,34,0,17,108,34,216,33,180,-16,108,33,72,0,36,17,216,-17,144,-67,72,0,36,17,72,17,72,-51,180,-152,72,0,108,-51,36,-34,144,-16,72,-17,72,-17,36,-34,36,-34,36,-17,36,0,36,34,36,-17,36,-17,72,-50,108,-135,72,17,72,-34,108,-102,72,-67,108,-51,72,-84,36,-34,36,-17,36,17,72,17,36,-17,72,-34,72,-50,72,-68,108,-135,108,-51,72,-33,72,-51,108,-51,72,17,72,17,72,-68,108,-135,36,-101,36,-101,36,-17,-36,-68,36,-84,72,-135,108,-135,36,-135,72,-102,36,-84,36,-17,36,-34,36,-84,36,0,36,34,0,33,36,-17,36,-16,-36,-34,36,-17,72,-17,432,-253,252,-152,216,-68,36,51,-108,17,-72,17,0,33,36,0,144,-33,108,-34,288,-135,252,-34,288,-169,108,0,216,-67,216,-119,180,-33,72,17,72,-17,72,-34,108,0,108,-17,180,-17,108,-34,108,0,252,-135,216,-202,36,16,0,34,72,17,36,0,0,51,36,34,0,50,36,17,108,17,180,17,72,67,180,0,252,-33,144,33,108,-16,36,33,0,51,108,0,288,-17,288,-17,36,34,144,0,72,-17,144,34,108,-34,144,17,288,-169,324,-236,396,-490,180,-439,144,-321,108,-219,36,-68,36,-84,0,-186,-36,-118,-108,-85,-36,-67,-108,-68,-72,-101,72,-101,72,-85,36,-135,72,-17,36,-50,72,16,72,34,108,-34,108,-16,72,-85,252,-67,144,-51,144,-51,108,-67,108,50,36,0,-36,34,0,51,72,-17,0,84,-36,152,36,119,-36,67,72,-34,108,68,36,50,72,-16,72,33,108,17,108,17,72,-219,36,-68,72,51,0,-68,72,-84,108,0,-36,101,-36,101,-180,119,108,0,144,-68,108,68,216,-51,324,-152,288,-118,1116,-963,468,-270,504,-152,576,-321,468,-321,432,-439,180,-101,468,-219,144,-119,576,-506,864,-557,1476,-1689,396,-574,252,-726,108,-118,72,-169,72,-135,144,-845,36,-236,-36,-321,-72,-67,-72,50,-108,-135,36,-152,216,-388,36,-203,0,-169,-36,-456,36,-101,108,-169,72,-50,0,371,144,118,144,68,324,17,0,-118,108,-85,180,-118,144,-51,144,-185,0,-186,144,-321,0,-135,-108,-68,-108,68,-72,236,-108,220,-108,202,-108,102,-36,152,-180,84,-36,68,-144,0,-144,-68,-72,-101,36,-118,324,-17,252,-135,144,-237,144,-304,36,-219,0,-254,72,-287,0,-270,36,-219,0,-186,36,-169,108,-169,180,-337,144,-355,504,-912,144,-118,432,-101,180,-85,144,-135,108,-152,180,-405,180,-456,108,-625,0,-354,108,-220,252,-253,360,-85,360,-17,108,-118,36,-304,0,-253,180,-68,180,-16,252,-119,180,-202,180,-51,360,-67,108,-152,0,-203,-36,-203,-72,-304,-108,-185,-108,-186,-180,-101,-180,33,-288,169,-432,85,108,-135,252,-288,252,-16,144,-68,72,-51,144,-185,72,-186,-108,-270,-36,-169,-36,-152,216,-203,-252,0,-144,-33,36,0,-36,-102,72,-135,216,-152,72,-101,360,-270,7,-10,8099,0,0,42000,-55009,0],[-1186050,334766,36,-51,72,-50,36,-68,72,-67,36,-51,72,-17,0,-84,72,-17,72,-34,144,0,72,-34,72,0,72,-17,72,-50,36,17,72,-17,72,-17,72,-17,36,-34,0,-135,72,-152,36,-51,-36,-16,-72,-85,0,-34,-36,-101,72,-118,108,-135,72,-102,432,-67,108,34,360,0,108,-51,72,-17,108,-67,180,-68,144,17,0,51,108,33,-72,51,36,51,36,0,-72,168,-72,68,-72,0,-36,17,0,34,-36,101,-108,84,-144,102,-72,118,-36,0,-36,67,36,34,0,68,-36,34,-36,16,-72,0,-72,68,-72,-17,-252,118,-108,0,-36,17,-108,0,-36,34,-72,17,-72,51,-36,33,-36,-17,-36,68,-72,0,-36,-34,-36,-17,-36,-17,-36,17,-36,51,0,34,-72,33,-108,51,-72,68,-36,33,-72,68,-36,0,-72,-17,-144,-17,-72,17,-108,17,-72,-17,-108,17,-72,0],[-1199334,340608,36,-50,72,-17,36,34,72,-17,144,-68,108,-101,108,-68,0,-84,-108,-152,36,-68,0,-101,72,-118,108,-17,144,-101,108,17,144,-34,72,-68,180,34,108,-34,180,0,108,-17,72,51,108,0,216,-34,72,17,72,68,72,0,144,50,36,34,72,17,72,51,108,34,324,0,360,16,72,51,216,17,108,84,36,102,36,67,108,51,72,84,-108,68,-324,152,-108,-51,-108,-17,-216,-101,0,-101,-72,-85,-180,-67,-216,50,-108,-17,-108,34,-72,0,-72,85,-108,50,-72,85,-216,67,-36,-33,-72,67,-108,0,-72,34,-288,0,-180,-34,-180,34,-108,84,-216,68,-288,34,-180,0,-144,50,-36,-67,0,-51,-108,-68],[-1186086,330139,144,0,72,-101,72,-152,36,-203,180,-152,72,-84,36,-68,0,-185,108,-135,36,-17,144,-186,108,-84,0,-119,72,-152,108,-50,144,-68,252,-202,108,-17,108,-135,36,0,144,67,72,34,36,67,144,51,216,-84,144,17,-108,101,-216,203,-252,151,-432,338,-180,169,-144,68,-216,202,-108,169,-288,270,-72,169,-108,34,-36,135,0,51,-108,84,-144,-34,-36,68,-144,-51,0,-169],[-1202502,340017,144,-101,108,-34,72,-118,72,-34,108,-202,108,-85,36,-67,108,-152,216,-101,180,-102,108,-67,144,-17,0,67,72,68,216,0,108,51,216,16,288,203,216,68,288,0,0,118,-108,67,0,237,-288,-34,-252,101,-144,135,0,119,72,135,-36,84,-144,0,-144,-118,-216,-68,-396,68,-108,-17,-144,-84,-108,-85,-144,17,-144,-34,-180,51,-180,-17,-144,-68],[-1195806,332757,72,-102,0,-67,72,-68,0,-50,216,-152,216,-34,72,-68,144,0,72,-50,36,16,36,0,144,-33,36,17,108,0,108,33,72,0,72,34,0,85,-108,101,-180,152,-216,67,-36,34,-108,-17,-144,102,-216,101,-108,-51,-72,0,-108,-84,-144,67,-36,-33],[-1204482,340355,36,-50,72,-17,144,-34,72,67,108,0,108,-67,108,-17,108,-68,108,-16,108,33,432,0,0,85,-36,67,-72,68,-108,67,-72,17,-72,-33,-108,16,-72,51,72,68,-36,50,-36,68,-72,50,0,-50,-108,-102,-144,-67,-108,-34,-108,34,-216,-152,-108,-34],[-1182702,337282,108,51,72,33,0,102,36,34,36,-152,-144,-51,-36,-51,36,-84,144,-17,-36,84,108,51,-72,220,216,67,-36,84,-72,-16,-108,-34,-36,-34,-72,17,-108,-118,-36,-68,0,-118],[-1172550,324212,36,-101,36,-34,0,-84,36,-101,36,0,0,152,-36,101,-36,34,-72,33]];
-const BUILD="1794245684";
+const BUILD="1794637616";
 // Spot catalog, north to south. Each row:
 // [name, region, lat, lon, facing (deg the break looks toward), swell window key, gain, type, tide, size key, note]
 // Windows and sizes are named presets below. Gain scales the surf-height estimate (focus above 1, shelter below 1).
@@ -1080,7 +1079,7 @@ function peekRender(){const pk=$("peek");if(!DATA){pk.hidden=true;return}
   if(phone()&&SH.snap==="peek"){const b=SH.px.peek;sheetCalc();if(SH.px.peek!==b)setSnap("peek",true)}}
 function select(k){S.sel=k;if(k!=null)S.last=k;S.tab="spots";render();$("body").scrollTop=0;colorMarks();placeMarks();
   if(k!=null&&phone()&&SH.snap==="peek")setSnap("half")}
-for(const t of ["spots","best","cmp","sbox","buoys","how","mop"])$("tab-"+t).onclick=e=>{S.tab=t;S.sel=null;if(t==="sbox")SB.dirty=true;render();colorMarks();try{e.currentTarget.scrollIntoView({inline:"center",block:"nearest"})}catch(_){}};
+for(const t of ["spots","best","cmp","sbox","buoys","how"])$("tab-"+t).onclick=e=>{S.tab=t;S.sel=null;if(t==="sbox")SB.dirty=true;render();colorMarks();try{e.currentTarget.scrollIntoView({inline:"center",block:"nearest"})}catch(_){}};
 function swellLine(c){return c?`${c.h.toFixed(1)} ft @ ${Math.round(c.p)} s ${arrow(c.d)} ${comp(c.d)} ${Math.round(c.d)}°`:"No swell"}
 function outlook(){const r=DATA.ref,T=DATA.times;if(!r||!r.sh.some(v=>v!=null))return"";
   const W=372,H=92,x=i=>26+i*(W-32)/(T.length-1),mx=Math.max(4,...r.sh.map(v=>v||0),...r.s2h.map(v=>v||0)),y=v=>H-22-(v/mx)*(H-34);
@@ -1576,10 +1575,10 @@ function howView(){return`<div class="det"><h2>How spots are rated</h2>
   <p class="note">Data: Open-Meteo, Scripps CDIP, NOAA CO-OPS, NWS. Map: OpenFreeMap, © OpenMapTiles, data from OpenStreetMap; terrain from Mapzen, USGS and NOAA; satellite imagery © Esri, Maxar, Earthstar Geographics.</p></div>`}
 let lastRender=0;
 function render(fromPlay){if(!DATA)return;const b=$("body"),keep=b.scrollTop,vh=b.clientHeight;
-  for(const t of ["spots","best","cmp","sbox","buoys","how","mop"])$("tab-"+t).setAttribute("aria-selected",S.tab===t);
+  for(const t of ["spots","best","cmp","sbox","buoys","how"])$("tab-"+t).setAttribute("aria-selected",S.tab===t);
   if(S.tab==="sbox"&&S.sel==null&&!SB.dirty&&b.querySelector("#sbox")){peekRender();if(POP.k)popRender();return}
   /* Swapping the whole body briefly makes it shorter, which on some phones throws the scroll position back to the top (it showed when playing the timeline while scrolled down). A spacer keeps it tall enough for one frame so the position holds. */
-  b.innerHTML=(S.tab==="buoys"?buoyView():S.tab==="how"?howView():S.tab==="mop"?mopView():S.sel!=null?detail(DATA.spots[S.sel]):S.tab==="best"?bestView():S.tab==="cmp"?cmpView():S.tab==="sbox"?sbView():listView())+(keep>0?`<div id="slock" style="height:${keep+vh}px" aria-hidden="true"></div>`:"");
+  b.innerHTML=(S.tab==="buoys"?buoyView():S.tab==="how"?howView(): S.sel!=null?detail(DATA.spots[S.sel]):S.tab==="best"?bestView():S.tab==="cmp"?cmpView():S.tab==="sbox"?sbView():listView())+(keep>0?`<div id="slock" style="height:${keep+vh}px" aria-hidden="true"></div>`:"");
   if(S.tab==="sbox")SB.dirty=false;b.scrollTop=keep;if(keep>0)requestAnimationFrame(()=>{const l=document.getElementById("slock");if(l)l.remove()});lastRender=Date.now();peekRender();if(POP.k)popRender();
   const ch=b.querySelector(".chips"),on=ch&&ch.querySelector('[aria-pressed="true"]');if(on)ch.scrollLeft=Math.max(0,on.offsetLeft-ch.offsetLeft-(ch.clientWidth-on.offsetWidth)/2)}
 $("body").addEventListener("input",e=>{const id=e.target.id;if(!DATA||!SB.ov||!id||!id.startsWith("sb-"))return;SB.ov[id.slice(3)]=+e.target.value;sbPatch()});
@@ -1739,84 +1738,5 @@ function setOpen(){let el=document.getElementById("set");if(!el){el=document.cre
     SET.speed=+v;setSave();b.parentNode.querySelectorAll("button").forEach(x=>x.setAttribute("aria-pressed",x===b));if(playT){clearInterval(playT);playT=setInterval(playStep,playMs())}})}
 function setClose(){const el=document.getElementById("set");if(el)el.hidden=true}
 document.getElementById("gear").onclick=setOpen;
-/* Test tab: can the app read CDIP's nearshore forecast (MOP) straight from the browser, and how does it compare with the model the ratings use today?
-   Diagnostic only. Nothing here feeds the ratings. */
-const MOPB="https://thredds.cdip.ucsd.edu/thredds/";
-const MOP={busy:false,log:[],rows:null,head:""};
-const mlog=(ok,t)=>{MOP.log.push({ok,t});mopRefresh()};
-function mopRefresh(){const e=document.getElementById("mopb");if(e)e.innerHTML=mopBody();const b=document.getElementById("mopgo");if(b)b.textContent=MOP.busy?"Running…":MOP.log.length?"Run again":"Run test"}
-function laKey(ms){const p=Object.fromEntries(new Intl.DateTimeFormat("en-CA",{timeZone:TZ,year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",hour12:false}).formatToParts(new Date(ms)).map(x=>[x.type,x.value]));
-  return{key:`${p.year}-${p.month}-${p.day}T${p.hour==="24"?"00":p.hour}:00`,min:+p.minute}}
-async function mopGet(u){const r=await fetch(u);if(!r.ok)throw new Error(r.status+" "+decodeURIComponent(new URL(u).pathname).split("/").slice(-1)[0]);return r.text()}
-function mopNum(tx,name){const a=dods(tx,name);if(a.length&&!Number.isNaN(a[0]))return a[0];const m=new RegExp(name+"[^\\n]*\\n\\s*(-?[0-9.]+(?:[eE][-+]?\\d+)?)").exec(tx);return m?+m[1]:null}
-async function mopPool(items,fn,n){const out=[];let i=0;await Promise.all(Array.from({length:n},async()=>{while(i<items.length){const k=i++;out[k]=await fn(items[k])}}));return out}
-async function mopRun(){
-  if(MOP.busy||!DATA)return;MOP.busy=true;MOP.log=[];MOP.rows=null;MOP.head="";mopRefresh();
-  try{
-    const spot=DATA.spots.find(s=>s.n==="Seal Beach Jetty")||DATA.spots[0];
-    const xml=async p=>new DOMParser().parseFromString(await mopGet(MOPB+p),"text/xml");
-    let x;
-    try{x=await xml("catalog/cdip/model/MOP_grids/catalog.xml");mlog(true,"Reached CDIP's MOP catalog from this browser.")}
-    catch(e){mlog(false,"Could not read the MOP catalog ("+(e.message||e)+"). If the browser is blocking it, MOP cannot be read directly from the app.");
-      try{const y=await xml("catalog/cdip/model/catalog.xml");mlog(true,"The model folder does load. It lists: "+[...y.querySelectorAll("catalogRef,dataset")].map(n=>n.getAttribute("name")).slice(0,12).join(", "))}
-      catch(e2){mlog(false,"The model folder is not reachable either ("+(e2.message||e2)+").")}
-      throw 0}
-    const ds=[...x.querySelectorAll("dataset")].filter(d=>d.getAttribute("urlPath")).map(d=>({n:d.getAttribute("name"),u:d.getAttribute("urlPath")}));
-    const refs=[...x.querySelectorAll("catalogRef")].map(d=>d.getAttribute("name"));
-    if(!ds.length){mlog(false,"The catalog has no files directly in it. Sub-folders: "+(refs.slice(0,15).join(", ")||"none")+". The layout needs a closer look.");throw 0}
-    mlog(true,ds.length+" files found. Examples: "+ds.slice(0,6).map(d=>d.n).join(", "));
-    /* The files turned out to be regional grids, not per-beach sites, so this step only reports how the grid files are laid out. */
-    const fcs=ds.filter(d=>/forecast/i.test(d.n));
-    mlog(true,"Forecast files: "+fcs.map(d=>d.n).join(", "));
-    const g=fcs.find(d=>/^OC/i.test(d.n))||fcs[0];
-    mlog(true,"Layout of "+g.n+": "+(await mopGet(`${MOPB}dodsC/${g.u}.dds`)).replace(/\s+/g," ").slice(0,1800));
-    const das=await mopGet(`${MOPB}dodsC/${g.u}.das`).catch(()=>"");
-    const gl=/NC_GLOBAL\s*\{([\s\S]*?)\n\s*\}/.exec(das);
-    mlog(true,"About it: "+((gl?gl[1]:das).replace(/\s+/g," ").slice(0,1500)||"nothing returned"));
-    throw 0;
-    let c=ds.filter(d=>/forecast/i.test(d.n));if(!c.length)c=ds;
-    const pre=c.filter(d=>/^(OC|LA)/i.test(d.n));if(pre.length>=10)c=pre;
-    c.sort((a,b)=>a.n<b.n?-1:a.n>b.n?1:0);
-    const meta=async d=>{try{const t=await mopGet(`${MOPB}dodsC/${d.u}.ascii?metaLatitude,metaLongitude`);const la=mopNum(t,"metaLatitude"),lo=mopNum(t,"metaLongitude");return la!=null&&lo!=null?{...d,la,lo}:null}catch(e){return null}};
-    const dist=p=>Math.hypot(p.la-spot.la,(p.lo-spot.lo)*0.83)*111;
-    const step=Math.max(1,Math.ceil(c.length/20)),coarse=(await mopPool(c.filter((_,i)=>i%step===0),meta,6)).filter(Boolean);
-    if(!coarse.length){mlog(false,"Could not read site positions (latitude/longitude) from these files.");throw 0}
-    const k0=c.findIndex(d=>d.u===coarse.reduce((a,b)=>dist(b)<dist(a)?b:a).u);
-    const fine=(await mopPool(c.slice(Math.max(0,k0-step),k0+step+1),meta,6)).filter(Boolean);
-    const best=fine.reduce((a,b)=>dist(b)<dist(a)?b:a);
-    mlog(true,`Closest site to ${spot.n}: ${best.n}, ${dist(best).toFixed(1)} km away (${best.la.toFixed(3)}, ${best.lo.toFixed(3)}).`);
-    const base=`${MOPB}dodsC/${best.u}`,dd=await mopGet(base+".dds"),n=+(/waveTime\s*=\s*(\d+)/.exec(dd)||[])[1];
-    if(!n){mlog(false,"The forecast file has no wave time axis. Variables: "+[...dd.matchAll(/\s(\w+)\[/g)].map(m=>m[1]).slice(0,14).join(", "));throw 0}
-    const a=Math.max(0,n-240),r=`[${a}:1:${n-1}]`,tx=await mopGet(`${base}.ascii?waveTime${r},waveHs${r},waveTp${r},waveDp${r}`),
-      t=dods(tx,"waveTime"),hs=dods(tx,"waveHs"),tp=dods(tx,"waveTp"),dp=dods(tx,"waveDp");
-    if(!t.length||!hs.length){mlog(false,"The file answered, but the wave values did not parse.");throw 0}
-    const last=laKey(t[t.length-1]*1e3).key;
-    mlog(true,`Forecast read: ${t.length} points, running to ${last.replace("T"," ")}.`);
-    const nowMs=Date.now(),rows=[];let skip=0;
-    for(let i=0;i<t.length;i++){const ms=t[i]*1e3;if(ms<nowMs-36e5||ms>nowMs+40*36e5)continue;const lk=laKey(ms);if(lk.min!==0)continue;if(skip++%3)continue;
-      const j=DATA.times.indexOf(lk.key),m=j>=0?spot.m:null,fh=hs[i]*3.28084;
-      rows.push({key:lk.key,mh:fh,mp:tp[i],md:dp[i],mf:breaker(fh,tp[i]),ah:m?m.sh[j]:null,ap:m?m.sp[j]:null,ad:m?m.sd[j]:null,af:j>=0?spot.hr[j].face:null})}
-    MOP.rows=rows;
-    const bi=BUOYS.findIndex(b=>b.id==="215"),bd=bi>=0?DATA.buoys[bi]:null;
-    MOP.head=bd&&bd.ok?`Long Beach Channel buoy right now: ${bd.hs[bd.hs.length-1].toFixed(1)} ft, ${Math.round(bd.tp[bd.tp.length-1])} s, ${Math.round(bd.dp[bd.dp.length-1])}°.`:"";
-    mlog(true,"Done. Compare the columns below.");
-  }catch(e){if(e!==0)mlog(false,"Stopped: "+(e&&e.message||e))}
-  MOP.busy=false;mopRefresh()}
-function mopBody(){
-  const L=MOP.log.map(l=>`<div class="ml ${l.ok?"ok":"no"}"><b>${l.ok?"✓":"✗"}</b> ${esc(l.t)}</div>`).join("");
-  const f=(v,d)=>v==null||Number.isNaN(v)?"–":v.toFixed(d);
-  const T=MOP.rows&&MOP.rows.length?`${MOP.head?`<p class="note">${esc(MOP.head)}</p>`:""}
-    <table class="mopt"><thead><tr><th>Time</th><th colspan="3">Nearshore (MOP)</th><th colspan="3">Offshore model</th><th>App face</th></tr>
-    <tr><th></th><th>ft</th><th>s</th><th>°</th><th>ft</th><th>s</th><th>°</th><th>ft</th></tr></thead><tbody>${MOP.rows.map(o=>{const q=tparts(o.key);
-      return`<tr><td>${["Sun","Mon","Tue","Wed","Thu","Fri","Sat"][q.dow]} ${h12(q.h)}</td><td>${f(o.mh,1)}</td><td>${f(o.mp,0)}</td><td>${f(o.md,0)}</td><td>${f(o.ah,1)}</td><td>${f(o.ap,0)}</td><td>${f(o.ad,0)}</td><td>${f(o.af,1)}</td></tr>`}).join("")}</tbody></table>
-    <p class="note">MOP is the nearshore forecast for the closest site. "Offshore model" is the swell the ratings use today, and "App face" is the surf height the app turns that into for Seal Beach Jetty.</p>`:"";
-  return`<div class="mopl">${L}</div>${T}${MOP.log.length&&!MOP.busy?`<button class="savess" data-mop="copy">Copy results</button>`:""}`}
-function mopView(){return`<div class="det"><h2>Nearshore test</h2>
-  <p class="note" style="color:var(--ink)">Checks whether this app can read CDIP's nearshore forecast for Seal Beach, and sets it beside the offshore model the ratings use today. Nothing here changes any score.</p>
-  <button class="savess" id="mopgo" data-mop="run">${MOP.busy?"Running…":MOP.log.length?"Run again":"Run test"}</button><div id="mopb">${mopBody()}</div></div>`}
-document.addEventListener("click",e=>{const b=e.target.closest&&e.target.closest("[data-mop]");if(!b)return;
-  if(b.dataset.mop==="run")mopRun();
-  else{const t=MOP.log.map(l=>(l.ok?"OK  ":"FAIL ")+l.t).join("\n")+(MOP.head?"\n"+MOP.head:"")+(MOP.rows?"\n"+MOP.rows.map(o=>`${o.key} MOP ${o.mh.toFixed(1)}ft ${Math.round(o.mp)}s ${Math.round(o.md)}deg | model ${o.ah}ft ${o.ap}s ${o.ad}deg | app face ${o.af==null?"-":o.af.toFixed(1)}`).join("\n"):"");
-    try{navigator.clipboard.writeText(t).then(()=>{b.textContent="Copied"},()=>{b.textContent="Copy not allowed here"})}catch(_){b.textContent="Copy not allowed here"}}});
 </script>
 </body></html>

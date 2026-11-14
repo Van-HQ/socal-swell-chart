@@ -467,7 +467,7 @@ function peekRender(){const pk=$("peek");if(!DATA){pk.hidden=true;return}
   if(phone()&&SH.snap==="peek"){const b=SH.px.peek;sheetCalc();if(SH.px.peek!==b)setSnap("peek",true)}}
 function select(k){S.sel=k;if(k!=null)S.last=k;S.tab="spots";render();$("body").scrollTop=0;colorMarks();placeMarks();
   if(k!=null&&phone()&&SH.snap==="peek")setSnap("half")}
-for(const t of ["spots","best","cmp","sbox","buoys","how","mop"])$("tab-"+t).onclick=e=>{S.tab=t;S.sel=null;if(t==="sbox")SB.dirty=true;render();colorMarks();try{e.currentTarget.scrollIntoView({inline:"center",block:"nearest"})}catch(_){}};
+for(const t of ["spots","best","cmp","sbox","buoys","how"])$("tab-"+t).onclick=e=>{S.tab=t;S.sel=null;if(t==="sbox")SB.dirty=true;render();colorMarks();try{e.currentTarget.scrollIntoView({inline:"center",block:"nearest"})}catch(_){}};
 function swellLine(c){return c?`${c.h.toFixed(1)} ft @ ${Math.round(c.p)} s ${arrow(c.d)} ${comp(c.d)} ${Math.round(c.d)}°`:"No swell"}
 function outlook(){const r=DATA.ref,T=DATA.times;if(!r||!r.sh.some(v=>v!=null))return"";
   const W=372,H=92,x=i=>26+i*(W-32)/(T.length-1),mx=Math.max(4,...r.sh.map(v=>v||0),...r.s2h.map(v=>v||0)),y=v=>H-22-(v/mx)*(H-34);
@@ -963,10 +963,10 @@ function howView(){return`<div class="det"><h2>How spots are rated</h2>
   <p class="note">Data: Open-Meteo, Scripps CDIP, NOAA CO-OPS, NWS. Map: OpenFreeMap, © OpenMapTiles, data from OpenStreetMap; terrain from Mapzen, USGS and NOAA; satellite imagery © Esri, Maxar, Earthstar Geographics.</p></div>`}
 let lastRender=0;
 function render(fromPlay){if(!DATA)return;const b=$("body"),keep=b.scrollTop,vh=b.clientHeight;
-  for(const t of ["spots","best","cmp","sbox","buoys","how","mop"])$("tab-"+t).setAttribute("aria-selected",S.tab===t);
+  for(const t of ["spots","best","cmp","sbox","buoys","how"])$("tab-"+t).setAttribute("aria-selected",S.tab===t);
   if(S.tab==="sbox"&&S.sel==null&&!SB.dirty&&b.querySelector("#sbox")){peekRender();if(POP.k)popRender();return}
   /* Swapping the whole body briefly makes it shorter, which on some phones throws the scroll position back to the top (it showed when playing the timeline while scrolled down). A spacer keeps it tall enough for one frame so the position holds. */
-  b.innerHTML=(S.tab==="buoys"?buoyView():S.tab==="how"?howView():S.tab==="mop"?mopView():S.sel!=null?detail(DATA.spots[S.sel]):S.tab==="best"?bestView():S.tab==="cmp"?cmpView():S.tab==="sbox"?sbView():listView())+(keep>0?`<div id="slock" style="height:${keep+vh}px" aria-hidden="true"></div>`:"");
+  b.innerHTML=(S.tab==="buoys"?buoyView():S.tab==="how"?howView(): S.sel!=null?detail(DATA.spots[S.sel]):S.tab==="best"?bestView():S.tab==="cmp"?cmpView():S.tab==="sbox"?sbView():listView())+(keep>0?`<div id="slock" style="height:${keep+vh}px" aria-hidden="true"></div>`:"");
   if(S.tab==="sbox")SB.dirty=false;b.scrollTop=keep;if(keep>0)requestAnimationFrame(()=>{const l=document.getElementById("slock");if(l)l.remove()});lastRender=Date.now();peekRender();if(POP.k)popRender();
   const ch=b.querySelector(".chips"),on=ch&&ch.querySelector('[aria-pressed="true"]');if(on)ch.scrollLeft=Math.max(0,on.offsetLeft-ch.offsetLeft-(ch.clientWidth-on.offsetWidth)/2)}
 $("body").addEventListener("input",e=>{const id=e.target.id;if(!DATA||!SB.ov||!id||!id.startsWith("sb-"))return;SB.ov[id.slice(3)]=+e.target.value;sbPatch()});
